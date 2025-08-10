@@ -1,0 +1,6 @@
+@Enterpise.Flowstate_HostAddress = http://localhost:5209
+
+GET {{Enterpise.Flowstate_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
