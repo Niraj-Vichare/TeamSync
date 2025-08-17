@@ -1,6 +1,7 @@
 ﻿using Enterprise.Flowstate.BAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Enums;
+using Enterprise.Flowstate.DAL.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
     public class TaskService : ITaskService
     {
+        private IOmniRepository _omniRepository;
+        public TaskService(IOmniRepository omniRepository)
+        {
+            // Initialize any required services or repositories here
+            _omniRepository = omniRepository;   
+        }
         public Task<bool> CreateTask(TaskDto task)
         {
             throw new NotImplementedException();

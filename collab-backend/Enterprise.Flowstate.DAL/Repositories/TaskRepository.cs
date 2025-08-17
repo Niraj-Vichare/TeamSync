@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Task = Enterprise.Flowstate.DAL.Models.Task;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
@@ -17,7 +18,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             _supabaseClient = supabaseClient;
         }
 
-        public Task<bool> CreateTask(Tasks task)
+        public Task<bool> CreateTask(Task task)
         {
             throw new NotImplementedException();
         }
@@ -27,12 +28,12 @@ namespace Enterprise.Flowstate.DAL.Repositories
             throw new NotImplementedException();
         }
 
-        public Task<List<Tasks>> GetAllTask(int projectId)
+        public Task<List<Task>> GetAllTask(int projectId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<bool> UpdateTask(int taskId, Tasks task)
+        public Task<bool> UpdateTask(int taskId, Task task)
         {
             throw new NotImplementedException();
         }

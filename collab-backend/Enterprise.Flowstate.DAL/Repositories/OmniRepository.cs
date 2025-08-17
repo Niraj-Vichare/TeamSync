@@ -7,14 +7,19 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
-    public class OmniRepository
+    public class OmniRepository:IOmniRepository
     {
         public ITaskRepository TaskRepository { get;set; }
+        public IWorkspaceRepository WorkspaceRepository { get;set; }    
+        public IProfileRepository ProfileRepository { get; set; }
         private readonly Supabase.Client _supabaseClient;
+
         public OmniRepository(Supabase.Client supabaseClient)
         {
             _supabaseClient = supabaseClient;
             TaskRepository = new TaskRepository(_supabaseClient);
+            ProfileRepository = new ProfileRepository(_supabaseClient);
+            WorkspaceRepository = new WorkspaceRepository(_supabaseClient); 
         }
     }
 }

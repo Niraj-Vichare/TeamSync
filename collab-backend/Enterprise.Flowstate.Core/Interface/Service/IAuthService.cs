@@ -1,4 +1,6 @@
-﻿using Enterprise.Flowstate.DAL.Models;
+﻿using Enterprise.Flowstate.BAL.DTOs;
+using Enterprise.Flowstate.DAL.Models;
+using Supabase.Gotrue;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +11,11 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IAuthService
     {
-        void VerifyTokenAsync(AuthVerifyRequest request);
+        bool ValidateSigninData(string email, string password);
+        bool ValidateSignupData(SignupDto signupData);
+        bool IsUserExist(string email);
+        Task<Session?> SupabaseSignupWithPassword(string email, string password);
+        Task<Session?> SupabaseSiginWithPassword(string email, string password);
+
     }
 }

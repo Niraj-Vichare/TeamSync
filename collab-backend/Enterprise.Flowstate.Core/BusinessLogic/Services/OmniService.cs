@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.DAL.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -12,15 +13,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     {
 
         public IAuthService AuthService { get; set; }
-        private IConfiguration _configuration;
-        private ITaskService TaskService { get; set; }
-        
+        public ITaskService TaskService { get; set; }
+        public IWorkspaceService WorkspaceService { get; set; }
 
-        public OmniService(IConfiguration config)
+        private readonly Supabase.Client _client;
+        public IProfileService ProfileService { get; set; }    
+        private IOmniRepository _omniRepository;
+        public OmniService(IOmniRepository omniRepository,Supabase.Client client)
         {
-            _configuration = config;
-            AuthService = new AuthService();
-            TaskService = new TaskService();
+            _client = client;
+            _omniRepository = omniRepository;
+            AuthService = new AuthService(_client);
+            TaskService = new TaskService(_omniRepository);
+            ProfileService = new ProfileService(_omniRepository);
+            WorkspaceService = new WorkspaceService(_omniRepository);
         }
 
     }

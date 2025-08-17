@@ -8,6 +8,8 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface IOmniRepository
     {
-
+        public IWorkspaceRepository WorkspaceRepository { get; set; }
+        public ITaskRepository TaskRepository { get; set; }
+        public IProfileRepository ProfileRepository { get; set; }
     }
 }

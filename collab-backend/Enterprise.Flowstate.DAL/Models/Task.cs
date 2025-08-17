@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.Models
 {
-    [Table("tasks")]
-    public class Tasks:BaseModel
+    [Table("task")]
+    public class Task:BaseModel
     {
         [PrimaryKey("id")]
         public int Id { get; set; }

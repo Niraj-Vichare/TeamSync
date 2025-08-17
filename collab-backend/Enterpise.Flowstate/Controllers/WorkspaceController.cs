@@ -1,51 +1,204 @@
-﻿using Enterprise.Flowstate.Controllers;
+﻿using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Enterpise.Flowstate.Controllers
 {
-    [Route("/[contoller]")]
+    [Route("workspace")]
     public class WorkspaceController : AuthBaseController
     {
+        private readonly IOmniService _omniService;
+        public WorkspaceController(IOmniService omniService)
+        {
+            _omniService = omniService;
+        }
 
-        //[HttpPost]
-        //[Route("/create-workspace")]
-        //public ApiResponseModel CreateWorkspace(string workspaceName, string workspaceDescription)
-        //{
+        [HttpPost]
+        [Route("create-workspace")]
+        public async Task<ApiResponseModel<object>> CreateWorkspace(string workspaceName, string workspaceDescription)
+        {
+            try
+            {
+                if (workspaceName == null || workspaceDescription == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Workspace name and description cannot be null"
+                    };
+                }
+                // Can user create the workspaces.
+                bool isCreated = await _omniService.WorkspaceService.CreateWorkspace(workspaceName, workspaceDescription);
+                if (!isCreated)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Failed to create workspace"
+                    };
 
-        //}
+                }
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully created an workspace for the user"
+                };
 
-        //[HttpGet]
-        //[Route("/workspaces")]
-        //public ApiResponseModel GetWorkspaces()
-        //{
 
-        //}
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+        }
 
-        //[HttpGet]
-        //[Route("/workspace/{workspaceId}")]
-        //public ApiResponseModel GetWorkspace(string workspaceId)
-        //{
+        [HttpGet("workspaces")]
+        public async Task<ApiResponseModel<object>> GetWorkspaces()
+        {
+            try
+            {
+                
 
-        //}
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully get an workspace user workspace",
+                    Data = null
 
-        //[HttpDelete]
-        //[Route("/delete-workspace/{workspaceId}")]
-        //public ApiResponseModel DeleteWorkspace(string workspaceId)
-        //{
+                };
 
-        //}
-        
-        //[HttpPost]
-        //[Route("/join-workspace/{workspaceId}")]
-        //public ApiResponseModel JoinWorkspace(string workspaceId)
-        //{
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
 
-        //}
+        }
 
-        //public ApiReponseModel UpdateWorkspaceConfigs()
-        //{
+        [HttpGet]
+        [Route("{workspaceId}")]
+        public async Task<ApiResponseModel<object>> GetWorkspace(string workspaceId)
+        {
+            try
+            {
 
-        //}
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully get an workspace user workspace",
+                    Data = null
+
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+        }
+
+        [HttpDelete]
+        [Route("delete-workspace/{workspaceId}")]
+        public async Task<ApiResponseModel<object>> DeleteWorkspace(string workspaceId)
+        {
+            try
+            {
+
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully deleted an workspace.",
+                    Data = null
+
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+        }
+
+        [HttpPost]
+        [Route("join-workspace/{workspaceId}")]
+        public async Task<ApiResponseModel<object>> JoinWorkspace(string workspaceId)
+        {
+            try
+            {
+
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully get an workspace user workspace",
+                    Data = null
+
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+        }
+
+        [HttpPost("update-workspace")]
+        public async Task<ApiResponseModel<object>> UpdateWorkspaceConfigs()
+        {
+            try
+            {
+
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully updated an workspace user workspace",
+                    Data = null
+
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+        }
     }
 }
