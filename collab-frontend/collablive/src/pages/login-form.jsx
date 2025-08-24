@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ModeToggle } from "../context/mode-toggle"
-import { useState } from "react"
+import { use, useState } from "react"
 import { useAuth } from "@/context/AuthContext"
 import {
   Dialog,
@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner"
 import { Loader2Icon } from "lucide-react"
 import authService from "@/services/auth"
+import { se } from "date-fns/locale"
+import { useNavigate } from "react-router-dom"
 
 export function LoginForm({
   className,
@@ -34,6 +36,8 @@ export function LoginForm({
   const [resetEmail,setResetEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingProvider,setLoadingProvider] = useState();
+  const { login } = useAuth();
+  const navigate = useNavigate(); 
     
 
   const handleSendResetLink = async () => {
@@ -82,13 +86,24 @@ export function LoginForm({
   
 
   const handleEmailLogin = async (e) => {
-    e.preventDefault();
+    var loginData = {
+      email: email,
+      password: password
+    }
     try {
       setError('');
       setLoading(true);
 
+      var response = await login(loginData);
+      if (response && response.success) {
+        toast.success("Logged in successfully!");
+        navigate("/");
+      }
+
     } catch (error) {
       setError(error);
+      setLoading(false);
+    }finally{
       setLoading(false);
     }
   }
@@ -107,7 +122,7 @@ export function LoginForm({
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" required />
+                <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e)=>setEmail(e.target.value)}/>
               </div>
               <div className="grid gap-3">
                 <div className="flex items-center">
@@ -143,11 +158,17 @@ export function LoginForm({
 
                   </Dialog>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password" type="password" required  value={password} onChange={(e)=>setPassword(e.target.value)}/>
               </div>
-              <Button type="submit" className="w-full text-white">
-                Login
-              </Button>
+              <Button
+              type="button"
+              className="w-full text-white"
+              onClick={handleEmailLogin}
+              disabled={loading}
+            >
+              {loading && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Signin..." : "Sign in"}
+            </Button>
               <div
                 className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
                 <span className="bg-card text-muted-foreground relative z-10 px-2">

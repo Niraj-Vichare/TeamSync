@@ -26,11 +26,33 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog"
+import React from "react"
+import { useAuth } from "@/context/AuthContext"
+import { toast } from "sonner"
 
 export function NavUser({
   user
 }) {
   const { isMobile } = useSidebar()
+  const [open, setOpen] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const {logout}= useAuth();
+  const handleLogout = () => {
+    try {
+      setIsLoading(true);
+      // Call your logout service here
+      logout();
+      toast.success("Logged out successfully!");
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.error("Failed to log out. Please try again.");
+    } finally {
+      //setIsLoading(false);
+      //setOpen(false);
+    }
+  };
+  
 
   return (
     <SidebarMenu>
@@ -88,8 +110,8 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <IconLogout />
+            <DropdownMenuItem onClick={() => setOpen(true)}>
+              <IconLogout/>
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

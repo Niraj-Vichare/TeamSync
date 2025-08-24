@@ -47,7 +47,6 @@ function Task() {
         status: status,
         subtasks: subtasks
       }
-      const response = await TaskService.createTask(task);
 
     }catch(e){
       console.error("Error creating task:", e);

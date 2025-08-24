@@ -21,7 +21,7 @@ function CreateWorkspace() {
       var response = workspaceService.createWorkspace(workspaceName,workspaceDesc);
       const { success,data,message,statusCode } = response.data;
       if(success || statusCode == 200){
-        toast.success();
+        toast.success(message || "Workspace created successfully");
         navigate('/workspace/invite-workspace')
       }
 

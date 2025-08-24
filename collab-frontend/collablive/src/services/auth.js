@@ -1,159 +1,169 @@
-import { auth, googleProvider, githubProvider } from "@/lib/firebase";
-import { handleAuthError } from "@/lib/handleAuthError";
 import axios from "axios";
-import { createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile } from "firebase/auth";
 import axiosInstance from "./axiosInstance";
 
 const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL;
+
 class AuthService {
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.currentWorkspace   = null;
+    this.currentUser = null;
+    this.currentWorkspaceId = null;
+  }
+
+  // Sign up with email and password
+  async signUpWithEmail(signupData) {
+    try {
+      const response = await axios.post(`${this.baseURL}/auth/signup`, signupData,{
+        withCredentials: true
+      });
+      this.setCurrentWorkspaceId(response.data.workspaceId); // Clear current workspace ID
+      if (response.data.success) {
+        const profile = await this.getProfile();
+        this.currentUser = profile.data;
+
+        return {
+          success: true,
+          user: this.currentUser,
+          workspaceId: this.currentWorkspaceId,
+          message: response.data.message || 'Account created successfully!'
+        };
+      } else {
+        throw new Error(response.data.message || 'Signup failed');
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw new Error(error.response?.data?.message || 'Signup failed');
+    }
+  }
+
+  // Sign in with email and password
+  async signinWithEmail(loginData) {
+    try {
+      // Make sure loginData is an object with email and password
+      const response = await axios.post(`${this.baseURL}/auth/signin`, loginData,{
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        
+        this.setCurrentWorkspaceId(response.data.data.workspaceId); // Clear current workspace ID
+        this.currentUser = response.data.data.userId;
+        // Store workspace ID if provided
+        if (response.data.data?.workspaceId) {
+          this.currentWorkspaceId = response.data.data.workspaceId;
+          localStorage.setItem('currentWorkspaceId', response.data.data.workspaceId);
+        }
+        const profile = await this.getProfile();
+        this.currentUser = profile.data;
+
+        return {
+          success: true,
+          user: profile.data,
+          workspaceId: response.data.data?.workspaceId,
+          message: response.data.message || 'Signin successful'
+        };
+      } else {
+        throw new Error(response.data.message || 'Signin failed');
+      }
+    } catch (error) {
+      console.error('Signin error:', error);
+      throw new Error(error.response?.data?.message || 'Signin failed');
+    }
+  }
+
+  // Sign in with Google (if you want to keep this option)
+  async signInWithGoogle() {
+    try {
+      // Redirect to backend Google OAuth endpoint
+      window.location.href = `${this.baseURL}/auth/google`;
+      
+      // Note: The backend should handle the OAuth flow and redirect back
+      // with appropriate tokens/cookies set
+    } catch (error) {
+      console.error('Google signin error:', error);
+      throw new Error('Google signin failed');
+    }
+  }
+
+  // Sign in with GitHub (if you want to keep this option)
+  async signInWithGitHub() {
+    try {
+      // Redirect to backend GitHub OAuth endpoint
+      window.location.href = `${this.baseURL}/auth/github`;
+      
+      // Note: The backend should handle the OAuth flow and redirect back
+      // with appropriate tokens/cookies set
+    } catch (error) {
+      console.error('GitHub signin error:', error);
+      throw new Error('GitHub signin failed');
+    }
   }
 
   // Password Reset
   async resetPassword(email) {
     try {
-      await sendPasswordResetEmail(auth, email);
-      return { 
-        success: true, 
-        message: 'Password reset email sent successfully!' 
-      };
+      const response = await axios.post(`${this.baseURL}/auth/reset-password`, {
+        email
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          message: response.data.message || 'Password reset email sent successfully!'
+        };
+      } else {
+        throw new Error(response.data.message || 'Password reset failed');
+      }
     } catch (error) {
       console.error('Password reset error:', error);
-      throw handleAuthError(error);
+      throw new Error(error.response?.data?.message || 'Password reset failed');
     }
   }
 
-  // Helper method to get current user token
-  async getCurrentUserToken() {
-    const user = auth.currentUser;
-    if (user) {
-      return await user.getIdToken(true);
-    }
-    return null;
-  }
-
-  // Email/Password Registration
-  async signUpWithEmail(email, password, displayName = '') {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Update display name if provided
-      if (displayName) {
-        await updateProfile(userCredential.user, { displayName });
-      }
-      // Send email verification
-      //await sendEmailVerification(userCredential.user);
-
-      const idToken = await userCredential.user.getIdToken();
-      const backendResponse = await this.verifyTokenWithBackend(idToken, {
-        authMethod: "email",
-        displayName: displayName,
-        workspaceSlug:null,
-        profileUrl:null
-      });
-
-      return {
-        success: true,
-        user: userCredential.user,
-        message: 'Account created successfully! Please check your email for verification.'
-      };
-    } catch (error) {
-      throw handleAuthError(error);
-    }
-  }
-
-  // Signin with Email
-  async signinWithEmail(email, password) {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-      const backendResponse = await this.verifyTokenWithBackend(idToken, {
-        authMethod: "email",
-      });
-      return {
-        success: true,
-        user: userCredential.user,
-        backendData: backendResponse
-      };
-    } catch (error) {
-      throw handleAuthError();
-    }
-  }
-
-  // Signin or Signup with google flow is same.
-  async signInWithGoogle() {
-    try {
-      const userCredential = await signInWithPopup(auth, googleProvider);
-      const idToken = await userCredential.user.getIdToken();
-      const backendResponse = await this.verifyTokenWithBackend(idToken, {
-        authMethod: "google",
-        displayName: userCredential.user.displayName,
-        photoURL: userCredential.user.photoURL
-      });
-
-      return {
-        success: true,
-        user: userCredential.user,
-        data: backendResponse,
-        isNewUser: userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime
-      }
-    } catch (error) {
-      throw handleAuthError();
-    }
-  }
-
-
-  // GitHub Sign-In
-  async signInWithGitHub() {
-    try {
-      const userCredential = await signInWithPopup(auth, githubProvider);
-      const idToken = await userCredential.user.getIdToken();
-
-      const backendResponse = await this.verifyTokenWithBackend(idToken, {
-        authMethod: 'github',
-        displayName: userCredential.user.displayName,
-        photoURL: userCredential.user.photoURL
-      });
-
-      return {
-        success: true,
-        user: userCredential.user,
-        backendData: backendResponse,
-        isNewUser: userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime
-      };
-    } catch (error) {
-      console.error('GitHub login error:', error);
-      throw handleAuthError(error);
-    }
-  }
-
-  // Verify token with backend (called after Firebase auth)
-  async verifyTokenWithBackend(idToken, additionalData = {}) {
-    try {
-      console.log('Verifying token with backend:', idToken, additionalData, this.baseURL);
-      const response = await axios.post(`${this.baseURL}/auth/verify`, {
-        idToken,
-        ...additionalData
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error('Backend verification error:', error);
-      throw new Error(`Backend verification failed: ${error.response?.status || error.message}`);
-    }
-  }
-
-  // Signout logic
+  // Sign out
   async signOut() {
     try {
-      await signOut(auth);
+      await axiosInstance.post('/auth/signout');
+      
+      // Clear local data
+      this.currentUser = null;
+      this.currentWorkspaceId = null;
+      localStorage.removeItem('currentWorkspaceId');
+      
       return { success: true };
     } catch (error) {
-      console.error('Logout error:', error);
-      throw handleAuthError(error);
+      console.error('Signout error:', error);
+      // Even if backend call fails, clear local data
+      this.currentUser = null;
+      this.currentWorkspaceId = null;
+      localStorage.removeItem('currentWorkspaceId');
+      
+      throw new Error('Signout failed');
     }
   }
+
+  // Get user profile from backend
+  async getProfile() {
+    try {
+      const response = await axiosInstance.get('/user/profile');
+      return response.data;
+    } catch (error) {
+      console.error('Get profile error:', error);
+      throw error;
+    }
+  }
+
+  // Get user data from backend
+  async getUserData() {
+    try {
+      const response = await axiosInstance.get('/user/data');
+      return response.data;
+    } catch (error) {
+      console.error('Get user data error:', error);
+      throw error;
+    }
+  }
+
   // Refresh user data from backend
   async refreshUserData() {
     try {
@@ -162,6 +172,7 @@ class AuthService {
         this.getUserData()
       ]);
 
+      this.currentUser = profile.data;
       return { profile, userData };
     } catch (error) {
       console.error('Refresh user data error:', error);
@@ -169,45 +180,38 @@ class AuthService {
     }
   }
 
-  // Get User profile from backend
-  async getProfile() {
-    try{
-      const response = await axiosInstance.get('/auth/profile');
-      return response.data;
-    }catch(error){
-      console.error('Get profile data error:',error);
-      throw error;
+  // Check authentication status
+  async checkAuthStatus() {
+    try {
+      const profile = await this.getProfile();
+      this.currentUser = profile.data;
+      return true;
+    } catch (error) {
+      this.currentUser = null;
+      return false;
     }
   }
-
-  // Get User Data from backend
-  async getUserData() {
-    try{
-      const response = await axiosInstance.get('/user/data');
-      return response.data;
-    }catch(error){
-      console.error('Get user data error: ',error);
-      throw error;
-    }
-  }
-
 
   // Check if user is authenticated
   isAuthenticated() {
-    return !!auth.currentUser;
+    return !!this.currentUser;
   }
 
   // Get current user
   getCurrentUser() {
-    return auth.currentUser;
+    return this.currentUser;
   }
 
-  // Get current user's email verification status
-  isEmailVerified() {
-    return auth.currentUser?.emailVerified || false;
+  // Get current workspace ID
+  getCurrentWorkspaceId() {
+    return this.currentWorkspaceId || localStorage.getItem('currentWorkspaceId');
   }
-  
-  
+
+  // Set current workspace ID
+  setCurrentWorkspaceId(workspaceId) {
+    this.currentWorkspaceId = workspaceId;
+    localStorage.setItem('currentWorkspaceId', workspaceId);
+  }
 }
 
 const authService = new AuthService();

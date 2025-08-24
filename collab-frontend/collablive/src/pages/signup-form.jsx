@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import authService from "@/services/auth"
 import { checkPassword, validateEmail } from "@/lib/common"
+import { useAuth } from "@/context/AuthContext"
 
 export function Signup() {
   const [email,setEmail] = useState('');
@@ -20,6 +21,7 @@ export function Signup() {
   const [isChecked,setChecked] = useState(false);
 
   const navigate = useNavigate();
+  const {signup} = useAuth();
 
   const handleGoogleLogin = async () => {
     try {
@@ -54,13 +56,18 @@ export function Signup() {
     setLoading(true);
 
     try {
-      var response = await authService.signUpWithEmail(email,password,displayName);
-      if(response && response.user){
-        console.log(user);
+      var signupData = {
+        email: email,
+        password: password,
+        displayName: displayName
+      }
+      var response = await signup(signupData);
+      if(response && response.success)
+      {
+        toast.success("Signed up successfully!");
+        navigate("/workspace/create-workspace");
       }
 
-      //toast.success("Signed up!");
-      //navigate("/workspace/create-workspace");
     } catch (err) {
       toast.error("Signup failed");
     } finally {

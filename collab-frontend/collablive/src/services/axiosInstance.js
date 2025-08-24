@@ -5,27 +5,25 @@ const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL;
 // Create axios instance
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 50000,
+  withCredentials: true, // Important for cookie-based auth
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
-// Request interceptor to add auth token and workspace ID
+// Request interceptor to add workspace ID
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Get token from localStorage (or your auth state management)
-    const token = localStorage.getItem("access_token"); // store token after Supabase login
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     // Add workspace ID if available
-    const activeWorkspace = JSON.parse(localStorage.getItem("activeWorkspace") || "null");
-    if (activeWorkspace?.id) {
-      config.headers["X-Workspace-ID"] = activeWorkspace.id;
+    const currentWorkspaceId = localStorage.getItem('currentWorkspaceId');
+    if (currentWorkspaceId) {
+      config.headers['X-Workspace-ID'] = currentWorkspaceId;
     }
 
+    // Add request timestamp for debugging
+    config.metadata = { startTime: new Date() };
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -36,17 +34,26 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
+    
     if (status === 401) {
       console.error("Authentication required");
-      // Example: redirect to login
-      // window.location.href = "/login";
+      // Clear any stored user data
+      localStorage.removeItem('currentWorkspaceId');
+      
+      // Redirect to login page
+      // if (window.location.pathname !== '/auth/signin' && window.location.pathname !== '/auth/signup') {
+      //   window.location.href = '/auth/signin';
+      // }
     }
+    
     if (status === 403) {
       console.error("Access forbidden");
     }
+    
     if (status >= 500) {
       console.error("Server error");
     }
+    
     return Promise.reject(error);
   }
 );
