@@ -11,5 +11,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         public IWorkspaceRepository WorkspaceRepository { get; set; }
         public ITaskRepository TaskRepository { get; set; }
         public IProfileRepository ProfileRepository { get; set; }
+        public IProjectRepository ProjectRepository { get; set; }
     }
 }

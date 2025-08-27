@@ -18,6 +18,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         private readonly Supabase.Client _client;
         public IProfileService ProfileService { get; set; }    
+        public IProjectService ProjectService { get; set; }
         private IOmniRepository _omniRepository;
         public OmniService(IOmniRepository omniRepository,Supabase.Client client)
         {
@@ -27,6 +28,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             TaskService = new TaskService(_omniRepository);
             ProfileService = new ProfileService(_omniRepository);
             WorkspaceService = new WorkspaceService(_omniRepository);
+            ProjectService = new ProjectService(_omniRepository);
         }
 
     }

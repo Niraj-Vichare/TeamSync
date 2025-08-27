@@ -12,13 +12,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             _omniRepository = omniRepository;
         }
 
-        public async Task<bool> CreateWorkspace(int ownerId,string name, string description)
+        public async Task<bool> CreateWorkspace(string userClaimsId,string name, string description)
         {
             if (string.IsNullOrEmpty(name))
             {
                 return false;
             }
-            var response = await _omniRepository.WorkspaceRepository.CreateWorkspace(ownerId, name, description);
+            var response = await _omniRepository.WorkspaceRepository.CreateWorkspace(userClaimsId, name, description);
             return response;
         }
 
@@ -39,14 +39,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             throw new NotImplementedException();
         }
 
-        public Task<bool> CreateWorkspace(string name, string description)
+        public async Task<List<WorkspaceDto>> GetAllWorkspaces(string userClaimId)
         {
-            throw new NotImplementedException();
-        }
+            // Logic to get all workspaces
 
-        public Task<List<WorkspaceDto>> GetAllWorkspaces()
-        {
-            throw new NotImplementedException();
+            var mappings = await _omniRepository.WorkspaceRepository.GetWorkspaces(userClaimId);
+            List<WorkspaceDto> workspaces = mappings.Select(mapping => new WorkspaceDto
+            {
+                Id = mapping.WorkspaceId,
+                Name = mapping.Workspace.Name,
+                Description = mapping.Workspace.Description,
+                OwnerId = mapping.UserId
+            }).ToList();
+            return workspaces;
         }
     }
 }

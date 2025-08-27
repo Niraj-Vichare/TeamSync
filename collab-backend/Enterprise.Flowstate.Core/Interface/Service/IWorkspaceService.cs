@@ -9,10 +9,10 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IWorkspaceService
     {
-        Task<bool> CreateWorkspace(string name, string description);
+        Task<bool> CreateWorkspace(string userClaimsId, string name, string description);
         Task<bool> UpdateWorkspace(int workspaceId, string name, string description);
-        Task<bool> DeleteWorkspace(int workspaceId);    
-        Task<List<WorkspaceDto>> GetAllWorkspaces();
+        Task<bool> DeleteWorkspace(int workspaceId);
+        Task<List<WorkspaceDto>> GetAllWorkspaces(string userClaimId);
 
     }
 }

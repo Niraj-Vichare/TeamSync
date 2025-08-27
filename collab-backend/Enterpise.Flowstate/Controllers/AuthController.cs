@@ -182,8 +182,8 @@ namespace Enterpise.Flowstate.Controllers
                         Success = true,
                         Data = new
                         {
-                            userId = response.User?.Id,
-                            isNewUser = true // Flag to indicate this is a new signup
+                            userId = response.User.Id,
+                            workspaceId = 0,
                         }
                     };
                 }

@@ -12,6 +12,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         public ITaskRepository TaskRepository { get;set; }
         public IWorkspaceRepository WorkspaceRepository { get;set; }    
         public IProfileRepository ProfileRepository { get; set; }
+        public IProjectRepository ProjectRepository { get;set; }
         private readonly Supabase.Client _supabaseClient;
 
         public OmniRepository(Supabase.Client supabaseClient)
@@ -19,7 +20,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
             _supabaseClient = supabaseClient;
             TaskRepository = new TaskRepository(_supabaseClient);
             ProfileRepository = new ProfileRepository(_supabaseClient);
-            WorkspaceRepository = new WorkspaceRepository(_supabaseClient); 
+            WorkspaceRepository = new WorkspaceRepository(_supabaseClient);
+            ProjectRepository = new ProjectRepository(_supabaseClient);
         }
     }
 }

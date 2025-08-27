@@ -24,7 +24,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<string> GetCurrentWorkspaceId(string userGuid)
         {
-            return await _omniRepository.ProfileRepository.GetCurrentWorkspaceId(userGuid);
+            var workspaceId = await _omniRepository.ProfileRepository.GetCurrentWorkspaceId(userGuid);
+            if (workspaceId == null)
+            {
+                return null;
+            }
+            return workspaceId.ToString();
         }
 
         public async Task<ProfileDto> GetProfile(string userGuid)

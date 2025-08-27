@@ -2,6 +2,7 @@
 using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -29,8 +30,21 @@ namespace Enterpise.Flowstate.Controllers
                         Message = "Workspace name and description cannot be null"
                     };
                 }
+
                 // Can user create the workspaces.
-                bool isCreated = await _omniService.WorkspaceService.CreateWorkspace(workspaceName, workspaceDescription);
+                
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                bool isCreated = await _omniService.WorkspaceService.CreateWorkspace(userId.ToString(), workspaceName, workspaceDescription);
                 if (!isCreated)
                 {
                     return new ApiResponseModel<object>
@@ -66,14 +80,25 @@ namespace Enterpise.Flowstate.Controllers
         {
             try
             {
-                
 
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                var workspaces = await _omniService.WorkspaceService.GetAllWorkspaces(userId.ToString());
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status200OK,
                     Success = true,
                     Message = "Successfully get an workspace user workspace",
-                    Data = null
+                    Data = workspaces
 
                 };
 
