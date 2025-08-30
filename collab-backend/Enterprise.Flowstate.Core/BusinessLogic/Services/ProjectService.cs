@@ -25,9 +25,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return null;
         }
 
-        
-
-
         public async Task<List<ProjectDto>> GetOngoingProject(string userClaims)
         {
             var ongoingProject = await _omniRepository.ProjectRepository.GetOngoingProjects(userClaims);
@@ -40,6 +37,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 ProjectId = project.ProjectId,
                 ProjectTitle = project.ProjectName,
                 ProjectDescription = project.ProjectDescription,
+                ProjectGuid = project.ProjectGuid,
                 Status = (ProjectEnums.ProjectStatus)project.ProjectStatus
             }).ToList();
 
@@ -59,6 +57,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 StartDate = p.StartDate,
                 EndDate = p.EndDate,
                 DueDate = p.DueDate,
+                ProjectGuid = p.ProjectGuid,
                 Category = (ProjectEnums.ProjectCategory)p.ProjectCategory,
                 ProjectLogo = p.ProjectLogo,
                 ProjectTagline = p.ProjectTagline
@@ -91,11 +90,68 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 ProjectTagline = projectDto.ProjectTagline,
                 ProjectName = projectDto.ProjectTitle,
                 ProjectLogo = projectDto.ProjectLogo,
-                ProjectStatus = (int)projectDto.Status
+                ProjectStatus = (int)projectDto.Status,
+                ProjectGuid = projectDto.ProjectGuid
             };
 
             var (isSuccess,status) = await _omniRepository.ProjectRepository.CreateProject(workspaceGuid, project);
             return (isSuccess, status);
+        }
+
+        public async Task<(bool, ErrorStatus)> UpdateProject(string projectGuid, ProjectDto projectDto)
+        {
+            if(projectDto == null)
+            {
+                return (false, ErrorStatus.PROJECT_DETAILS_NOT_FOUND);
+            }
+            var updateProject = new Project
+            {
+                DueDate = projectDto.DueDate,
+                EndDate = projectDto.EndDate,
+                StartDate = projectDto.StartDate,
+                ProjectCategory = (int)projectDto.Category,
+                ProjectDescription = projectDto.ProjectDescription,
+                ProjectTagline = projectDto.ProjectTagline,
+                ProjectName = projectDto.ProjectTitle,
+                ProjectLogo = projectDto.ProjectLogo,
+                ProjectStatus = (int)projectDto.Status
+            };
+            var (isSuccess, status) = await _omniRepository.ProjectRepository.UpdateProject(projectGuid, updateProject);
+            return (isSuccess, status);
+        }
+
+        public async Task<ProjectDto> GetProjectById(string workspaceguid,string projectGuid)
+        {
+            var project = _omniRepository.ProjectRepository.GetProjectById(workspaceguid,projectGuid);
+            if(project == null)
+            {
+                return null;
+            }
+            var projectDto = new ProjectDto
+            {
+                ProjectId = project.Result.ProjectId,
+                ProjectTitle = project.Result.ProjectName,
+                Status = (ProjectEnums.ProjectStatus)project.Result.ProjectStatus,
+                ProjectDescription = project.Result.ProjectDescription,
+                StartDate = project.Result.StartDate,
+                EndDate = project.Result.EndDate,
+                DueDate = project.Result.DueDate,
+                ProjectGuid = project.Result.ProjectGuid,
+                Category = (ProjectEnums.ProjectCategory)project.Result.ProjectCategory,
+                ProjectLogo = project.Result.ProjectLogo,
+                ProjectTagline = project.Result.ProjectTagline
+            };
+            return projectDto;
+        }
+
+        public Task<(bool, ErrorStatus)> DeleteProject(string workspaceId, string projectGuid)
+        {
+            return _omniRepository.ProjectRepository.DeleteProject(workspaceId,projectGuid);
+        }
+
+        public Task<bool> UpdateProjectStatus(string projectGuid,int projectStatus)
+        {
+            return _omniRepository.ProjectRepository.UpdateProjectStatus(projectGuid, projectStatus);
         }
     }
 }

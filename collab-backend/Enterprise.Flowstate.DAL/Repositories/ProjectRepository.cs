@@ -100,7 +100,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             ProjectWorkspaceMapping mapping = new ProjectWorkspaceMapping
             {
                 ProjectId = projectId,
-                WorkspaceId = workspaceId
+                WorkspaceId = workspaceId                
             };
             var result3 = await client.From<ProjectWorkspaceMapping>().Insert(mapping);
             if (result3.Models.Count <= 0)
@@ -109,6 +109,61 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             return (true, GeneralEnums.ErrorStatus.SUCCESS);
         }
-        
+
+        public async Task<(bool, GeneralEnums.ErrorStatus)> UpdateProject(string projectGuid, Project project)
+        {
+            var result = await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Single();
+            if (result != null)
+            {
+                result.ProjectStatus = project.ProjectStatus;
+                result.ProjectName = project.ProjectName;
+                result.ProjectLogo = project.ProjectLogo;
+                result.ProjectDescription = project.ProjectDescription;
+                result.EndDate = project.EndDate;
+                result.DueDate = project.DueDate;
+                result.ProjectTagline = project.ProjectTagline;
+                result.ProjectCategory = project.ProjectCategory;
+            }
+            var updated = await result.Update<Project>();
+            if (updated.Models.Count > 0)
+            {
+                return (true, GeneralEnums.ErrorStatus.SUCCESS);
+            }
+            return (false, GeneralEnums.ErrorStatus.PROJECT_NOT_FOUND);
+        }
+
+        public async Task<Project> GetProjectById(string workspaceId, string projectGuid)
+        {
+            var result = await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Single();
+            return result;
+        }
+
+        public async Task<bool> UpdateProjectStatus(string projectGuid, int projectStatus)
+        {
+            var project = await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Single();
+            if (project == null)
+            {
+                return false;
+            }
+            project.ProjectStatus = projectStatus;
+            var result = await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Update(project);
+            return result.Models.Count > 0;
+        }
+        public async Task<(bool, GeneralEnums.ErrorStatus)> DeleteProject(string workspaceId, string projectGuid)
+        {
+            var projectResult = await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Single();
+            if(projectResult == null)
+            {
+                return (false, GeneralEnums.ErrorStatus.PROJECT_NOT_FOUND);
+            }
+            var workspaceResult = await client.From<Workspace>().Where(w => w.WorkspaceGuid == workspaceId).Single();
+            if(workspaceResult == null)
+            {
+                return (false, GeneralEnums.ErrorStatus.WORKSPACE_NOT_FOUND);
+            }   
+            await client.From<ProjectWorkspaceMapping>().Where(m => m.ProjectId == projectResult.ProjectId && m.WorkspaceId == workspaceResult.Id).Delete();
+            await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Delete();
+            return (true, GeneralEnums.ErrorStatus.SUCCESS);    
+        }
     }
 }

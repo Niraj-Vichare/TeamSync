@@ -22,6 +22,12 @@ namespace Enterprise.Flowstate.DAL.Enums
             USERID_NOT_FOUND,
             [Description("The provided workspace GUID was not found.")]
             WORKSPACEGUID_NOT_FOUND,
+            [Description("The workspace not found.")]
+            WORKSPACE_NOT_FOUND,
+            [Description("The provided project GUID was not found.")]
+            PROJECT_GUID_NOT_FOUND,
+            [Description("A project with the same name already exists in the workspace.")]
+            PROJECT_NAME_ALREADY_EXISTS,
 
             [Description("Invalid workspace ID.")]
             INVALID_WORKSPACE_ID,

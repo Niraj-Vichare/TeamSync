@@ -11,9 +11,11 @@ namespace Enterprise.Flowstate.DAL.Models
     [Table("project_workspace_mapping")]
     public class ProjectWorkspaceMapping:BaseModel
     {
-        [PrimaryKey("workspace_id")]
+        [PrimaryKey("id")]
+        public int Id { get; set; }
+        [Column("workspace_id")]
         public int WorkspaceId { get; set; }
-        [PrimaryKey("project_id")]
+        [Column("project_id")]
         public int ProjectId { get; set; }
 
         [Reference(typeof(Workspace))]

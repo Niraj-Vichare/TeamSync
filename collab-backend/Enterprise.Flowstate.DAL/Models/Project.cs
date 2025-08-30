@@ -25,14 +25,17 @@ namespace Enterprise.Flowstate.DAL.Models
         public string ProjectTagline { get; set; }
         [Column("project_logo")]
         public string ProjectLogo { get; set; }
+
+        [Column("project_guid")]
+        public string ProjectGuid { get; set; }
         [Column("project_category")]
         public int ProjectCategory { get; set; }
         [Column("start_date")]
-        public DateTime StartDate { get; set; }
+        public DateTime? StartDate { get; set; }
         [Column("end_date")]
-        public DateTime EndDate { get; set; }
+        public DateTime? EndDate { get; set; }
         [Column("due_date")]
-        public DateTime DueDate { get; set; }
+        public DateTime? DueDate { get; set; }
 
     }
 }
