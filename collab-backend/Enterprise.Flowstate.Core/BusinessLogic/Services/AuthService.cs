@@ -1,4 +1,4 @@
-﻿using Enterprise.Flowstate.BAL.DTOs;
+﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Models;
 using FirebaseAdmin.Auth;

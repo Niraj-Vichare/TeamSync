@@ -1,4 +1,4 @@
-﻿using Enterprise.Flowstate.BAL.DTOs;
+﻿using Enterprise.Flowstate.DAL.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;

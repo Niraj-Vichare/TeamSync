@@ -13,11 +13,13 @@ namespace Enterprise.Flowstate.DAL.Repositories
         public IWorkspaceRepository WorkspaceRepository { get;set; }    
         public IProfileRepository ProfileRepository { get; set; }
         public IProjectRepository ProjectRepository { get;set; }
+        public ITeamRepository TeamRepository { get; set; }
         private readonly Supabase.Client _supabaseClient;
 
         public OmniRepository(Supabase.Client supabaseClient)
         {
             _supabaseClient = supabaseClient;
+            TeamRepository = new TeamRepository(_supabaseClient);
             TaskRepository = new TaskRepository(_supabaseClient);
             ProfileRepository = new ProfileRepository(_supabaseClient);
             WorkspaceRepository = new WorkspaceRepository(_supabaseClient);

@@ -1,7 +1,7 @@
 ﻿using Enterprise.Flowstate.DAL.Enums;
 using static Enterprise.Flowstate.DAL.Enums.ProjectEnums;
 
-namespace Enterprise.Flowstate.BAL.DTOs
+namespace Enterprise.Flowstate.DAL.DTOs
 {
     public class ProjectDto
     {

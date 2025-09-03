@@ -19,5 +19,20 @@ namespace Enterprise.Flowstate.DAL.Enums
             Support = 11,
             Guest = 12
         }
+
+        public enum Department
+        {
+            Technical = 1,
+            Sales = 2,
+            Marketing = 3,
+            HumanResources = 4,
+            Finance = 5,
+            Operations = 6,
+            CustomerSupport = 7,
+            Legal = 8,
+            ResearchAndDevelopment = 9,
+            IT = 10,
+            Administration = 11
+        }
     }
 }

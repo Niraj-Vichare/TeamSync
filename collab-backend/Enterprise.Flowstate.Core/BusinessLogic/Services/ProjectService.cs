@@ -1,4 +1,4 @@
-﻿using Enterprise.Flowstate.BAL.DTOs;
+﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
@@ -44,9 +44,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return projectDtos;
         }
 
-        public async Task<Datatable<ProjectDto>> GetUserProjects(string userClaims,string search,string status,int pageNumber,int pageSize)
+        public async Task<Datatable<ProjectDto>> GetUserProjects(string workspaceGuid,string search,string status,int pageNumber,int pageSize)
         {
-            var (projects, totalCount) = await _omniRepository.ProjectRepository.GetUserProjectsAsync(userClaims, search, status, pageNumber, pageSize);
+            var (projects, totalCount) = await _omniRepository.ProjectRepository.GetUserProjectsAsync(workspaceGuid, search, status, pageNumber, pageSize);
 
             var items = projects.Select(p => new ProjectDto
             {

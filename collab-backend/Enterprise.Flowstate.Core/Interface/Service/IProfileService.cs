@@ -1,4 +1,4 @@
-﻿using Enterprise.Flowstate.BAL.DTOs;
+﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Supabase.Gotrue;
 using System;

@@ -1,4 +1,4 @@
-﻿using Enterprise.Flowstate.BAL.DTOs;
+﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.Models;
@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Enterpise.Flowstate.Controllers
 {
-    [Route("task")]
+    [Route("tasks")]
     public class TaskController : AuthBaseController
     {
         private IOmniService _omniService;
@@ -17,25 +17,24 @@ namespace Enterpise.Flowstate.Controllers
 
 
         [HttpPost]
-        [Route("create")]
         public async Task<ApiResponseModel<object>> CreateTask(TaskDto task)
         {
             try
             {
-               
+
                 bool isCreated = await _omniService.TaskService.CreateTask(task);
-                
+
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status201Created,
                     Success = true,
                     Message = "Task created successfully",
-                   
+
                 };
 
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new ApiResponseModel<object>
                 {
@@ -47,8 +46,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpGet]
-        [Route("{projectId}/{sprintId}")]
-        public async Task<ApiResponseModel<object>> GetTaskBySprints(string projectId,string sprintId)
+        public async Task<ApiResponseModel<object>> GetTaskBySprints(string projectId, string sprintId)
         {
             try
             {
@@ -72,7 +70,8 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("{projectId}")]
+        [HttpGet]
+        [Route("{projectId}/tasks")]
         public async Task<ApiResponseModel<object>> GetTasks(string projectId)
         {
             try
@@ -137,7 +136,8 @@ namespace Enterpise.Flowstate.Controllers
                     Success = true,
                     Message = "Successfully delete the task."
                 };
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 return new ApiResponseModel<object>
                 {
@@ -158,9 +158,10 @@ namespace Enterpise.Flowstate.Controllers
                 {
                     Success = true,
                     StatusCode = StatusCodes.Status200OK,
-                    Message = "Successfully updated the task."  
+                    Message = "Successfully updated the task."
                 };
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 return new ApiResponseModel<object>
                 {

@@ -41,7 +41,8 @@ namespace Enterprise.Flowstate.DAL.Enums
             PROJECT_DETAILS_NOT_FOUND,
             [Description("The task was not found.")]
             TASK_NOT_FOUND,
-
         }
+
+        
     }
 }

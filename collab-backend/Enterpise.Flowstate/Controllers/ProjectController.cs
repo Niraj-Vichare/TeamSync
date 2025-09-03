@@ -1,5 +1,5 @@
 ﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
-using Enterprise.Flowstate.BAL.DTOs;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.Models;

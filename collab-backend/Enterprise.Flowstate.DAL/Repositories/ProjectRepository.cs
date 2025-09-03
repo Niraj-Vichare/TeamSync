@@ -1,12 +1,6 @@
 ﻿using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
-using Supabase.Gotrue;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
@@ -17,16 +11,27 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             this.client = client;
         }
-        public async Task<(List<Project> Projects, int TotalCount)> GetUserProjectsAsync(string workspaceGuid,string search,string status,int pageNumber,int pageSize)
+        public async Task<(List<Project> Projects, int TotalCount)> GetUserProjectsAsync(
+    string workspaceGuid,
+    string search,
+    string status,
+    int pageNumber,
+    int pageSize)
         {
-            // Step 1: Get user’s project mappings
-            var workspace = await client.From<Workspace>().Where(w => w.WorkspaceGuid == workspaceGuid).Get();
-            if(workspace == null || workspace.Models.Count == 0)
+            // Step 1: Get Workspace ID
+            var workspace = await client
+                .From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
+
+            if (workspace == null || workspace.Models.Count == 0)
                 return (new List<Project>(), 0);
 
             var workspaceId = workspace.Models.First().Id;
 
-            var mappings = await client.From<ProjectWorkspaceMapping>()
+            // Step 2: Get Project IDs mapped to the workspace
+            var mappings = await client
+                .From<ProjectWorkspaceMapping>()
                 .Filter("workspace_id", Supabase.Postgrest.Constants.Operator.Equals, workspaceId)
                 .Get();
 
@@ -34,27 +39,33 @@ namespace Enterprise.Flowstate.DAL.Repositories
             if (!projectIds.Any())
                 return (new List<Project>(), 0);
 
-            // Step 2: Build query
-            var query = client.From<Project>().Filter("id",Supabase.Postgrest.Constants.Operator.In,projectIds);
+            // Step 3: Calculate pagination range
+            int from = (pageNumber - 1) * pageSize;
+            int to = from + pageSize - 1;
+
+            // Step 4: Build filtered, paginated query with count
+            var query = client
+                .From<Project>()
+                .Select("*")
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, projectIds)
+                .Order("start_date",Supabase.Postgrest.Constants.Ordering.Descending)
+                .Range(from, to);
 
             if (!string.IsNullOrEmpty(search))
-                query = query.Filter("name", Supabase.Postgrest.Constants.Operator.Like, $"%{search}%");
+                query = query.Filter("name", Supabase.Postgrest.Constants.Operator.ILike, $"%{search}%");
 
             if (!string.IsNullOrEmpty(status))
                 query = query.Filter("status", Supabase.Postgrest.Constants.Operator.Equals, status);
 
-            // Step 3: Count (total before pagination)
-            var totalResult = await query.Get();
-            int totalCount = totalResult.Models.Count;
+            // Step 5: Execute query
+            var result = await query.Get();
 
-            // Step 4: Apply pagination
-            int from = (pageNumber - 1) * pageSize;
-            int to = from + pageSize - 1;
+            var projects = result.Models;
+            var totalCount = result.Models.Count; // Use count from response header
 
-            var pagedResult = await query.Range(from, to).Get();
-
-            return (pagedResult.Models.ToList(), totalCount);
+            return (projects, totalCount);
         }
+
 
         public async Task<List<Project>> GetOngoingProjects(string workspaceId,int limit)
         {

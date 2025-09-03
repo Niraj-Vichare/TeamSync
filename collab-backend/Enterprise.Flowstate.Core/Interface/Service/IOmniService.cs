@@ -13,5 +13,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         IProfileService ProfileService { get; set; }
         IWorkspaceService WorkspaceService { get; set; }
         IProjectService ProjectService { get; set; }
+        ITeamService TeamService { get; set; }
     }
 }

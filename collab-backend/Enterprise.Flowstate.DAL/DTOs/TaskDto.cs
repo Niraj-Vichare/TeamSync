@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Enterprise.Flowstate.BAL.DTOs
+namespace Enterprise.Flowstate.DAL.DTOs
 {
     public class TaskDto
     {
