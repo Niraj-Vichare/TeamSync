@@ -20,7 +20,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         }
 
        
-        public async Task<List<TeamMemberDto>> GetTeamMembers(string userGuid,string workspaceId)
+        public async Task<List<TeamMemberDto>> GetTeamMembers(string workspaceId)
         {
             var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceId).Single();
             if (workspace == null)
