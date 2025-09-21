@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 
 export default function Projects() {
   const navigate = useNavigate(); 
@@ -370,21 +371,25 @@ export default function Projects() {
                 Create New Project
 
               </DialogTitle>
+              <Separator/>
             </DialogHeader>
-            <ScrollArea className="h-[calc(100vh-300px)] ">
-              <div className="space-y-4">
-                <Label htmlFor="projectTitle" className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" />
-                  Project Title *
-                </Label>
-                <Input
-                  id="projectTitle"
-                  value={formData.projectTitle}
-                  onChange={(e) => handleInputChange('projectTitle', e.target.value)}
-                  placeholder="Enter project title"
-                  className={errors.projectTitle ? 'border-red-500' : ''}
-                  maxLength={100}
-                />
+            <ScrollArea className="max-h-[70vh] ">
+              <div className="space-y-5 pt-3 px-4">
+                {/* Project Title */}
+                <div className="space-y-2">
+                  <Label htmlFor="projectTitle" className="flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    Project Title *
+                  </Label>
+                  <Input
+                    id="projectTitle"
+                    value={formData.projectTitle}
+                    onChange={(e) => handleInputChange('projectTitle', e.target.value)}
+                    placeholder="Enter project title"
+                    className={errors.projectTitle ? 'border-red-500' : ''}
+                    maxLength={100}
+                  />
+                </div>
 
                 {/* Project Tagline */}
                 <div className="space-y-2">
@@ -450,7 +455,7 @@ export default function Projects() {
                 </div>
 
                 {/* Status and Category Row */}
-                <div className="grid grid-cols-2">
+                <div className="grid grid-cols-2 gap-4">
                   {/* Project Status */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
@@ -461,7 +466,7 @@ export default function Projects() {
                       value={formData.status.toString()}
                       onValueChange={(value) => handleInputChange('status', parseInt(value))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={'w-full'}>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -484,7 +489,7 @@ export default function Projects() {
                       value={formData.category.toString()}
                       onValueChange={(value) => handleInputChange('category', parseInt(value))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={'w-full'}>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>

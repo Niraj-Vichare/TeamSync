@@ -3,11 +3,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import projectService from '@/services/project';
 import { ArrowLeft, BarChart3, Calendar, Calendar1Icon, CalendarIcon, CheckCircle, ChevronDown, ChevronRight, Clock, DollarSign, FileText, TrendingUp, UserCheck } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 function Project() {
+  const navigate = useNavigate();
+
   const sprintData = [
     {
       id: 1,
@@ -206,6 +210,27 @@ function Project() {
       ]
     }
   ];
+
+  const getProjectById=async()=>{
+    try{
+      const {id} = useParams();
+      const response = await projectService.getProjectById(id);
+      if(response!=null){
+        const {data,success,statusCode,message} = response.data;
+        if(statusCode==200 || success){
+          setProject()
+        }
+      }
+
+    }catch(error){
+      console.error("");
+    }
+  }
+
+  useEffect(()=>{
+    getProjectById();
+
+  },[])
     const getStatusColor = (status) => {
     switch (status) {
       case 'Completed': return 'bg-green-500';
@@ -232,6 +257,10 @@ function Project() {
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
+  const handleBack=()=>{
+    navigate("/projects");
+    
+  }
 
   const getAllTasks = () => {
     return sprintData.flatMap(sprint => 
@@ -256,30 +285,7 @@ function Project() {
   const [activeModule, setActiveModule] = useState('overview');
   const [sprints, setSprints] = useState(sprintData);
   const [expandedSprints, setExpandedSprints] = useState({});
-  const [project, setProject] = useState(
-    {
-      id: 1,
-      name: "E-Commerce Platform",
-      description: "Full-stack e-commerce solution with payment integration",
-      status: "In Progress",
-      progress: 75,
-      team: [
-        { id: 1, name: "John Doe", avatar: null, initials: "JD" },
-        { id: 2, name: "Jane Smith", avatar: null, initials: "JS" },
-        { id: 3, name: "Mike Johnson", avatar: null, initials: "MJ" }
-      ],
-      sprints: 4,
-      completedSprints: 3,
-      totalTasks: 48,
-      completedTasks: 36,
-      hoursWorked: 320,
-      budgetSpent: 15000,
-      revenue: 25000,
-      type: "Service",
-      dueDate: "2024-09-15"
-    }
-
-  );
+  const [project, setProject] = useState({});
 
   const getProject = () => {
     try {
@@ -303,7 +309,7 @@ function Project() {
         </div>
         <Button
           variant="ghost"
-          onClick={() => setSelectedProject(null)}
+          onClick={handleBack}
           className="flex items-center gap-2 self-start sm:self-center"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -352,8 +358,8 @@ function Project() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${project.revenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Spent: ${project.budgetSpent.toLocaleString()}</p>
+            <div className="text-2xl font-bold text-green-600">${project.revenue?.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Spent: ${project.budgetSpent?.toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>

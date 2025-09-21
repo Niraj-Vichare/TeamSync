@@ -1,5 +1,4 @@
 import { useAuth } from '@/context/authContext'
-import { LoginForm } from './pages/login-form'
 import { Signup } from './pages/signup-form'
 import { Route, Routes, Navigate, BrowserRouter as Router, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext';
@@ -13,11 +12,13 @@ import Task from './pages/task';
 import Projects from './pages/projects';
 import Project from './pages/project';
 import Analytics from './pages/analytics';
-import Report from './pages/report';
+// import Report from './pages/report';
 import Team from './pages/team';
 import Settings from './pages/setting';
 import Sprints from './pages/sprints';
 import "./App.css";
+import { LoginForm } from './pages/login-form';
+import Sprint from './pages/sprint';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -63,7 +64,8 @@ function InnerApp({ isAuthenticated }) {
         <Route path='/projects/:projectId' element={<Project/>}/>
         <Route path='/team' element={<Team/>}/>
         <Route path='/analytics' element={<Analytics/>}/>
-        <Route path='/report' element={<Report/>}/>
+        <Route path='/sprints/:sprintId' element={<Sprint/>}/>
+        {/* <Route path='/report' element={<Report/>}/> */}
         <Route path='/settings' element={<Settings/>}/>
       </Route>
 

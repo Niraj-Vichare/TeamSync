@@ -47,14 +47,9 @@ const staticData = {
       icon: IconNotebook,
     },
     {
-      title: "Analytics",
+      title: "Report & Analytics",
       url: "/analytics",
       icon: IconChartBar,
-    },
-    {
-      title: "Report",
-      url: "/report",
-      icon: IconFileDescription,
     },
     {
       title: "Team",

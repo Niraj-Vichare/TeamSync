@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CalendarIcon, CheckCircle, CircuitBoardIcon, Clock3, Clock3Icon, ListIcon, Pause, PauseIcon, Plus, SquareKanbanIcon, Trash, Trash2Icon } from 'lucide-react'
+import { CalendarIcon, CheckCircle, CircuitBoardIcon, Clock3, Clock3Icon, ListIcon, Pause, PauseIcon, Pencil, PencilIcon, PenIcon, Plus, PlusIcon, SquareKanbanIcon, Tag, Trash, Trash2Icon } from 'lucide-react'
 import React, { useState } from 'react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import TeamDataTable from '@/components/teamComponents/TeamDataTable';
+import { teamMembers } from '@/data/general';
+import TaskDataTable from '@/components/teamComponents/TaskDataTable';
 
 function Task() {
   const [open, setOpen] = useState(false);
@@ -70,41 +73,51 @@ function Task() {
     <div className='p-6'>
       <div className='flex justify-between items-center mb-6'>
         <div>
-          <h1 className='text-2xl font-bold text-white'>Task</h1>
+          <h1 className='text-2xl font-bold'>Task</h1>
           <p className='text-sm text-muted-foreground'>Break down work into manageable actions to stay productive and accountable.</p>
         </div>
         <div className="pb-6">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button>Add Task</Button>
+              <Button className={'text-white'}>
+                <PlusIcon className='w-3 h-3'/>
+                Add Task
+              </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] p-0">
+            <DialogContent className="sm:max-w-[600px]">
               {/* Fixed Header */}
-              <DialogHeader className="px-6 py-4 border-b">
-                <DialogTitle>Create Task</DialogTitle>
+              <DialogHeader className="px-2 border-b-2 py-2">
+                <DialogTitle className={'text-xl font-semibold flex items-center gap-2'}>
+                  {/* <PenIcon className='w-4 h-4'/> */}
+                  Create Task
+                </DialogTitle>
               </DialogHeader>
-              <ScrollArea  className="h-[calc(100vh-300px)]">
+              <ScrollArea  className="max-h-[70vh]">
                 {/* Scrollable Body */}
-                <div className="flex-1 px-6 py-4">
-                  <div className="grid gap-4">
+                <div className="space-y-5 pt-3 px-2">
+                  
                     {/* Task Name */}
-                    <div className="grid gap-2">
-                      <Label htmlFor="name">Task Name</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="name"  className="flex items-center gap-2">
+                        <Tag className="w-4 h-4" />
+                        Task Name
+                      </Label>
                       <Input id="name" placeholder="Enter task title" />
                     </div>
 
                     {/* Task Description */}
-                    <div className="grid gap-2">
-                      <Label htmlFor="description">Description</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="description"  className="flex items-center gap-2">Description</Label>
                       <Textarea id="description" placeholder="Brief task details" />
                     </div>
+                    
 
                     {/* Assign + Priority */}
-                    <div className="flex align-middle justify-between gap-4">
-                      <div className="grid gap-2">
-                        <Label>Assign To</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">Assign To</Label>
                         <Select>
-                          <SelectTrigger>
+                          <SelectTrigger className={'w-full'}>
                             <SelectValue placeholder="Select a person" />
                           </SelectTrigger>
                           <SelectContent>
@@ -138,10 +151,10 @@ function Task() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="grid gap-2">
-                        <Label>Priority</Label>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">Priority</Label>
                         <Select>
-                          <SelectTrigger>
+                          <SelectTrigger className={'w-full'}>
                             <SelectValue placeholder="Select priority" />
                           </SelectTrigger>
                           <SelectContent>
@@ -160,8 +173,8 @@ function Task() {
                     </div>
 
                     {/* Due Date + Status */}
-                    <div className="flex align-middle justify-between p-3 gap-4">
-                      <div className="grid gap-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label>Due Date</Label>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -186,7 +199,7 @@ function Task() {
                       <div className="grid gap-2">
                         <Label>Status</Label>
                         <Select>
-                          <SelectTrigger>
+                          <SelectTrigger className={'w-full'}>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -210,52 +223,51 @@ function Task() {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
                     </div>
 
-                    {/* Advanced Section */}
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="advanced">
-                        <AccordionTrigger>Advanced Options</AccordionTrigger>
-                        <AccordionContent>
-                          <div className="grid gap-3">
-                            {/* Subtasks */}
-                            <div className="flex items-center justify-between">
-                              <Label>Subtasks</Label>
+                  </div>
+                  {/* Advanced Section */}
+                  <Accordion type="single" collapsible>
+                    <AccordionItem value="advanced">
+                      <AccordionTrigger>Advanced Options</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid gap-3">
+                          {/* Subtasks */}
+                          <div className="flex items-center justify-between">
+                            <Label>Subtasks</Label>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={addSubtask}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {subtasks.map((task, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2"
+                            >
+                              <Input
+                                value={task}
+                                onChange={(e) =>
+                                  updateSubtask(idx, e.target.value)
+                                }
+                                placeholder={`Subtask ${idx + 1}`}
+                              />
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={addSubtask}
+                                onClick={() => removeSubtask(idx)}
                               >
-                                <Plus className="h-4 w-4" />
+                                <Trash className="h-4 w-4 text-red-500" />
                               </Button>
                             </div>
-                            {subtasks.map((task, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2"
-                              >
-                                <Input
-                                  value={task}
-                                  onChange={(e) =>
-                                    updateSubtask(idx, e.target.value)
-                                  }
-                                  placeholder={`Subtask ${idx + 1}`}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeSubtask(idx)}
-                                >
-                                  <Trash className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               </ScrollArea>
 
@@ -270,19 +282,24 @@ function Task() {
           </Dialog>
         </div>
       </div>
-      <Tabs value={act} onValueChange={setAct} className="w-full">
-        <TabsList className='flex overflow-x-auto gap-2 w-full'>
-          <TabsTrigger value="list" className="flex items-center gap-2 whitespace-nowrap">
-            <ListIcon className='w-4 h-4 mr-2' />
+      <Tabs value={act} onValueChange={setAct}>
+        <TabsList className='flex overflow-x-auto gap-2'>
+          <TabsTrigger value="list" className="flex items-center gap-2 whitespace-nowrap p-2">
+            <ListIcon className='w-4 h-4' />
             <span className='text-sm'>Task List</span>
           </TabsTrigger>
-          <TabsTrigger value="kanban" className="flex items-center gap-2 whitespace-nowrap">
-            <SquareKanbanIcon className='w-4 h-4 mr-2' />
+          <TabsTrigger value="timeline" className="flex items-center gap-2 whitespace-nowrap p-2">
+            <CalendarIcon className='w-4 h-4' />
+            <span className='text-sm'>Timeline View</span>
+          </TabsTrigger>
+          <TabsTrigger value="kanban" className="flex items-center gap-2 whitespace-nowrap p-2">
+            <SquareKanbanIcon className='w-4 h-4' />
             <span className='text-sm'>Kanban Board</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className='mt-6'>
+          <TaskDataTable task={teamMembers}/>
 
           {/* <DataTable data={data} /> */}
 
