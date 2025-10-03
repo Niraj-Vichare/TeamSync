@@ -18,19 +18,25 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             _omniRepository = omniRepository;
         }
-        public Task<bool> AddMember(string workspaceGuid, UserDto user)
+        public Task<bool> AddMember(string workspaceGuid, TeamMemberWorkspaceMapping mapping)
         {
-            Profile profile = new Profile
-            {
-
-            };
-            var result = _omniRepository.TeamRepository.AddMember(workspaceGuid, profile);
+            var result = _omniRepository.TeamRepository.AddMember(workspaceGuid, mapping);
             return result;
         }
 
         public async Task<List<TeamMemberDto>> GetTeamMembers(string workspaceGuid)
         {
-            //var result = _omniRepository.TeamRepository.GetTeamMembers(workspaceGuid);
+            var result = await _omniRepository.TeamRepository.GetTeamMembers(workspaceGuid);
+            if (result.Count > 0)
+            {
+                result.Select(team => new TeamMemberDto
+                {
+                    DepartmentId = team.DepartmentId,
+                    RoleId = team.RoleId,
+                    StatusId = team.StatusId,
+                    CreateAt = team.CreateAt,
+                });
+            }
             return null;
         }
 

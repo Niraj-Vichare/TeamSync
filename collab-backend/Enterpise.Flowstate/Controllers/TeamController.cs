@@ -18,7 +18,7 @@ namespace Enterpise.Flowstate.Controllers
             _omniService = omniService;
         }
         [HttpPost]
-        public async Task<ApiResponseModel<object>> AddMember(string workspaceGuid, UserDto userDetail)
+        public async Task<ApiResponseModel<object>> AddMember(string workspaceGuid, TeamMemberWorkspaceMapping mapping)
         {
             try
             {
@@ -42,7 +42,7 @@ namespace Enterpise.Flowstate.Controllers
                 }
                 
 
-                var result = await _omniService.TeamService.AddMember(workspaceGuid,userDetail);
+                var result = await _omniService.TeamService.AddMember(workspaceGuid, mapping);
 
                 if (result)
                 {
@@ -71,8 +71,8 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpGet]
-        [Route("/members/{workspaceGuid}")]
-        public async Task<ApiResponseModel<object>> GetMembers(string workspaceGuid)
+        [Route("/members")]
+        public async Task<ApiResponseModel<object>> GetMembers([FromQuery] string workspaceGuid, [FromQuery] string? search = null, [FromQuery] string? filter = null, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {

@@ -20,6 +20,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public IProfileService ProfileService { get; set; }   
         public ITeamService TeamService { get; set; }
         public IProjectService ProjectService { get; set; }
+        public ISprintService SprintService { get; set; }
+        public ITicketService TicketService { get; set; }
         private IOmniRepository _omniRepository;
         public OmniService(IOmniRepository omniRepository,Supabase.Client client)
         {
@@ -31,6 +33,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             WorkspaceService = new WorkspaceService(_omniRepository);
             ProjectService = new ProjectService(_omniRepository);
             TeamService = new TeamService(_omniRepository);
+            SprintService = new SprintService(_omniRepository);
+            TicketService = new TicketService(_omniRepository);
         }
 
     }

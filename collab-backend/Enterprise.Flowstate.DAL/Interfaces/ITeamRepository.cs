@@ -11,7 +11,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface ITeamRepository
     {
-        Task<bool> AddMember(string workspaceId,Profile User);
-        Task<List<TeamMemberDto>> GetTeamMembers(string workspaceId);
+        Task<bool> AddMember(string workspaceId, TeamMemberWorkspaceMapping mapping);
+        Task<List<TeamMemberWorkspaceMapping>> GetTeamMembers(string workspaceId);
     }
 }

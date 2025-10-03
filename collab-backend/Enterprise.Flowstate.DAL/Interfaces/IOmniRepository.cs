@@ -13,5 +13,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         public IProfileRepository ProfileRepository { get; set; }
         public IProjectRepository ProjectRepository { get; set; }
         public ITeamRepository TeamRepository { get; set; }
+        public ISprintRepository SprintRepository { get; set; }
+        public ITicketRepository TicketRepository { get; set; }
     }
 }

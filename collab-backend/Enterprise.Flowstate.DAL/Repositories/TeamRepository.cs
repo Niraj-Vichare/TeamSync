@@ -1,7 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.DTOs;
-using Enterprise.Flowstate.DAL.Interfaces;
+﻿using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
-using Supabase.Gotrue;
 
 
 namespace Enterprise.Flowstate.DAL.Repositories
@@ -14,13 +12,14 @@ namespace Enterprise.Flowstate.DAL.Repositories
             _supabaseClient = supabaseClient;
             
         }
-        public async Task<bool> AddMember(string workspaceId, Profile profile)
+        public async Task<bool> AddMember(string workspaceId, TeamMemberWorkspaceMapping mapping)
         {
-            return true;
+            var response = await _supabaseClient.From<TeamMemberWorkspaceMapping>().Insert(mapping);
+            return response.Models.Count > 0;
         }
 
        
-        public async Task<List<TeamMemberDto>> GetTeamMembers(string workspaceId)
+        public async Task<List<TeamMemberWorkspaceMapping>> GetTeamMembers(string workspaceId)
         {
             var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceId).Single();
             if (workspace == null)
@@ -29,7 +28,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             var response = await _supabaseClient.From<TeamMemberWorkspaceMapping>().Where(mapping => mapping.WorkspaceId == workspace.Id).Get();
             var teamMembers = response.Models.ToList();
-            return null;
+
+            return teamMembers;
 
 
         }
