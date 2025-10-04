@@ -1,22 +1,242 @@
-import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Plus, 
+  Users, 
+  Calendar, 
+  CheckCircle, 
+  Clock, 
+  TrendingUp, 
+  Activity,
+  AlertTriangle,
+  Target,
+  BarChart3,
+  PieChart,
+  ArrowUpRight,
+  Bell,
+  Filter,
+  MoreHorizontal,
+  Zap,
+  Timer,
+  GitBranch,
+  Bug,
+  Shield,
+  Gauge,
+  TrendingDown,
+  AlertCircle,
+  PlayCircle
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar, Pie, LabelList } from 'recharts';
+import { useEffect, useState } from "react";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
-// Dummy Data
+// Mock Data
+//const userRole = "employee"; // or "admin"
+const userRole = "admin"; // or "admin"
+
 const tasks = [
-  { id: 1, title: "Update design components", due: "Tomorrow", labels: ["Contracts", "Design Review"] },
-  { id: 2, title: "Review presentation deck", due: "Friday", labels: ["Engineering"] },
-  { id: 3, title: "Publish blog post", due: "Tuesday", labels: ["Marketing"] },
-  { id: 4, title: "Review header design", due: "Wednesday", labels: ["Social Tracking"] },
+  { 
+    id: 1, 
+    title: "Update design components", 
+    due: "Tomorrow", 
+    priority: "high",
+    status: "in-progress",
+    assignee: "JD",
+    project: "Design System",
+    labels: ["UI/UX", "Components"],
+    storyPoints: 5,
+    timeSpent: 8,
+    timeEstimate: 12
+  },
+  { 
+    id: 2, 
+    title: "Review presentation deck", 
+    due: "Friday", 
+    priority: "medium",
+    status: "pending",
+    assignee: "SM",
+    project: "Marketing Launch",
+    labels: ["Review", "Presentation"],
+    storyPoints: 3,
+    timeSpent: 0,
+    timeEstimate: 6
+  },
+  { 
+    id: 3, 
+    title: "Implement authentication", 
+    due: "Tuesday", 
+    priority: "high",
+    status: "completed",
+    assignee: "AB",
+    project: "Web Platform",
+    labels: ["Backend", "Security"],
+    storyPoints: 8,
+    timeSpent: 16,
+    timeEstimate: 15
+  },
+  { 
+    id: 4, 
+    title: "Write unit tests", 
+    due: "Wednesday", 
+    priority: "medium",
+    status: "in-progress",
+    assignee: "MK",
+    project: "Web Platform",
+    labels: ["Testing", "QA"],
+    storyPoints: 2,
+    timeSpent: 4,
+    timeEstimate: 8
+  },
 ];
 
 const projects = [
-  { id: 1, name: "Marketing Launch", tasksDue: 3, color: "bg-red-500" },
-  { id: 2, name: "Design Project Plan", tasksDue: 10, color: "bg-pink-500" },
-  { id: 3, name: "Web Production", tasksDue: 2, color: "bg-purple-500" },
-  { id: 4, name: "Accessibility", tasksDue: 5, color: "bg-orange-500" },
+  { 
+    id: 1, 
+    name: "Design System", 
+    progress: 75, 
+    tasksTotal: 24,
+    tasksCompleted: 18,
+    dueDate: "Dec 15",
+    team: 4,
+    status: "on-track"
+  },
+  { 
+    id: 2, 
+    name: "Marketing Launch", 
+    progress: 45, 
+    tasksTotal: 32,
+    tasksCompleted: 14,
+    dueDate: "Jan 20",
+    team: 6,
+    status: "at-risk"
+  },
+  { 
+    id: 3, 
+    name: "Web Platform", 
+    progress: 90, 
+    tasksTotal: 18,
+    tasksCompleted: 16,
+    dueDate: "Nov 30",
+    team: 5,
+    status: "on-track"
+  },
+  { 
+    id: 4, 
+    name: "Mobile App", 
+    progress: 20, 
+    tasksTotal: 28,
+    tasksCompleted: 6,
+    dueDate: "Feb 10",
+    team: 3,
+    status: "behind"
+  },
 ];
+
+const activityData = [
+  { id: 1, user: "John Doe", action: "completed task", item: "User Authentication", time: "2 min ago", avatar: "JD" },
+  { id: 2, user: "Sarah Miller", action: "created sprint", item: "Sprint 2.1", time: "15 min ago", avatar: "SM" },
+  { id: 3, user: "Alex Brown", action: "updated project", item: "Design System", time: "1 hour ago", avatar: "AB" },
+  { id: 4, user: "Mike Johnson", action: "commented on", item: "API Documentation", time: "2 hours ago", avatar: "MJ" },
+  { id: 5, user: "Emma Wilson", action: "assigned ticket", item: "Bug Fix #123", time: "3 hours ago", avatar: "EW" },
+];
+
+const chartData = [
+  { name: 'Mon', completed: 12, created: 8 },
+  { name: 'Tue', completed: 15, created: 12 },
+  { name: 'Wed', completed: 8, created: 15 },
+  { name: 'Thu', completed: 18, created: 10 },
+  { name: 'Fri', completed: 22, created: 14 },
+  { name: 'Sat', completed: 5, created: 3 },
+  { name: 'Sun', completed: 7, created: 5 },
+];
+
+const sprintData = [
+  { 
+    id: 1, 
+    name: "Sprint 2.3", 
+    startDate: "Nov 1", 
+    endDate: "Nov 15", 
+    status: "active",
+    velocity: 45,
+    completed: 32,
+    remaining: 18,
+    burndownData: [
+      { day: 1, ideal: 50, actual: 50 },
+      { day: 3, ideal: 42, actual: 46 },
+      { day: 5, ideal: 35, actual: 38 },
+      { day: 7, ideal: 28, actual: 32 },
+      { day: 9, ideal: 21, actual: 25 },
+      { day: 11, ideal: 14, actual: 18 },
+      { day: 13, ideal: 7, actual: 12 }
+    ]
+  }
+];
+
+const velocityData = [
+  { sprint: 'Sprint 2.0', planned: 40, completed: 38, velocity: 38 },
+  { sprint: 'Sprint 2.1', planned: 45, completed: 42, velocity: 42 },
+  { sprint: 'Sprint 2.2', planned: 42, completed: 45, velocity: 45 },
+  { sprint: 'Sprint 2.3', planned: 50, completed: 32, velocity: 32 }
+];
+
+const issuesByType = [
+  { type: 'Story', count: 24, color: 'hsl(var(--primary))' },
+  { type: 'Bug', count: 8, color: 'hsl(var(--destructive))' },
+  { type: 'Task', count: 15, color: 'hsl(var(--secondary))' },
+  { type: 'Epic', count: 3, color: 'hsl(var(--accent))' }
+];
+
+const timeTrackingData = [
+  { name: 'Mon', logged: 32, estimated: 40 },
+  { name: 'Tue', logged: 28, estimated: 35 },
+  { name: 'Wed', logged: 45, estimated: 42 },
+  { name: 'Thu', logged: 38, estimated: 40 },
+  { name: 'Fri', logged: 25, estimated: 30 }
+];
+
+const teamPerformance = [
+  { member: 'John Doe', tasksCompleted: 12, velocity: 42, efficiency: 95 },
+  { member: 'Sarah Miller', tasksCompleted: 15, velocity: 38, efficiency: 88 },
+  { member: 'Alex Brown', tasksCompleted: 9, velocity: 35, efficiency: 92 },
+  { member: 'Mike Johnson', tasksCompleted: 11, velocity: 40, efficiency: 85 }
+];
+
+const riskMetrics = [
+  { project: 'Design System', riskScore: 2, blockers: 1, overdue: 0 },
+  { project: 'Marketing Launch', riskScore: 7, blockers: 3, overdue: 2 },
+  { project: 'Web Platform', riskScore: 3, blockers: 0, overdue: 1 },
+  { project: 'Mobile App', riskScore: 8, blockers: 2, overdue: 4 }
+];
+
+const teamStats = [
+  { name: "Frontend", members: 8, activeProjects: 3 },
+  { name: "Backend", members: 6, activeProjects: 4 },
+  { name: "Design", members: 4, activeProjects: 2 },
+  { name: "QA", members: 3, activeProjects: 5 },
+];
+
+const employeeChartData = [
+  { day: "Monday", Hours: 7.5 },
+  { day: "Tuesday", Hours: 7.5 },
+  { day: "Wednesday", Hours: 7 },
+  { day: "Thursday", Hours: 8 },
+  { day: "Friday", Hours: 6.5 },
+  { day: "Saturday", Hours: 7 },
+  { day: "Sunday", Hours: 8.5 },
+]
+
+const lineChartData = [
+  { month: "January", desktop: 186, mobile: 80 },
+  { month: "February", desktop: 305, mobile: 200 },
+  { month: "March", desktop: 237, mobile: 120 },
+  { month: "April", desktop: 73, mobile: 190 },
+  { month: "May", desktop: 209, mobile: 130 },
+  { month: "June", desktop: 214, mobile: 140 },
+]
 
 function Dashboard() {
   const [greeting, setGreeting] = useState("");
@@ -34,115 +254,914 @@ function Dashboard() {
     day: "numeric",
   });
 
+  const currentTime = new Date().toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const getPriorityColor = (priority) => {
+    switch(priority) {
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      case 'low': return 'outline';
+      default: return 'outline';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'on-track': return 'bg-green-500';
+      case 'at-risk': return 'bg-yellow-500';
+      case 'behind': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
   return (
-    <div className="min-h-screen flex justify-center items-start">
-      <div className="w-full max-w-7xl p-5">
-        {/* Date and Greeting */}
-        <div className="text-center mb-8">
-          <p className="text-gray-500">{currentDate}</p>
-          <h1 className="text-3xl font-bold">{greeting}, Blake</h1>
-          <p className="text-gray-500 mt-1">Here’s an overview of your work</p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6 space-y-8">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center space-y-2"
+        >
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <Calendar className="w-4 h-4" />
+            <span>{currentDate}</span>
+            <Clock className="w-4 h-4 ml-4" />
+            <span>{currentTime}</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight">
+            {greeting}, Blake
+          </h1>
+          <p className="text-muted-foreground">
+            {userRole === 'admin' ? "Admin Dashboard - Manage your organization" : "Your personal workspace overview"}
+          </p>
+        </motion.div>
 
-        {/* Quick Stats */}
-        <div className="flex justify-center gap-6 mb-10">
-          <Card className="w-48 rounded-2xl shadow-sm text-center">
-            <CardHeader>
-              <CardTitle className="text-sm text-gray-500">Active Projects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">8</p>
-            </CardContent>
-          </Card>
-          <Card className="w-48 rounded-2xl shadow-sm text-center">
-            <CardHeader>
-              <CardTitle className="text-sm text-gray-500">Tasks Completed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">42</p>
-            </CardContent>
-          </Card>
-          <Card className="w-48 rounded-2xl shadow-sm text-center">
-            <CardHeader>
-              <CardTitle className="text-sm text-gray-500">Active Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">17</p>
-            </CardContent>
-          </Card>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className={`grid gap-4 ${userRole === 'admin' ? 'grid-cols-2 md:grid-cols-6' : 'grid-cols-2 md:grid-cols-4'}`}
+        >
+          {userRole === 'admin' ? (
+            // Admin Stats
+            <>
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Sprint Velocity
+                  </CardTitle>
+                  <Zap className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">42</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
+                    +7% from last sprint
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* My Tasks Section */}
-          <Card className="rounded-2xl shadow-sm">
-            <CardHeader className="flex justify-between items-center">
-              <CardTitle className="text-lg font-semibold">My Tasks</CardTitle>
-              <div className="flex space-x-3 text-sm">
-                <span className="cursor-pointer text-gray-500 hover:text-black">Upcoming</span>
-                <span className="cursor-pointer text-gray-500 hover:text-black">Overdue</span>
-                <span className="cursor-pointer text-gray-500 hover:text-black">Completed</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                {tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    className="flex justify-between items-center border-b pb-3 last:border-none"
-                  >
-                    <div>
-                      <p className="font-medium">{task.title}</p>
-                      <div className="flex gap-2 mt-1">
-                        {task.labels.map((label, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Cycle Time
+                  </CardTitle>
+                  <Timer className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">3.2d</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <TrendingDown className="w-3 h-3 mr-1 text-green-500" />
+                    -0.5d improvement
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Code Quality
+                  </CardTitle>
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">A+</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
+                    95% coverage
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Blockers
+                  </CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-500">6</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <AlertCircle className="w-3 h-3 mr-1 text-orange-500" />
+                    Need attention
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Bug Ratio
+                  </CardTitle>
+                  <Bug className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">2.3%</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <TrendingDown className="w-3 h-3 mr-1 text-green-500" />
+                    Below target 5%
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Team Health
+                  </CardTitle>
+                  <Gauge className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">94%</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
+                    Excellent
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            // Employee Stats
+            <>
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    My Tasks
+                  </CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">8</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
+                    3 completed today
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Hours Today
+                  </CardTitle>
+                  <Timer className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">6.5h</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3 mr-1 text-blue-500" />
+                    1.5h remaining
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    This Week
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">24</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
+                    Tasks completed
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Efficiency
+                  </CardTitle>
+                  <Gauge className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">92%</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
+                    Above average
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </motion.div>
+
+        <div className={`grid gap-6 ${userRole === 'admin' ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-5'}`}>
+          
+          <div className={`space-y-6 ${userRole === 'admin' ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+            
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <CardTitle className="text-xl">
+                        {userRole === 'admin' ? 'Team Tasks Overview' : 'My Tasks'}
+                      </CardTitle>
+                      <Badge variant="secondary">{tasks.length}</Badge>
                     </div>
-                    <span className="text-sm text-gray-500">{task.due}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Projects Section */}
-          <Card className="rounded-2xl shadow-sm">
-            <CardHeader className="flex justify-between items-center">
-              <CardTitle className="text-lg font-semibold">Projects</CardTitle>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                New Project
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition"
-                  >
-                    <div className={`w-10 h-10 rounded-xl ${project.color}`} />
-                    <div>
-                      <p className="font-medium">{project.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {project.tasksDue} tasks due soon
-                      </p>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="sm">
+                        <Filter className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm">
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Task
+                      </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {tasks.slice(0, userRole === 'admin' ? 6 : 8).map((task, index) => (
+                      <motion.div
+                        key={task.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-2 h-2 rounded-full ${
+                            task.status === 'completed' ? 'bg-green-500' : 
+                            task.status === 'in-progress' ? 'bg-blue-500' : 'bg-gray-400'
+                          }`} />
+                          <div className="space-y-1">
+                            <p className="font-medium text-sm">{task.title}</p>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant={getPriorityColor(task.priority)} className="text-xs">
+                                {task.priority}
+                              </Badge>
+                              {task.labels.slice(0, 2).map((label, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {label}
+                                </Badge>
+                              ))}
+                              {userRole === 'employee' && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {task.storyPoints} pts
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+                          {userRole === 'admin' && (
+                            <Avatar className="w-6 h-6">
+                              <AvatarFallback className="text-xs">{task.assignee}</AvatarFallback>
+                            </Avatar>
+                          )}
+                          <span>{task.due}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {userRole === 'employee' ? (
+              // Employee-specific sections
+              <>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                   <Card>
+                    <CardHeader>
+                      <CardTitle>Line Chart - Label</CardTitle>
+                      <CardDescription>January - June 2024</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer config={{
+                        desktop: {
+                          label: "Desktop",
+                          color: "var(--chart-1)",
+                        },
+                        mobile: {
+                          label: "Mobile",
+                          color: "var(--chart-2)",
+                        },
+                      }}>
+                        <LineChart
+                          accessibilityLayer
+                          data={lineChartData}
+                          margin={{
+                            top: 20,
+                            left: 12,
+                            right: 12,
+                          }}
+                        >
+                          <CartesianGrid vertical={false} />
+                          <XAxis
+                            dataKey="month"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            tickFormatter={(value) => value.slice(0, 3)}
+                          />
+                          <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent indicator="line" />}
+                          />
+                          <Line
+                            dataKey="desktop"
+                            type="natural"
+                            stroke="var(--color-desktop)"
+                            strokeWidth={2}
+                            dot={{
+                              fill: "var(--color-desktop)",
+                            }}
+                            activeDot={{
+                              r: 6,
+                            }}
+                          >
+                            <LabelList
+                              position="top"
+                              offset={12}
+                              className="fill-foreground"
+                              fontSize={12}
+                            />
+                          </Line>
+                        </LineChart>
+                      </ChartContainer>
+                    </CardContent>
+                    <CardFooter className="flex-col items-start gap-2 text-sm">
+                      <div className="flex gap-2 leading-none font-medium">
+                        Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+                      </div>
+                      <div className="text-muted-foreground leading-none">
+                        Showing total visitors for the last 6 months
+                      </div>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+                <motion.div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Bar Chart</CardTitle>
+                      <CardDescription>January - June 2024</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer config={{
+                        "label":"Hours"
+                      }}>
+                        <BarChart accessibilityLayer data={employeeChartData}>
+                          <CartesianGrid vertical={false} />
+                          <XAxis
+                            dataKey="day"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(0, 3)}
+                          />
+                          <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent hideLabel />}
+                          />
+                          <Bar dataKey="Hours" fill="var(--color-desktop)" radius={8} />
+                        </BarChart>
+                      </ChartContainer>
+                    </CardContent>
+                    <CardFooter className="flex-col items-start gap-2 text-sm">
+                      <div className="flex gap-2 leading-none font-medium">
+                        Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+                      </div>
+                      <div className="text-muted-foreground leading-none">
+                        Showing total visitors for the last 6 months
+                      </div>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+                <motion.div>
+                  <span></span>
+                </motion.div>
+              </>
+            ) : (
+              // Admin-specific sections
+              <>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl">Projects Overview</CardTitle>
+                        <Button size="sm">
+                          <Plus className="w-4 h-4 mr-1" />
+                          New Project
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {projects.map((project, index) => (
+                          <motion.div
+                            key={project.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 * index }}
+                            className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-3 h-3 rounded-full ${getStatusColor(project.status)}`} />
+                                <h3 className="font-semibold">{project.name}</h3>
+                              </div>
+                              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                <Users className="w-4 h-4" />
+                                <span>{project.team}</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>{project.tasksCompleted}/{project.tasksTotal} tasks</span>
+                                <span className="text-muted-foreground">Due {project.dueDate}</span>
+                              </div>
+                              <Progress value={project.progress} className="h-2" />
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                >
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center">
+                          <GitBranch className="w-5 h-5 mr-2" />
+                          Sprint Burndown
+                        </CardTitle>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                            <span className="text-xs text-muted-foreground">Actual</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                            <span className="text-xs text-muted-foreground">Ideal</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={sprintData[0].burndownData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="day" className="text-muted-foreground" />
+                          <YAxis className="text-muted-foreground" />
+                          <Line type="monotone" dataKey="ideal" stroke="#9ca3af" strokeWidth={2} strokeDasharray="5 5" />
+                          <Line type="monotone" dataKey="actual" stroke="hsl(var(--primary))" strokeWidth={2} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                      <div className="flex justify-between mt-2 text-sm text-muted-foreground">
+                        <span>Remaining: {sprintData[0].remaining} points</span>
+                        <span>Days left: 4</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Zap className="w-5 h-5 mr-2" />
+                        Team Velocity
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={velocityData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="sprint" className="text-muted-foreground" />
+                          <YAxis className="text-muted-foreground" />
+                          <Bar dataKey="planned" fill="hsl(var(--muted))" />
+                          <Bar dataKey="completed" fill="hsl(var(--primary))" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </>
+            )}
+          </div> 
+
+          <div className={`space-y-6 ${userRole === 'admin' ? '' : 'lg:col-span-2'}`}>
+            {userRole === 'employee' ? (
+              // Employee Right Sidebar
+              <>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Target className="w-5 h-5 mr-2" />
+                        Today's Focus
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                          <p className="font-medium text-sm">High Priority</p>
+                          <p className="text-sm text-muted-foreground">Complete authentication module</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <Badge variant="destructive" className="text-xs">urgent</Badge>
+                            <span className="text-xs text-muted-foreground">Due: Today</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {tasks.slice(0, 3).map((task, index) => (
+                            <div key={index} className="flex items-center space-x-3 p-2 rounded border-l-2 border-l-blue-200">
+                              <div className="w-4 h-4 rounded border-2 border-muted-foreground/20"></div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{task.title}</p>
+                                <p className="text-xs text-muted-foreground">{task.due}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center">
+                          <Timer className="w-5 h-5 mr-2" />
+                          Time Tracking
+                        </CardTitle>
+                        <Button size="sm" variant="outline">
+                          <PlayCircle className="w-4 h-4 mr-1" />
+                          Start
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <p className="text-3xl font-bold">6h 32m</p>
+                          <p className="text-sm text-muted-foreground">Today</p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Daily Goal Progress</span>
+                            <span>82%</span>
+                          </div>
+                          <Progress value={82} className="h-2" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-center text-sm">
+                          <div>
+                            <p className="font-bold">32h</p>
+                            <p className="text-muted-foreground">This Week</p>
+                          </div>
+                          <div>
+                            <p className="font-bold">1.5h</p>
+                            <p className="text-muted-foreground">Remaining</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl">My Progress This Week</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Tasks Completed</span>
+                          <span className="text-sm text-muted-foreground">18/24</span>
+                        </div>
+                        <Progress value={75} className="h-2" />
+                        
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-green-600">18</p>
+                            <p className="text-xs text-muted-foreground">Completed</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-blue-600">4</p>
+                            <p className="text-xs text-muted-foreground">In Progress</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-gray-500">2</p>
+                            <p className="text-xs text-muted-foreground">Pending</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Quick Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
+                          <Plus className="w-5 h-5" />
+                          <span className="text-xs">Log Time</span>
+                        </Button>
+                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
+                          <Bug className="w-5 h-5" />
+                          <span className="text-xs">Report Issue</span>
+                        </Button>
+                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
+                          <Calendar className="w-5 h-5" />
+                          <span className="text-xs">My Schedule</span>
+                        </Button>
+                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
+                          <Users className="w-5 h-5" />
+                          <span className="text-xs">Team Chat</span>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl">My Projects</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {projects.slice(0, 3).map((project, index) => (
+                          <div key={project.id} className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-3 h-3 rounded-full ${getStatusColor(project.status)}`} />
+                                <h3 className="font-semibold">{project.name}</h3>
+                              </div>
+                              <span className="text-sm text-muted-foreground">Due {project.dueDate}</span>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>My contribution: {Math.floor(project.progress * 0.3)}%</span>
+                                <span className="text-muted-foreground">{project.tasksCompleted}/{project.tasksTotal} tasks</span>
+                              </div>
+                              <Progress value={project.progress} className="h-2" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                </motion.div>
+              </>
+            ) : (
+              // Admin Right Sidebar
+              <>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center">
+                          <PlayCircle className="w-5 h-5 mr-2" />
+                          Current Sprint
+                        </CardTitle>
+                        <Badge variant="secondary" className="bg-green-100 text-green-700">
+                          Active
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">{sprintData[0].name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {sprintData[0].startDate} - {sprintData[0].endDate}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Sprint Progress</span>
+                            <span>{Math.round((sprintData[0].completed / (sprintData[0].completed + sprintData[0].remaining)) * 100)}%</span>
+                          </div>
+                          <Progress value={Math.round((sprintData[0].completed / (sprintData[0].completed + sprintData[0].remaining)) * 100)} className="h-2" />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <p className="text-xl font-bold text-green-600">{sprintData[0].completed}</p>
+                            <p className="text-xs text-muted-foreground">Completed</p>
+                          </div>
+                          <div>
+                            <p className="text-xl font-bold text-blue-600">{sprintData[0].remaining}</p>
+                            <p className="text-xs text-muted-foreground">Remaining</p>
+                          </div>
+                          <div>
+                            <p className="text-xl font-bold">{sprintData[0].velocity}</p>
+                            <p className="text-xs text-muted-foreground">Velocity</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center">
+                          <Activity className="w-5 h-5 mr-2" />
+                          Team Activity
+                        </CardTitle>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs text-muted-foreground">Live</span>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {activityData.slice(0, 5).map((activity, index) => (
+                          <motion.div
+                            key={activity.id}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 * index }}
+                            className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs">{activity.avatar}</AvatarFallback>
+                            </Avatar>
+                            <div className="space-y-1 flex-1">
+                              <p className="text-sm leading-tight">
+                                <span className="font-medium">{activity.user}</span>
+                                {' '}{activity.action}{' '}
+                                <span className="font-medium text-primary">{activity.item}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">{activity.time}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Users className="w-5 h-5 mr-2" />
+                        Team Performance
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {teamPerformance.slice(0, 4).map((member, index) => (
+                          <div key={index} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="w-6 h-6">
+                                  <AvatarFallback className="text-xs">
+                                    {member.member.split(' ').map(n => n[0]).join('')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm font-medium">{member.member.split(' ')[0]}</span>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-sm">{member.efficiency}%</p>
+                                <p className="text-xs text-muted-foreground">efficiency</p>
+                              </div>
+                            </div>
+                            <Progress value={member.efficiency} className="h-1" />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <AlertTriangle className="w-5 h-5 mr-2" />
+                        Risk Alerts
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {riskMetrics.filter(p => p.riskScore > 5).map((project, index) => (
+                          <div key={index} className="p-3 rounded-lg border border-orange-200 bg-orange-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <AlertTriangle className="w-4 h-4 text-orange-600" />
+                                <span className="font-medium text-sm">{project.project}</span>
+                              </div>
+                              <Badge variant="destructive" className="text-xs">
+                                Risk: {project.riskScore}/10
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {project.blockers} blockers, {project.overdue} overdue tasks
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </>
+            )}
+          </div>
+        </div>       
       </div>
     </div>
   );
 }
-
+    
 export default Dashboard;

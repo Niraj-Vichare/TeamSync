@@ -48,4 +48,19 @@ class TeamService{
         throw handleTeamError(error);
     }
   }
+
+  async getTeamDropdown(workspaceGuid){
+    try{
+        const response = await axiosInstance.get(`/teams/dropdown?workspaceGuid=${workspaceGuid}`)
+        return response.data;
+
+    }catch(error){
+        console.error('Error while get team dropdown',error);
+        throw handleTeamError(error);
+    }
+  }
 }
+
+
+const teamService = new TeamService();
+export default teamService; 

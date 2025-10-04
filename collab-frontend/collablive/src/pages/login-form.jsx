@@ -19,7 +19,6 @@ import {
 import { toast } from "sonner"
 import { Loader2Icon } from "lucide-react"
 import authService from "@/services/auth"
-import { se } from "date-fns/locale"
 import { useNavigate } from "react-router-dom"
 
 export function LoginForm({

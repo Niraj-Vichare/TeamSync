@@ -81,6 +81,16 @@ class ProjectService {
             throw error;
         }
     }
+
+    async getProjectDropdown(workspaceGuid){
+        try{
+            const response = await axiosInstance.get(`/projects/dropdown?workspaceGuid=${workspaceGuid}`)
+            return response.data;
+        }catch(error){
+            console.error("Error while project dropdown",error);
+            throw error;
+        }
+    }
 }
 const projectService = new ProjectService();
 export default projectService;

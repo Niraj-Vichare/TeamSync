@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CalendarIcon, CheckCircle, CircuitBoardIcon, Clock3, Clock3Icon, ListIcon, Pause, PauseIcon, Pencil, PencilIcon, PenIcon, Plus, PlusIcon, SquareKanbanIcon, Tag, Trash, Trash2Icon } from 'lucide-react'
+import { CalendarIcon, CheckCircle, CircuitBoardIcon, Clock3, Clock3Icon, FilterIcon, ListIcon, Pause, PauseIcon, Pencil, PencilIcon, PenIcon, Plus, PlusIcon, SquareKanbanIcon, Tag, Trash, Trash2Icon } from 'lucide-react'
 import React, { useState } from 'react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,10 @@ import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import TeamDataTable from '@/components/teamComponents/TeamDataTable';
 import { teamMembers } from '@/data/general';
-import TaskDataTable from '@/components/teamComponents/TaskDataTable';
+import ListView from '@/components/taskComponents/ListView';
+import TimelineView from '@/components/taskComponents/TimelineView';
+import KanbanView from '@/components/taskComponents/KanbanView';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 function Task() {
   const [open, setOpen] = useState(false);
@@ -32,6 +35,166 @@ function Task() {
   const [dueDate, setDueDate] = useState(null);
   const [status, setStatus] = useState('not-started');
   const [date, setDate] = useState(null);
+
+  const [tasks, setTasks] = useState([
+    {
+      id: 1,
+      name: 'Employee Details page',
+      description: 'Create a page where there is information about employees',
+      type: 'Dashboard',
+      priority: 'Medium',
+      status: 'todo',
+      assignees: ['AL', 'DT'],
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      timeline: { start: 'Thu 13', end: 'Fri 14' },
+      project: 'HR System',
+      tags:["Management","UI"],  
+      sprint: 'Sprint 1',
+      comments: 3,
+      attachments: 2
+    },
+    {
+      id: 2,
+      name: 'Darkmode version',
+      description: 'Darkmode version for all screens',
+      type: 'Mobile app',
+      priority: 'Low',
+      status: 'todo',
+      assignees: ['AL', 'DT'],
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      timeline: { start: 'Tue 11', end: 'Wed 12' },
+      project: 'Mobile App',
+      tags:["Management","UI"],  
+      sprint: 'Sprint 1',
+      comments: 2,
+      attachments: 1
+    },
+    {
+      id: 3,
+      name: 'Super Admin Role',
+      description: 'Create super admin functionality with advanced permissions',
+      type: 'Dashboard',
+      priority: 'Medium',
+      status: 'todo',
+      assignees: ['AL', 'DT'],
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      timeline: { start: 'Sun 16', end: 'Mon 17' },
+      tags:["Management","UI"],  
+      project: 'Admin Panel',
+      sprint: 'Sprint 2',
+      comments: 1,
+      attachments: 0
+    },
+    {
+      id: 4,
+      name: 'Super Admin Role Implementation',
+      description: 'Implementation of admin role features',
+      type: 'Dashboard',
+      priority: 'High',
+      status: 'progress',
+      assignees: ['DT'],
+      tags:["Management","UI"],  
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      project: 'Admin Panel',
+      sprint: 'Sprint 1',
+      comments: 5,
+      attachments: 3
+    },
+    {
+      id: 5,
+      name: 'Settings page',
+      description: 'User settings and preferences page',
+      type: 'Mobile app',
+      priority: 'Medium',
+      status: 'progress',
+      tags:["Management","UI"],  
+
+      assignees: ['AL', 'DT'],
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      project: 'Mobile App',
+      sprint: 'Sprint 1',
+      comments: 2,
+      attachments: 1
+    },
+    {
+      id: 6,
+      name: 'KPI and Employee Statistics',
+      description: 'Create a design that displays KPIs and employee statistics',
+      type: 'Dashboard',
+      priority: 'Low',
+      status: 'progress',
+      assignees: ['DT'],
+      tags:["Management","UI"],  
+
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      timeline: { start: 'Thu 13', end: 'Sat 15' },
+      project: 'Analytics',
+      sprint: 'Sprint 2',
+      comments: 4,
+      attachments: 2
+    },
+    {
+      id: 7,
+      name: 'Customer Role Management',
+      description: 'Implement customer role permissions',
+      type: 'Dashboard',
+      priority: 'Medium',
+      status: 'review',
+      assignees: ['AL'],
+      tags:["Management","UI"],  
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      project: 'Admin Panel',
+      sprint: 'Sprint 1',
+      comments: 2,
+      attachments: 1
+    },
+    {
+      id: 8,
+      name: 'Design system & Style guide',
+      description: 'Create comprehensive design system',
+      type: 'Design',
+      priority: 'High',
+      status: 'review',
+      assignees: ['DT', 'AL'],
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      project: 'Design System',
+      tags:["Management","UI"],  
+      sprint: 'Sprint 2',
+      comments: 8,
+      attachments: 5
+    },
+    {
+      id: 9,
+      name: 'Mobile App Optimization',
+      description: 'Performance optimization for mobile app',
+      type: 'Mobile app',
+      priority: 'High',
+      status: 'completed',
+      assignees: ['DT'],
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      project: 'Mobile App',
+      tags:["Management","UI"],  
+      sprint: 'Sprint 1',
+      comments: 6,
+      attachments: 3
+    },
+    {
+      id: 10,
+      name: 'User Authentication System',
+      description: 'Complete authentication flow implementation',
+      type: 'Dashboard',
+      priority: 'High',
+      status: 'completed',
+      assignees: ['AL', 'DT'],
+      tags:["Management","UI"],  
+      estimation: 'Feb 14, 2024 - Feb 1, 2024',
+      project: 'Auth System',
+      sprint: 'Sprint 1',
+      comments: 10,
+      attachments: 4
+    }
+  ]);
+
 
 
   const addSubtask = () => {
@@ -77,6 +240,31 @@ function Task() {
           <p className='text-sm text-muted-foreground'>Break down work into manageable actions to stay productive and accountable.</p>
         </div>
         <div className="pb-6">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild/>
+            <Button variant="outline" className='ml-3'>
+              <FilterIcon className='w-4 h-4'/>
+              Sprints
+            </Button>
+            <DropdownMenuContent>
+              <DropdownMenuItem>Active</DropdownMenuItem>
+              <DropdownMenuItem>InActive</DropdownMenuItem>
+              <DropdownMenuItem>Active</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild/>
+            <Button variant="outline" className='ml-3 mr-2'>
+              <FilterIcon className='w-4 h-4'/>
+              Projects
+            </Button>
+            <DropdownMenuContent>
+              <DropdownMenuItem>Active</DropdownMenuItem>
+              <DropdownMenuItem>InActive</DropdownMenuItem>
+              <DropdownMenuItem>Active</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className={'text-white'}>
@@ -170,6 +358,57 @@ function Task() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    {/* Project Name and Sprint Name */}
+                    <div className='grid grid-cols-2 gap-4'>
+                      <div className='space-y-3'>
+                        <Label>Project Name</Label>
+                        <Select>
+                          <SelectTrigger className={'w-full'}>
+                            <SelectValue placeholder="Select a person" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="alice">
+                                
+                                Alice
+                              
+                            </SelectItem>
+                            <SelectItem value="bob">
+                              
+                                Bob
+                              
+                            </SelectItem>
+                            <SelectItem value="charlie">
+                                Charlie                              
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className='space-y-3'>
+                        <Label>Sprint Name</Label>
+                        <Select>
+                          <SelectTrigger className={'w-full'}>
+                            <SelectValue placeholder="Select a person" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="alice">
+                                
+                                Alice
+                              
+                            </SelectItem>
+                            <SelectItem value="bob">
+                              
+                                Bob
+                              
+                            </SelectItem>
+                            <SelectItem value="charlie">
+                                Charlie                              
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                      </div>
+
                     </div>
 
                     {/* Due Date + Status */}
@@ -280,6 +519,7 @@ function Task() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          
         </div>
       </div>
       <Tabs value={act} onValueChange={setAct}>
@@ -288,10 +528,10 @@ function Task() {
             <ListIcon className='w-4 h-4' />
             <span className='text-sm'>Task List</span>
           </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-2 whitespace-nowrap p-2">
+          {/* <TabsTrigger value="timeline" className="flex items-center gap-2 whitespace-nowrap p-2">
             <CalendarIcon className='w-4 h-4' />
             <span className='text-sm'>Timeline View</span>
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="kanban" className="flex items-center gap-2 whitespace-nowrap p-2">
             <SquareKanbanIcon className='w-4 h-4' />
             <span className='text-sm'>Kanban Board</span>
@@ -299,11 +539,13 @@ function Task() {
         </TabsList>
 
         <TabsContent value="list" className='mt-6'>
-          <TaskDataTable task={teamMembers}/>
-
-          {/* <DataTable data={data} /> */}
-
-
+          <ListView taskData={tasks}/>
+        </TabsContent>
+        {/* <TabsContent value="timeline" className={'mt-6'}>
+          <TimelineView tasks={tasks}/>
+        </TabsContent> */}
+        <TabsContent value="kanban" className={'mt-6'}>
+          <KanbanView tasksData={tasks}/>
         </TabsContent>
 
       </Tabs>

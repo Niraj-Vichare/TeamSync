@@ -1,10 +1,12 @@
+import DepartmentCard from '@/components/teamComponents/DepartmentCard';
 import TeamDataTable from '@/components/teamComponents/TeamDataTable';
+import TeamProjectCard from '@/components/teamComponents/TeamProjectCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { teamMembers } from '@/data/general';
+import {  teamMembers,projectTeam, departments } from '@/data/general';
 import { Filter, FilterIcon, Plus, Search } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
 
@@ -19,12 +21,20 @@ function Team() {
 
   const fetchTeamData=async()=>{
     try{
-      await teamServc
 
     }catch(error){
       console.error("");
     }
   }
+
+  const fetchProjectTeam = async()=>{
+    try{
+      
+    }catch(error){
+      console.error("");
+    }
+  }
+
   useEffect(()=>{
     fetchTeamData();
 
@@ -138,13 +148,22 @@ function Team() {
             </div>
 
           </TabsContent>
-          <TabsContent value='project-team' currentValue={activeTab}>
+          <TabsContent value='project-team' currentValue={activeTab} className={'mt-5'}>
+            <div className="flex flex-wrap gap-2">
+              {projectTeam.map((team) => (
+                <TeamProjectCard key={team.id} team={team} />
+              ))}
+            </div>
+
 
 
           </TabsContent>
-          <TabsContent value='department' currentValue={activeTab}>
-
-
+          <TabsContent value='department' currentValue={activeTab} className={'mt-5'}>
+            <div className='flex flex-wrap gap-4'>
+              {departments.map((department) => (
+                <DepartmentCard key={department.id} department={department} />
+              ))}
+            </div>
           </TabsContent>
 
         </Tabs>

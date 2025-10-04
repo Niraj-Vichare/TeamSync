@@ -1,11 +1,23 @@
+import { default as axiosInstance } from "./axiosInstance";
+
 class SprintService {
-    constructor(apiClient) {
-        this.apiClient = apiClient;
+
+    async createSprint(workspaceGuid,sprintData) {
+        try {
+            const response = await axiosInstance.post(`/sprints?workspaceGuid=${workspaceGuid}`,sprintData);
+            return response.data;
+        } catch (error) {
+            console.error('Error while creating project:', error);
+            throw error;
+        }
     }
 
-    async getAllSprints() {
+    async getAllSprints(workspaceGuid,searchTerm,status,projectId,pageNumber,pageSize) {
         try {
-            const response = await this.apiClient.get("/sprints");
+            console.log(workspaceGuid,searchTerm,status,projectId,pageNumber,pageSize);
+            const response = await axiosInstance.get("/sprints",{
+                params:{workspaceGuid,searchTerm,status,projectId,pageNumber,pageSize}
+            });
             return response.data;
         } catch (error) {
             console.error("Error fetching sprints:", error);
@@ -13,35 +25,19 @@ class SprintService {
         }
     }
 
-    async getAllUserStories(){
+    async getAllTicket(ticketType,search,filter,pageNumber,pageSize)
+    {
         try {
-            const response = await this.apiClient.get("/sprints");
-            return response.data;
+            const response = await axiosInstance.get("/tickets",{
+            params: { ticketType, search, filter, pageNumber, pageSize }
+        })
+        return response.data;
         } catch (error) {
             console.error("Error fetching sprints:", error);
             throw error;
         }
     }
 
-    async getAllBugs(){
-        try {
-            const response = await this.apiClient.get("/sprints");
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching sprints:", error);
-            throw error;
-        }
-    }
-
-    async getAllBacklogs(){
-        try {
-            const response = await this.apiClient.get("/sprints");
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching sprints:", error);
-            throw error;
-        }
-    }
 
 }
 

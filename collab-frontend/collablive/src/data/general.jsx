@@ -46,16 +46,16 @@ export const ROLE_MAP = {
 };
 
 export const STATUS_MAP = {
-  active: { 
-    label: "Active", 
+  active: {
+    label: "Active",
     color: "bg-green-100 text-green-800"
   },
-  inactive: { 
-    label: "Inactive", 
+  inactive: {
+    label: "Inactive",
     color: "bg-gray-100 text-gray-800"
   },
-  pending: { 
-    label: "Accept Pending", 
+  pending: {
+    label: "Accept Pending",
     color: "bg-yellow-100 text-yellow-800"
   },
 };
@@ -326,3 +326,299 @@ export const teamMembers = [
     dateAdded: "05/01/2023 - 11:00 AM",
   },
 ];
+
+export const projectTeam = [
+  {
+    id: 1,
+    name: "Team 1",
+    people: [
+      {
+        id: 1,
+        name: "Niraj",
+        email: "niraj@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b372?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: true,
+        role: "Frontend Developer"
+      },
+      {
+        id: 2,
+        name: "Sagar",
+        email: "sagar@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: true,
+        role: "Backend Developer"
+      }
+    ],
+    project: {
+      projectName: "Project 1",
+      projectId: 1
+    },
+    sprint: {
+      sprintId: 1,
+      sprintName: "Sprint 1",
+      duration: "2 weeks",
+      description: "Initial development phase focusing on core features and basic UI implementation. Setting up project infrastructure and development environment."
+    }
+  },
+  {
+    id: 2,
+    name: "Team 2",
+    people: [
+      {
+        id: 3,
+        name: "Anjali",
+        email: "anjali@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: true,
+        role: "Project Manager"
+      },
+      {
+        id: 4,
+        name: "Rahul",
+        email: "rahul@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: false,
+        role: "QA Engineer"
+      }
+    ],
+    project: {
+      projectName: "Project 2",
+      projectId: 2
+    },
+    sprint: {
+      sprintId: 2,
+      sprintName: "Sprint Alpha",
+      duration: "3 weeks",
+      description: "Alpha release preparation with comprehensive testing, bug fixes, and performance optimization. Integration of all core modules."
+    }
+  },
+  {
+    id: 3,
+    name: "Team 3",
+    people: [
+      {
+        id: 5,
+        name: "Priya",
+        email: "priya@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: true,
+        role: "UI/UX Designer"
+      },
+      {
+        id: 6,
+        name: "Amit",
+        email: "amit@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: false,
+        role: "Mobile Developer"
+      },
+      {
+        id: 7,
+        name: "Meena",
+        email: "meena@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=32&h=32&fit=crop&crop=face",
+        isTeamLeader: false,
+        role: "Business Analyst"
+      }
+    ],
+    project: {
+      projectName: "Project 3",
+      projectId: 3
+    },
+    sprint: {
+      sprintId: 3,
+      sprintName: "Final Sprint",
+      duration: "1 week",
+      description: "Final polishing, documentation, and deployment preparation. User acceptance testing and production readiness checks."
+    }
+  }
+];
+
+
+
+export const departments = [
+  {
+    id: 1,
+    name: "Engineering",
+    tagline: "Building the future 🚀",
+    backgroundColor: "bg-blue-500/60", // subtle tint
+    members: [
+      {
+        id: 1,
+        name: "Alice",
+        email: "alice@example.com",
+        role: "Frontend Developer",
+        avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+      },
+      {
+        id: 2,
+        name: "Bob",
+        email: "bob@example.com",
+        role: "Backend Developer",
+        avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+      },
+      {
+        id: 3,
+        name: "Clara",
+        email: "clara@example.com",
+        role: "QA Engineer",
+        avatar: "https://randomuser.me/api/portraits/women/65.jpg",
+      },
+    ],
+  },
+  {
+    id: 2,
+    name: "Design",
+    tagline: "Shaping experiences 🎨",
+    backgroundColor: "bg-pink-500/60",
+    members: [
+      {
+        id: 4,
+        name: "David",
+        email: "david@example.com",
+        role: "UI Designer",
+        avatar: "https://randomuser.me/api/portraits/men/55.jpg",
+      },
+      {
+        id: 5,
+        name: "Emma",
+        email: "emma@example.com",
+        role: "UX Researcher",
+        avatar: "https://randomuser.me/api/portraits/women/12.jpg",
+      },
+    ],
+  },
+  {
+    id: 3,
+    name: "Marketing",
+    tagline: "Spreading the word 📢",
+    backgroundColor: "bg-green-400/60",
+    members: [
+      {
+        id: 6,
+        name: "Frank",
+        email: "frank@example.com",
+        role: "SEO Specialist",
+        avatar: "https://randomuser.me/api/portraits/men/85.jpg",
+      },
+      {
+        id: 7,
+        name: "Grace",
+        email: "grace@example.com",
+        role: "Content Writer",
+        avatar: "https://randomuser.me/api/portraits/women/20.jpg",
+      },
+      {
+        id: 8,
+        name: "Henry",
+        email: "henry@example.com",
+        role: "Social Media Manager",
+        avatar: "https://randomuser.me/api/portraits/men/23.jpg",
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: "HR",
+    tagline: "Caring for our people 💙",
+    backgroundColor: "bg-purple-500/60",
+    members: [
+      {
+        id: 9,
+        name: "Isabella",
+        email: "isabella@example.com",
+        role: "HR Manager",
+        avatar: "https://randomuser.me/api/portraits/women/28.jpg",
+      },
+      {
+        id: 10,
+        name: "Jack",
+        email: "jack@example.com",
+        role: "Recruiter",
+        avatar: "https://randomuser.me/api/portraits/men/18.jpg",
+      },
+    ],
+  },
+];
+
+
+
+export const projectWithName=[
+  {
+    "id":1,
+    "projectName":"Project 1"
+  },
+  {
+    "id":2,
+    "projectName":"Project 2"
+  },
+  {
+    "id":3,
+    "projectName":"Project 3"
+  }
+]
+
+
+export const teamWithName=[
+  {
+    "id":1,
+    "teamName":"Alpha"
+  },
+  {
+    "id":2,
+    "teamName":"Beta"
+  },
+  {
+    "id":3,
+    "teamName":"gamma"
+  }
+]
+
+
+export const globalSprint = [{
+  sprintId: "SPR-101",
+  name: "Sprint Alpha",
+  goal: "Complete core authentication module and integrate with OAuth providers for seamless login.",
+  tagline: "The foundation of user security",
+  status: "In Progress",
+  assignedTo: [
+    { name: "Alice", img: "https://i.pravatar.cc/40?img=1" },
+    { name: "Bob", img: "https://i.pravatar.cc/40?img=2" },
+  ],
+  tickets: 14,
+  estimation: "Sep 10, 2025 - Sep 24, 2025",
+  overdue: false,
+  tags: ["Backend", "Priority-High"],
+},
+{
+  sprintId: "SPR-102",
+  name: "Sprint Beta",
+  goal: "Build dashboard analytics with charts, metrics, and filters for decision-making.",
+  tagline: "Smarter insights, better decisions",
+  status: "Pending",
+  assignedTo: [
+    { name: "Charlie", img: "https://i.pravatar.cc/40?img=3" },
+    { name: "Dana", img: "https://i.pravatar.cc/40?img=4" },
+  ],
+  tickets: 10,
+  estimation: "Sep 25, 2025 - Oct 5, 2025",
+  overdue: false,
+  tags: ["Frontend", "Analytics"],
+},
+{
+  sprintId: "SPR-103",
+  name: "Sprint Gamma",
+  goal: "Optimize database queries and improve response time by caching frequently accessed records.",
+  tagline: "",
+  status: "Completed",
+  assignedTo: [
+    { name: "Eve", img: "https://i.pravatar.cc/40?img=5" },
+    { name: "Frank", img: "https://i.pravatar.cc/40?img=6" },
+  ],
+  tickets: 7,
+  estimation: "Aug 20, 2025 - Sep 1, 2025",
+  overdue: true,
+  tags: ["Database", "Performance"],
+},
+
+]
