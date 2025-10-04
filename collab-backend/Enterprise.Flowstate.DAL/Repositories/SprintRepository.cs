@@ -146,7 +146,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
 
             // 5️⃣ Get only IDs to count
-            var result = await query.Select("id").Get();
+            var result = await query.Select("sprint_id").Get();
 
             return result.Models.Count;
         }

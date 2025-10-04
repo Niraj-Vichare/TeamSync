@@ -153,5 +153,23 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             return _omniRepository.ProjectRepository.UpdateProjectStatus(projectGuid, projectStatus);
         }
+
+        public async Task<List<ProjectDropdownModel>> GetProjectDropDown(string workspaceGuid)
+        {
+            var projects = await _omniRepository.ProjectRepository.GetProjectDropdown(workspaceGuid);
+            List<ProjectDropdownModel> projectDropdown = new List<ProjectDropdownModel>();
+
+            foreach (var project in projects)
+            {
+                projectDropdown.Add(new ProjectDropdownModel
+                {
+                    Name = project.ProjectName,
+                    ProjectId = project.ProjectId
+                });
+            }
+
+            return projectDropdown;
+
+        }
     }
 }

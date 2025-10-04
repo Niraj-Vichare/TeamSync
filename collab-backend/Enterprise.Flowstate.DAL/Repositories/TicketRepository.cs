@@ -28,9 +28,10 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return false;
         }
 
-        public async Task<bool> DeleteTicket(Guid ticketGuid)
+        public async Task<bool> DeleteTicket(string ticketGuid)
         {
-            var model = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == ticketGuid).Get();
+            Guid guid = Guid.NewGuid();
+            var model = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == guid).Get();
             if (!model.Models.Any())
             {
                 return false;
@@ -49,7 +50,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             throw new NotImplementedException();
         }
 
-        public PaginationReponse<TicketDto> GetTickets(int type, string search)
+        public PaginationResponse<TicketDto> GetTickets(int type, string search)
         {
             throw new NotImplementedException();
         }

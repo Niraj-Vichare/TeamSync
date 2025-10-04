@@ -32,12 +32,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 result.Select(team => new TeamMemberDto
                 {
                     DepartmentId = team.DepartmentId,
-                    RoleId = team.RoleId,
                     StatusId = team.StatusId,
                     CreateAt = team.CreateAt,
                 });
             }
             return null;
+        }
+
+        public async Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid)
+        {
+            return await _omniRepository.TeamRepository.GetTeamDropDown(workspaceGuid);
         }
 
     }

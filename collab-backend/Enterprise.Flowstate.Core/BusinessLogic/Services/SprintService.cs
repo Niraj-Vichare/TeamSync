@@ -24,7 +24,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             Sprint sprint = new Sprint
             {
-                SprintId = sprintDto.Id,
                 CreatedAt = DateTime.UtcNow,
                 Title = sprintDto.Title,
                 Description = sprintDto.Goal,
@@ -35,7 +34,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 StatusId = (int)sprintDto.Status,
                 Tagline = sprintDto.Tagline,
                 Tags = sprintDto.Tags,
-                WorkingTeamId = sprintDto.TeamMembers.TeamId
+                SprintGuid = Guid.NewGuid().ToString(),
+                WorkingTeamId = sprintDto.TeamModel.TeamId
             };
 
             var result = await _omniRepository.SprintRepository.CreateSprint(userId, sprint);
@@ -69,6 +69,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Tags = sprint.Tags,
                     Title = sprint.Title,
                     UpdateDate = sprint.UpdateDate,
+                    SprintGuid = sprint.SprintGuid,
+                    TeamModel = new TeamDropdownModel
+                    {
+                        TeamId = sprint.Team.TeamId,
+                        TeamName = sprint.Team.TeamName
+                    }
                 });
             }
 

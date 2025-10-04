@@ -14,10 +14,7 @@ namespace Enterprise.Flowstate.DAL.Models
         public int WorkspaceId { get; set; }
         [Column("department_id")]
         public int DepartmentId { get; set; }
-        [Column("role_id")]
-        public int RoleId { get; set; }
         [Column("status_id")]
         public int StatusId { get; set; }
-        public int ProfileId { get; set; }
     }
 }

@@ -25,7 +25,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             TaskRepository = new TaskRepository(_supabaseClient);
             ProfileRepository = new ProfileRepository(_supabaseClient);
             WorkspaceRepository = new WorkspaceRepository(_supabaseClient);
-
+            SprintRepository = new SprintRepository(_supabaseClient);
             ProjectRepository = new ProjectRepository(_supabaseClient);
             TicketRepository = new TicketRepository(_supabaseClient);
         }

@@ -10,10 +10,10 @@ namespace Enterprise.Flowstate.DAL.Enums
     {
         public enum SprintStatus
         {
-            NotStarted = 0,
-            InProgress = 1,
+            Active = 1,
             Completed = 2,
-            Paused = 3
+            Paused = 3,
+            Upcoming = 4
         }
     }
 }

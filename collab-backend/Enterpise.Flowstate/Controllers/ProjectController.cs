@@ -13,6 +13,7 @@ namespace Enterpise.Flowstate.Controllers
     public class ProjectController : AuthBaseController
     {
         private readonly IOmniService _omniService;
+
         public ProjectController(IOmniService omniService)
         {
             _omniService = omniService;
@@ -393,5 +394,31 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
+        [HttpGet("dropdown")]
+        public async Task<List<ProjectDropdownModel>> GetProjectDropdowns([FromQuery]string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return null;
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return null;
+                }
+                var result = await _omniService.ProjectService.GetProjectDropDown(workspaceGuid);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        } 
     }
 }

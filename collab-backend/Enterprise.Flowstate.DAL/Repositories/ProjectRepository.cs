@@ -66,13 +66,23 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return (projects, totalCount);
         }
 
-
+        public async Task<List<Project>> GetProjectDropdown(string workspaceGuid)
+       {
+            var workspace = await client.From<Workspace>().Filter("workspace_guid", Supabase.Postgrest.Constants.Operator.Equals, workspaceGuid).Single();
+            if(workspace != null)
+            {
+                var mapping = await client.From<ProjectWorkspaceMapping>().Filter("id", Supabase.Postgrest.Constants.Operator.Equals, workspace.Id).Get();
+                var projects = mapping.Models.Select(m => m.Project).ToList();
+                return projects;
+            }
+            return new List<Project>();
+        }
         public async Task<List<Project>> GetOngoingProjects(string workspaceId,int limit)
         {
-            var workspace = await client.From<Workspace>().Filter("id", Supabase.Postgrest.Constants.Operator.Equals, workspaceId).Single();
+            var workspace = await client.From<Workspace>().Filter("workspace_id", Supabase.Postgrest.Constants.Operator.Equals, workspaceId).Single();
             if (workspace != null)
             {
-                var mappings = await client.From<ProjectWorkspaceMapping>().Filter("workspace_id", Supabase.Postgrest.Constants.Operator.Equals, workspaceId)
+                var mappings = await client.From<ProjectWorkspaceMapping>().Filter("id", Supabase.Postgrest.Constants.Operator.Equals, workspace.Id)
                                 .Get();
 
                 var projectIds = mappings.Models.Select(m => m.ProjectId).ToList();

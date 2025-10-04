@@ -147,5 +147,33 @@ namespace Enterpise.Flowstate.Controllers
         //{
 
         //}
+
+        [HttpGet]
+        [Route("dropdown")]
+        public async Task<List<TeamDropdownModel>> TeamDropdown([FromQuery]string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return null;
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return null;
+                }
+                var result = await _omniService.TeamService.GetTeamDropDown(workspaceGuid);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
     }
 }

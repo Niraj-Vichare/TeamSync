@@ -29,6 +29,8 @@ namespace Enterprise.Flowstate.DAL.Models
 
         [Column("status")]
         public int? StatusId { get; set; }
+        [Column("sprint_guid")]
+        public string SprintGuid { get; set; }
 
         [Column("start_date")]
         public DateTime? StartDate { get; set; }

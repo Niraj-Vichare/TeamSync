@@ -119,7 +119,8 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        public async Task<ApiResponseModel<PaginationResponse<SprintDto>>> GetSprints([FromQuery]string workspaceGuid,[FromQuery]string searchTerm,[FromQuery]string status,[FromQuery]string projectId,[FromQuery]int pageNumber = 1,[FromQuery]int pageSize = 10)
+        [HttpGet]
+        public async Task<ApiResponseModel<PaginationResponse<SprintDto>>> GetSprints([FromQuery]string workspaceGuid,[FromQuery]string? searchTerm,[FromQuery]string? status,[FromQuery]string? projectId,[FromQuery]int pageNumber = 1,[FromQuery]int pageSize = 10)
         {
             try
             {

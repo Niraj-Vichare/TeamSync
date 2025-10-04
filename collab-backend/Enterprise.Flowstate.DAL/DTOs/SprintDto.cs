@@ -44,9 +44,9 @@ namespace Enterprise.Flowstate.DAL.DTOs
                 return "Unknown";
             }
         }
+        public string? SprintGuid { get; set; }
+        public TeamDropdownModel TeamModel { get; set; }
 
-
-        public TeamDto TeamMembers { get; set; }
         public string Tags { get; set; }
         
 

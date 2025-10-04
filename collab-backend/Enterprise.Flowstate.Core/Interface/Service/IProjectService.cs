@@ -17,5 +17,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<ProjectDto> GetProjectById(string workspaceId,string projectGuid);
         Task<(bool, ErrorStatus)> DeleteProject(string workspaceId,string projectGuid);
         Task<bool> UpdateProjectStatus(string projectGuid, int projectStatus);
+        Task<List<ProjectDropdownModel>> GetProjectDropDown(string workspaceGuid);
     }
 }

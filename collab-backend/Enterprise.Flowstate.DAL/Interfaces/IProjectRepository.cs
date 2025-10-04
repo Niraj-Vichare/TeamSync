@@ -17,5 +17,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<Project> GetProjectById(string workspaceId, string projectGuid);
         Task<(bool,GeneralEnums.ErrorStatus)> DeleteProject(string workspaceId, string projectGuid);
         Task<bool> UpdateProjectStatus(string projectGuid, int projectStatus);
+        Task<List<Project>> GetProjectDropdown(string workspaceGuid);
     }
 }

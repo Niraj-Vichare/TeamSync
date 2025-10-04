@@ -11,6 +11,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
     public interface ITeamService
     {
         Task<bool> AddMember(string workspaceGuid, TeamMemberWorkspaceMapping mapping);
-        Task<List<TeamMemberDto>> GetTeamMembers(string workspaceGuid);  
+        Task<List<TeamMemberDto>> GetTeamMembers(string workspaceGuid);
+        Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid);
     }
 }
