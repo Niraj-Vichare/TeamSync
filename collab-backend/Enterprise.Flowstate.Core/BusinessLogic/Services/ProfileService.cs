@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Enterprise.Flowstate.DAL.Models;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -48,5 +49,35 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
             return profile;
         }
+
+        public async Task<List<ProfileDto>> GetWorkspaceUsers(string workspaceGuid)
+        {
+            var result = await _omniRepository.ProfileRepository.GetWorkspaceUsers(workspaceGuid);
+
+            if (result == null || !result.Any())
+            {
+                return new List<ProfileDto>();
+            }
+
+            var profiles = result
+                .Select(mapping => mapping.Profile)
+                .Where(profile => profile != null)
+                .Select(profile => new ProfileDto
+                {
+                    Id = profile.Id,
+                    DisplayName = profile.DisplayName,
+                    Guid = profile.Guid,
+                    Bio = profile.Bio,
+                    ProfileImageUrl = profile.ProfileImageUrl,
+                    CreatedAt = profile.CreatedAt,
+                    UpdatedAt = profile.UpdatedAt,
+                    WorkspaceId = profile.WorkspaceId
+                })
+                .ToList();
+
+            return profiles;
+        }
+
+
     }
 }

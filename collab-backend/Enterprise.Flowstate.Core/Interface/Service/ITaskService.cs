@@ -1,5 +1,7 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
+using Enterprise.Flowstate.DAL.Models;
+using FirebaseAdmin.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,11 +12,13 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface ITaskService
     {
-        public Task<List<Task>> GetTaskList();
-        public Task<bool> CreateTask(TaskDto task);
-        public Task<bool> DeleteTask(int taskId);
-        public Task<bool> UpdateTask(TaskDto task);
-        public Task<TaskDto> GetTaskById(int taskId);
+        Task<bool> CreateTask(string workspaceGuid,TaskDto task);
+        Task<bool> DeleteTask(int taskId);
+        Task<PaginationResponse<TaskDto>> GetTasks(string userGuid, string searchTerm, string statusFilter, string sprintId, string projectId, string ticketId, int pageNumber, int pageSize);
+        Task<bool> UpdateTask(TaskDto task);
+        Task<TaskDto> GetTaskById(int taskId);
+        Task<List<TaskDto>> GetAllTaskAssignedToUser(string userGuid,string projectId,string sprintId,string ticketId,string priority,string status);
 
+        Task<bool> UpdateTaskStatus(string userGuid, int taskId, string taskStatus);
     }
 }

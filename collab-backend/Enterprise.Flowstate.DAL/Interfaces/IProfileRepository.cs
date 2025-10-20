@@ -13,5 +13,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> CreateProfile(User user, string? displayName);
         Task<string> GetCurrentWorkspaceId(string userGuid);
         Task<Profile> GetProfile(string userGuid);
+        Task<int> GetProfileId(string userGuid);
+        Task<List<WorkspaceUserMapping>> GetWorkspaceUsers(string workspaceGuid);
     }
 }

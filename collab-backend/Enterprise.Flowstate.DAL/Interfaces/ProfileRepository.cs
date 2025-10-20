@@ -34,11 +34,37 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             var result = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
             return result.Models.FirstOrDefault().WorkspaceId;
         }
+        public async Task<int> GetProfileId(string userGuid)
+        {
+            var result = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            if (result.Models.Any())
+            {
+                var profile = result.Models.FirstOrDefault();
+                return profile.Id;
+            }
+            return 0;
+        }
 
         public async Task<Profile> GetProfile(string userGuid)
         {
             var result = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
             return result.Models.FirstOrDefault() ?? new Profile(); // Return an empty profile if not found
+        }
+
+        public async Task<List<WorkspaceUserMapping>> GetWorkspaceUsers(string workspaceGuid)
+        {
+            if(workspaceGuid == null)
+            {
+                return null;
+            }
+            var workspace =await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if(workspace != null)
+            {
+                int workspaceId = workspace.Models.FirstOrDefault().Id;
+                var result2 = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping => mapping.WorkspaceId == workspaceId).Get();
+                return result2.Models.ToList();
+            }
+            return new List<WorkspaceUserMapping>();
         }
     }
 }

@@ -119,6 +119,64 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
+        [HttpPost("{sprintGuid}/tickets/{ticketGuid}")]
+        public async Task<ApiResponseModel<object>> IncludeTicketSprint(string sprintGuid,string ticketGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sprintGuid) || string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Sprint GUID and Ticket GUID are required.",
+                        Success = false,
+                    };
+                }
+
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Authentication failed.",
+                        Success = false,
+                    };
+                }
+
+                bool isUpdated = await _omniService.SprintService.IncludeTicketInSprint(sprintGuid, ticketGuid);
+                if (!isUpdated)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Failed to include ticket in sprint. Please try again.",
+                        Success = false,
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = "Ticket included in sprint successfully.",
+                    Success = true,
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = "",
+
+                    Success = false,
+                };
+            }
+        }
+
         [HttpGet]
         public async Task<ApiResponseModel<PaginationResponse<SprintDto>>> GetSprints([FromQuery]string workspaceGuid,[FromQuery]string? searchTerm,[FromQuery]string? status,[FromQuery]string? projectId,[FromQuery]int pageNumber = 1,[FromQuery]int pageSize = 10)
         {
@@ -181,6 +239,33 @@ namespace Enterprise.Flowstate.Controllers
                     Success = false,
                     Message = $"An error occurred: {ex.Message}"
                 };
+            }
+        }
+
+        [HttpGet("/projects/{projectId}/sprints")]
+        public async Task<List<SprintDropdownModel>> GetSprintsByProjectId([FromRoute] string projectId)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return null;    
+                }
+
+                if (string.IsNullOrEmpty(projectId))
+                {
+                    return null;
+                }
+                var result = await _omniService.SprintService.GetSprintsByProjectId(projectId);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return null;
             }
         }
     }

@@ -3,6 +3,7 @@ using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -17,19 +18,49 @@ namespace Enterpise.Flowstate.Controllers
 
 
         [HttpPost]
-        public async Task<ApiResponseModel<object>> CreateTask(TaskDto task)
+        public async Task<ApiResponseModel<object>> CreateTask([FromQuery] string workspaceGuid, [FromBody] TaskDto taskDto)
         {
             try
             {
+                if (taskDto == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Task input are not cannot be null"
+                    };
+                }
 
-                bool isCreated = await _omniService.TaskService.CreateTask(task);
+                // Can user create the workspaces.
 
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                bool isCreated = await _omniService.TaskService.CreateTask(userId.ToString(), taskDto);
+                if (!isCreated)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Failed to create workspace"
+                    };
+
+                }
                 return new ApiResponseModel<object>
                 {
-                    StatusCode = StatusCodes.Status201Created,
+                    StatusCode = StatusCodes.Status200OK,
                     Success = true,
-                    Message = "Task created successfully",
-
+                    Message = "Successfully created an workspace for the user"
                 };
 
 
@@ -40,7 +71,7 @@ namespace Enterpise.Flowstate.Controllers
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
                     Success = false,
-                    Message = ex.Message
+                    Message = ex.Message,
                 };
             }
         }
@@ -56,6 +87,59 @@ namespace Enterpise.Flowstate.Controllers
                     Success = true,
                     Message = "Get all sprints tasks",
                     Data = null
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpGet("assigned")]
+        public async Task<ApiResponseModel<object>> GetAllTaskAssignedToUser([FromQuery] string workspaceGuid,
+            [FromQuery] string? projectId,
+            [FromQuery] string? sprintId,
+            [FromQuery] string? ticketId,
+            [FromQuery] string? priority,
+            [FromQuery] string? status)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                var allTasks= await _omniService.TaskService.GetAllTaskAssignedToUser(userId.ToString(), projectId, sprintId, ticketId, priority, status);
+
+                if (!allTasks.Any())
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status204NoContent,
+                        Success = false,
+                        Data = allTasks,
+                        Message = "No content found"
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Get all tasks",
+                    Data = allTasks
                 };
 
             }
@@ -97,6 +181,52 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
+        [HttpPatch]
+        [Route("{taskId}")]
+        public async Task<ApiResponseModel<object>> UpdateTaskStatus(int taskId,[FromQuery] string status)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                bool isUpdated = await _omniService.TaskService.UpdateTaskStatus(userId.ToString(),taskId,status);
+                if (!isUpdated)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Not able to update the task"
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Updated the task status"
+                };
+
+            }
+            catch(Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Data = ex
+                };
+            }
+        }
 
         [HttpGet]
         [Route("{taskId}")]
@@ -143,30 +273,6 @@ namespace Enterpise.Flowstate.Controllers
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
                     Success = false,
-                    Message = ex.Message
-                };
-            }
-        }
-
-        [HttpPatch]
-        [Route("{taskId}")]
-        public async Task<ApiResponseModel<object>> UpdateTask(int taskId)
-        {
-            try
-            {
-                return new ApiResponseModel<object>
-                {
-                    Success = true,
-                    StatusCode = StatusCodes.Status200OK,
-                    Message = "Successfully updated the task."
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponseModel<object>
-                {
-                    Success = false,
-                    StatusCode = StatusCodes.Status500InternalServerError,
                     Message = ex.Message
                 };
             }

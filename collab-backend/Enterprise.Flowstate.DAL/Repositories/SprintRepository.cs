@@ -151,5 +151,44 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return result.Models.Count;
         }
 
+
+        public async Task<List<SprintDropdownModel>> GetSprintsByProjectId(int projectId)
+        {
+            
+            var sprintsResponse = await _supabaseClient.From<Sprint>().Where(s => s.ProjectId == projectId).Get();
+            if(sprintsResponse == null)
+            {
+                return new List<SprintDropdownModel>();
+            }
+            var sprintDropdowns = sprintsResponse.Models.Select(s => new SprintDropdownModel
+            {
+                SprintId = s.SprintId,
+                SprintName = s.Title
+            }).ToList();
+            return sprintDropdowns;
+        }
+
+        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return false; // invalid ticketGuid
+
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Get();
+            if (!ticketResponse.Models.Any())
+            {
+                return false;
+            }
+            var ticket = ticketResponse.Models.First();
+
+            var sprintResponse = await _supabaseClient.From<Sprint>().Where(s => s.SprintGuid == sprintGuid).Get();
+            if (sprintResponse == null)
+            {
+                return false;
+            }
+            var sprintId = sprintResponse.Models.First().SprintId;
+            ticket.SprintId = sprintId;
+            var response = await _supabaseClient.From<Ticket>().Update(ticket);
+            return response.Models.Any();
+        }
     }
 }

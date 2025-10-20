@@ -55,5 +55,13 @@ namespace Enterprise.Flowstate.DAL.Models
 
         [Column("ticket_guid")]
         public Guid TicketGuid { get; set; }
+
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
+        public Sprint? Sprint { get; set; }
+        [Column(ignoreOnInsert:true,ignoreOnUpdate:true)]
+        public Profile? Profile { get; set; }
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
+        public Project? Project { get; set; }
+
     }
 }

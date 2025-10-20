@@ -225,5 +225,55 @@ namespace Enterpise.Flowstate.Controllers
                 };
             }
         }
+
+
+        [HttpGet("dropdown")]
+        public async Task<ApiResponseModel<object>> GetWorkspaceUsers([FromQuery] string workspaceGuid)
+        {
+            try
+            {
+                
+                // Can user create the workspaces.
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+
+                var profiles = await _omniService.ProfileService.GetWorkspaceUsers(workspaceGuid);
+                if(profiles == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status204NoContent,
+                        Success = false,
+                        Message = "No profile for this oragnization"
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Data = profiles,
+                    Message = "Successfully created an workspace for the user"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+
+        }
     }
 }

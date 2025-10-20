@@ -13,7 +13,12 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> DeleteTicket(string ticketGuid);
         Task<bool> EditTicket(string ticketGuid,string userId,Ticket ticketDto);
         Task<bool> CreateTicket(Ticket ticketDto);
-        //Task<PaginationResponse<Ticket>> GetTickets(int type, string search,int projectId,int sprintId,int pageNumber,int pageSize);
         Task<TicketDetailDto> GetTicket(string ticketGuid);
+        Task<int> GetTicketsCountAsync(string workspaceId, string type, string searchTerm, string status, string project);
+        Task<List<Ticket>> GetTicketsAsync(string workspaceGuid,string searchTerm,string type,string statusFilter,string priorityFilter,int pageNumber,int pageSize);
+        Task<string> GetTicketSteps(string ticketGuid);
+        Task<bool> UpdateTicketSteps(string ticketGuid, string steps);
+        Task<List<TicketDropdownModel>> GetTicketsBySprintId(int ticketId);
     }
+
 }

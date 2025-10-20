@@ -15,10 +15,17 @@ namespace Enterprise.Flowstate.DAL.Enums
             Closed = 3,
         }
 
+        public enum TicketPriority
+        {
+            High = 1,
+            Medium = 2,
+            Low = 3
+        }
+
         public enum TicketType
         {
-            UserStories = 1,
-            Bug = 2
+            Bug = 1,
+            UserStories = 2
         }
     }
 }

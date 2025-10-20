@@ -14,5 +14,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> CreateProfile(User user,string? displayName);
         Task<string> GetCurrentWorkspaceId(string userGuid);
         Task<ProfileDto> GetProfile(string userGuid);
+        Task<List<ProfileDto>> GetWorkspaceUsers(string workspaceGuid);
     }
 }

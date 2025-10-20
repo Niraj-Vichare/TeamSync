@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Models;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,8 +12,10 @@ namespace Enterprise.Flowstate.DAL.Interfaces
     public interface ITaskRepository
     {
         Task<bool> CreateTask(Task task);
-        Task<bool> UpdateTask(int taskId,Task task);
         Task<bool> DelteTask(int taskId);
-        Task<List<Task>> GetAllTask(int projectId);
+        Task<int> GetTaskCountAsync(string userGuid,string searchTerm,string statusFilter,string sprintId,string projectId,string ticketId);
+        Task<List<Task>> GetTaskAsync(string userGuid, string searchTerm, string statusFilter, string sprintId, string projectId, string ticketId, int pageNumber, int pageSize);
+        Task<List<Task>> GetAllTaskAssignedToUser(string userGuid, string projectId, string sprintId, string ticketId, string priority, string status);
+        Task<bool> UpdateTaskStatus(string userGuid, int taskId, int taskStatus);
     }
 }

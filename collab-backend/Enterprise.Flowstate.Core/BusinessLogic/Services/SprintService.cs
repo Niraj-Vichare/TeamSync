@@ -41,7 +41,22 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             var result = await _omniRepository.SprintRepository.CreateSprint(userId, sprint);
             return result;
         }
-        
+        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid)
+        {
+            bool isIncluded = await _omniRepository.SprintRepository.IncludeTicketInSprint(sprintGuid, ticketGuid);
+            return isIncluded;
+        }
+
+        public async Task<List<SprintDropdownModel>> GetSprintsByProjectId(string projectId)
+        {
+            int projectInt = Convert.ToInt32(projectId);
+            if(projectInt == 0)
+            {
+                return null;
+            }
+            var result = await _omniRepository.SprintRepository.GetSprintsByProjectId(projectInt);
+            return result;
+        }
         public async Task<PaginationResponse<SprintDto>> GetSprints(string workspaceGuid,string searchTerm, string statusFilter,string projectFilter, int pageNumber,int pageSize)
         {
 
