@@ -30,21 +30,18 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return false;
         }
 
-        public async Task<bool> DeleteTicket(int taskId)
+        public async Task<bool> DeleteTask(string taskId)
         {
-            Guid guid = Guid.NewGuid();
-            var model = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == guid).Get();
-            if (!model.Models.Any())
+            if (!Guid.TryParse(taskId, out var guid))
+                return false; // invalid ticketGuid
+            var result = await _supabaseClient.From<Task>().Where(task => task.TaskGuid == guid).Get();
+            if (!result.Models.Any())
             {
                 return false;
             }
-            _ = await _supabaseClient.From<Ticket>().Delete(model.Model);
+            var task = result.Models.FirstOrDefault();
+            var deleteResponse = _supabaseClient.From<Task>().Delete(task);
             return true;
-        }
-
-        public Task<bool> DelteTask(int taskId)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<int> GetTaskCountAsync(
@@ -107,7 +104,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             var query = _supabaseClient
                 .From<Task>()
-                .Select("*, project:project_id(*), sprint:sprint_id(*), assigned_by_user:assigned_by(*), assigned_to_user:assigned_to(*), ticket:ticket_id(*)")
+                .Select("*, project:project_id(*), sprint:sprint_id(*), assignedByUser:profile!assigned_by(*),assignedToUser:profile!assigned_to(*), ticket:ticket_id(*)")
                 .Where(t => t.AssignedTo == user.Id);
             // 3️. Optional filters
             if (!string.IsNullOrEmpty(priority))
@@ -129,7 +126,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             return result.Models;
         }
-
+            
         public async Task<List<Task>> GetTaskAsync(string userGuid, string searchTerm, string statusFilter, string sprintId,string projectId,string ticketId,int pageNumber, int pageSize)
         {
             // 1️. Get the workspace
@@ -198,5 +195,47 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var updated = await _supabaseClient.From<Task>().Update(task);
             return updated.Models.Any();
         }
+
+        public async Task<bool> UpdateTask(string taskGuid, string userGuid, Task taskModel)
+        {
+            if (!Guid.TryParse(taskGuid, out var guid))
+                return false; // invalid ticketGuid
+            // Fetch existing record
+            var result = await _supabaseClient
+                .From<Task>()
+                .Where(t => t.TaskGuid == guid)
+                .Get();
+
+            if (!result.Models.Any())
+                return false;
+
+            var existingTask = result.Models.First();
+
+            // === CONDITIONAL UPDATES ===
+            existingTask.Title = taskModel.Title ?? existingTask.Title;
+            existingTask.Description = taskModel.Description ?? existingTask.Description;
+            existingTask.AssignedTo = taskModel.AssignedTo != 0 ? taskModel.AssignedTo : existingTask.AssignedTo;
+            existingTask.AssignedBy = taskModel.AssignedBy != 0 ? taskModel.AssignedBy : existingTask.AssignedBy;
+            existingTask.Priority = taskModel.Priority != 0 ? taskModel.Priority : existingTask.Priority;
+            existingTask.Status = taskModel.Status != 0 ? taskModel.Status : existingTask.Status;
+
+            // Only update these if non-zero
+            existingTask.ProjectId = taskModel.ProjectId != 0 ? taskModel.ProjectId : existingTask.ProjectId;
+            existingTask.SprintId = taskModel.SprintId != 0 ? taskModel.SprintId : existingTask.SprintId;
+            existingTask.TicketId = taskModel.TicketId != 0 ? taskModel.TicketId : existingTask.TicketId;
+
+            // Nullable fields
+            existingTask.StartDate = taskModel.StartDate ?? existingTask.StartDate;
+            existingTask.EndDate = taskModel.EndDate ?? existingTask.EndDate;
+
+            // You might want to track updates:
+            // existingTask.UpdatedAt = DateTime.UtcNow;
+
+            // === SAVE ===
+            var updated = await _supabaseClient.From<Task>().Update(existingTask);
+
+            return updated.Models.Any();
+        }
+
     }
 }
