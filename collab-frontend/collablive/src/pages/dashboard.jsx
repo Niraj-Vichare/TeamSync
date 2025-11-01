@@ -27,16 +27,23 @@ import {
   Gauge,
   TrendingDown,
   AlertCircle,
-  PlayCircle
+  PlayCircle,
+  LogIn,
+  LogOut
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar, Pie, LabelList } from 'recharts';
 import { useEffect, useState } from "react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { toast } from "sonner";
+import dashboardService from "@/services/dashboard";
+import taskService from "@/services/task";
+import ticketService from "@/services/ticket";
+import { useAuth } from "@/context/AuthContext";
 
 // Mock Data
-//const userRole = "employee"; // or "admin"
-const userRole = "admin"; // or "admin"
+const userRole = "employee"; // or "admin"
+//const userRole = "admin"; // or "admin"
 
 const tasks = [
   { 
@@ -277,6 +284,107 @@ function Dashboard() {
     }
   };
 
+   const [dashboardCards, setDashboardCards] = useState(null);
+  const [weeklyLogging, setWeeklyLogging] = useState(null);
+  const [clockInTime, setClockInTime] = useState(null);
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const WORK_DAY_SECONDS = 8 * 3600; // 8 hours
+  const { getCurrentWorkspaceId } = useAuth();
+  const workspaceGuid = getCurrentWorkspaceId();
+
+  // Timer interval
+  useEffect(() => {
+    let interval;
+    if (isClockedIn && clockInTime) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now - new Date(clockInTime)) / 1000);
+        setElapsed(diff);
+      }, 1000);
+    } else {
+      setElapsed(0);
+    }
+
+    return () => clearInterval(interval);
+  }, [isClockedIn, clockInTime]);
+
+  // Format seconds to hh:mm:ss
+  const formatTime = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, "0")}:${m
+      .toString()
+      .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const fetchDashboardCards = async () => {
+    try {
+      const result = await dashboardService.getDashboardCard(workspaceGuid);
+      setDashboardCards(result);
+    } catch (error) {
+      console.error("Failed to fetch dashboard cards:", error);
+    }
+  };
+
+  const fetchWeeklyLogging = async () => {
+    try {
+      const result = await dashboardService.getWeeklyLogging(workspaceGuid);
+      setWeeklyLogging(result);
+    } catch (error) {
+      console.error("Failed to fetch weekly logging:", error);
+    }
+  };
+
+  const checkClockInStatus = async () => {
+    try {
+      const result = await dashboardService.isUserClockIn(workspaceGuid);
+      if (result?.IsRunning) {
+        setClockInTime(new Date(result.ClockInTime));
+        setIsClockedIn(true);
+      } else {
+        setClockInTime(null);
+        setIsClockedIn(false);
+      }
+    } catch (error) {
+      console.error("Failed to check clock-in status:", error);
+    }
+  };
+
+  const handleClockIn = async () => {
+    try {
+      const data = await dashboardService.clockIn(workspaceGuid);
+      setClockInTime(new Date(data.ClockInTime));
+      setIsClockedIn(true);
+    } catch (error) {
+      console.error("Failed to clock in:", error);
+    }
+  };
+
+  const handleClockOut = async () => {
+    try {
+      await dashboardService.clockOut(workspaceGuid);
+      setIsClockedIn(false);
+      setElapsed(0);
+      setClockInTime(null);
+      checkClockInStatus();
+    } catch (error) {
+      console.error("Failed to clock out:", error);
+    }
+  };
+
+  // Fetch initial data on load
+  useEffect(() => {
+    fetchDashboardCards();
+    fetchWeeklyLogging();
+    checkClockInStatus();
+  }, []);
+
+  // Progress value (capped at 100%)
+  const progressValue = Math.min((elapsed / WORK_DAY_SECONDS) * 100, 100);
+  const overtime = elapsed > WORK_DAY_SECONDS ? elapsed - WORK_DAY_SECONDS : 0;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-8">
@@ -410,48 +518,48 @@ function Dashboard() {
               <Card className="relative overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    My Tasks
+                    My Points
                   </CardTitle>
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">8</div>
-                  <div className="flex items-center text-xs text-muted-foreground">
+                  {/* <div className="flex items-center text-xs text-muted-foreground">
                     <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
                     3 completed today
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
 
               <Card className="relative overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Hours Today
+                    Total Hours
                   </CardTitle>
                   <Timer className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">6.5h</div>
-                  <div className="flex items-center text-xs text-muted-foreground">
+                  {/* <div className="flex items-center text-xs text-muted-foreground">
                     <Clock className="w-3 h-3 mr-1 text-blue-500" />
                     1.5h remaining
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
 
               <Card className="relative overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    This Week
+                    Task Completed
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">24</div>
-                  <div className="flex items-center text-xs text-muted-foreground">
+                  {/* <div className="flex items-center text-xs text-muted-foreground">
                     <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
                     Tasks completed
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
 
@@ -459,15 +567,15 @@ function Dashboard() {
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Efficiency
-                  </CardTitle>
+                  </CardTitle>  
                   <Gauge className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-500">92%</div>
-                  <div className="flex items-center text-xs text-muted-foreground">
+                  {/* <div className="flex items-center text-xs text-muted-foreground">
                     <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
                     Above average
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
             </>
@@ -836,43 +944,63 @@ function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg flex items-center">
-                          <Timer className="w-5 h-5 mr-2" />
-                          Time Tracking
-                        </CardTitle>
-                        <Button size="sm" variant="outline">
-                          <PlayCircle className="w-4 h-4 mr-1" />
-                          Start
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="text-center">
-                          <p className="text-3xl font-bold">6h 32m</p>
-                          <p className="text-sm text-muted-foreground">Today</p>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Daily Goal Progress</span>
-                            <span>82%</span>
-                          </div>
-                          <Progress value={82} className="h-2" />
-                        </div>
+                  <Card className="w-full max-w-md mx-auto shadow-lg border">
+                    <CardHeader className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                        <Clock className="w-5 h-5 text-blue-500" />
+                        Work Timer
+                      </CardTitle>
 
-                        <div className="grid grid-cols-2 gap-4 text-center text-sm">
-                          <div>
-                            <p className="font-bold">32h</p>
-                            <p className="text-muted-foreground">This Week</p>
-                          </div>
-                          <div>
-                            <p className="font-bold">1.5h</p>
-                            <p className="text-muted-foreground">Remaining</p>
-                          </div>
+                      {isClockedIn ? (
+                        <Button variant="destructive" size="sm" onClick={handleClockOut}>
+                          <LogOut className="w-4 h-4 mr-1" /> Clock Out
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={handleClockIn}>
+                          <LogIn className="w-4 h-4 mr-1" /> Clock In
+                        </Button>
+                      )}
+                    </CardHeader>
+
+                    <CardContent className="text-center space-y-4">
+                      <div>
+                        <p className="text-4xl font-bold tracking-tight text-gray-800">
+                          {formatTime(elapsed)}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {isClockedIn ? "Currently Clocked In" : "Not Clocked In"}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm text-gray-500">
+                          <span>Daily Goal Progress</span>
+                          <span>
+                            {Math.min((elapsed / WORK_DAY_SECONDS) * 100, 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <Progress value={progressValue} className="h-2 bg-gray-200" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mt-4">
+                        <div>
+                          <p className="font-bold">{formatTime(elapsed)}</p>
+                          <p className="text-gray-500">Worked Today</p>
+                        </div>
+                        <div>
+                          {overtime > 0 ? (
+                            <>
+                              <p className="font-bold text-green-600">
+                                +{formatTime(overtime)}
+                              </p>
+                              <p className="text-gray-500">Overtime</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-bold">{formatTime(WORK_DAY_SECONDS - elapsed)}</p>
+                              <p className="text-gray-500">Remaining</p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>

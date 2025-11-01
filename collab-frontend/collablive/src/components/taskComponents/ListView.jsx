@@ -3,22 +3,20 @@ import {motion} from 'framer-motion'
 import ListRows from './ListRows';
 import TaskRow from './TaskRow';
 
-function ListView({taskData}) {
+function ListView({taskData,onTaskUpdate,onEditTask,onDeleteTask}) {
   const [tasks,setTasks] = useState(taskData);
   const [draggedTask, setDraggedTask] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
-    todo: true,
-    progress: true,
-    review: true,
-    completed: true
+    NoStarted: true,
+    InProgress: true,
+    Complete: true
   });
 
-  const sections = [
-    { title: 'To-do', status: 'todo' },
-    { title: 'On Progress', status: 'progress' },
-    { title: 'In Review', status: 'review' },
-    { title: 'Completed', status: 'completed' }
+  const sections = [  
+    { title: 'To-do', status: "NoStarted" },
+    { title: 'On Progress', status: 'InProgress' },
+    { title: 'Completed', status: 'Complete' }
   ];
 
   const handleDragStart = (e, task) => {
@@ -46,26 +44,28 @@ function ListView({taskData}) {
 
   const handleDrop = (e, sectionStatus) => {
     e.preventDefault();
-    
-    if (draggedTask && draggedTask.status !== sectionStatus) {
+
+    if (draggedTask && draggedTask.statusInString !== sectionStatus) {
       const updatedTasks = tasks.map(task =>
         task.id === draggedTask.id
-          ? { ...task, status: sectionStatus }
+          ? { ...task, statusInString: sectionStatus }
           : task
       );
-      
+
       setTasks(updatedTasks);
-      
+
+      // ✅ Call parent handler
       if (onTaskUpdate) {
-        onTaskUpdate(draggedTask.id, { status: sectionStatus });
+        onTaskUpdate(draggedTask.id,sectionStatus);
       }
-      
-      console.log(`Task "${draggedTask.name}" moved to ${sectionStatus}`);
+
+      console.log(`Task "${draggedTask.title}" moved to ${sectionStatus}`);
     }
-    
+
     setDraggedTask(null);
     setDropTarget(null);
   };
+
 
   const toggleSection = (sectionStatus) => {
     setExpandedSections(prev => ({
@@ -73,14 +73,24 @@ function ListView({taskData}) {
       [sectionStatus]: !prev[sectionStatus]
     }));
   };
+  const handleEditTask=(task)=>{
+    console.log(task);
+    alert("Edit option should open");
+
+  }
+  const handleDeleteTask=(task)=>{
+    alert("Delete option should open");
+    
+
+  }
 
 
   return (
 
     <><div className="space-y-4">
       {sections.map((section) => {
-        const sectionTasks = tasks.filter(task => task.status === section.status);
-
+        const sectionTasks = tasks.filter(task => task.statusInString === section.status);
+        
         return (
           <ListRows
             key={section.status}
@@ -96,6 +106,8 @@ function ListView({taskData}) {
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, section.status)}
             onDragStart={handleDragStart}
+            onDelete={(task)=>onDeleteTask(task)}
+            onEdit={(task)=>onEditTask(task)}
             onDragEnd={handleDragEnd} />
         );
       })}
@@ -106,7 +118,7 @@ function ListView({taskData}) {
             animate={{ opacity: 1, y: 0 }}
             className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-primary px-4 py-2 rounded-lg shadow-lg z-50"
           >
-            Dragging: {draggedTask.name}
+            Dragging: {draggedTask.title}
           </motion.div>
         )}
 

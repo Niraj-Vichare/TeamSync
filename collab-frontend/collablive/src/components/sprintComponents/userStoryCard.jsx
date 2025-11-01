@@ -26,13 +26,12 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
 
   return (
     <Card className="w-full max-w-md hover:shadow-lg transition-shadow duration-200 border-l-4">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h3 className="font-semibold text-lg">{story.title}</h3>
             <p className="text-sm text-gray-500 line-clamp-2 break-words">{story.description}</p>
           </div>
-          
         </div>
       </CardHeader>
 
@@ -40,11 +39,11 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
         {/* Project & Sprint */}
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="text-xs">
-            {story.project}
+            {story.projectName}
           </Badge>
-          {story.sprint ? (
+          {story.sprintName ? (
             <Badge className="bg-blue-600 text-white text-xs">
-              Sprint {story.sprint}
+              Sprint {story.sprintName}
             </Badge>
           ) : (
             <Badge variant="outline" className="text-xs border-orange-200 text-orange-700 bg-orange-50">
@@ -55,12 +54,12 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
 
         {/* Status & Priority Row */}
         <div className="flex items-center justify-between">
-          <Badge className={`text-xs ${getStatusColor(story.status)}`}>
-            {story.status}
+          <Badge className={`text-xs ${getStatusColor(story.statusInString)}`}>
+            {story.statusInString}
           </Badge>
-          <Badge className={`text-xs ${getPriorityColor(story.priority)}`}>
+          <Badge className={`text-xs ${getPriorityColor(story.priorityInString)}`}>
             <Flag className="w-3 h-3 mr-1" />
-            {story.priority}
+            {story.priorityInString}
           </Badge>
         </div>
 
@@ -68,12 +67,12 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
         <div className="flex items-center justify-between text-sm text-gray-600">
           <div className="flex items-center">
             <User className="w-4 h-4 mr-1" />
-            <span>{story.assignedTo || 'Unassigned'}</span>
+            <span>{story.assignedToName || 'Unassigned'}</span>
           </div>
-          {story.storyPoints && (
+          {story.points && (
             <div className="flex items-center">
               <Target className="w-4 h-4 mr-1" />
-              <span>{story.storyPoints} pts</span>
+              <span>{story.points} pts</span>
             </div>
           )}
         </div>
@@ -81,7 +80,7 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
         {/* Tags */}
         {story.tags && story.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {story.tags.map((tag, index) => (
+            {story.tags.split(",").map((tag, index) => (
               <Badge key={index} variant="outline" className="text-xs">
                 <Tag className="w-3 h-3 mr-1" />
                 {tag}
@@ -101,9 +100,10 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
             View Details
           </Button>
           {!story.sprint && (
+            console.log("Include in Sprint Button Rendered",story.ticketGuid),
             <Button 
               className="flex-1 text-white"
-              onClick={() => onIncludeInSprint(story)}
+              onClick={() => onIncludeInSprint(story.ticketGuid)}
             >
               <Calendar className="w-4 h-4 mr-1" />
               Include in Sprint

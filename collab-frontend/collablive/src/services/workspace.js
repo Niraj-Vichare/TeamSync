@@ -32,7 +32,7 @@ class WorkspaceService {
     async getWorkspace(workspaceId) {
         try {
             // Fixed: Added missing 'await'
-            const response = await axiosInstance.get(`/workspaces/${workspaceId}`);
+            const response = await axiosInstance.get(`/workspace/${workspaceId}`);
             return response.data; // Return data, not full response
         } catch (error) {
             console.error('Error while loading the workspace:', error);
@@ -54,7 +54,7 @@ class WorkspaceService {
     // Switch to a different workspace
     async switchWorkspace(workspaceId) {
         try {
-            const response = await axiosInstance.post(`/workspaces/${workspaceId}/switch`);
+            const response = await axiosInstance.post(`/workspace/${workspaceId}/switch`);
             
             if (response.data.success) {
                 localStorage.setItem('currentWorkspaceId', JSON.stringify(response.data.data));
@@ -71,7 +71,7 @@ class WorkspaceService {
     // Update workspace
     async updateWorkspace(workspaceId, updates) {
         try {
-            const response = await axiosInstance.put(`/workspaces/${workspaceId}`, updates);
+            const response = await axiosInstance.put(`/workspace/${workspaceId}`, updates);
             
             // Update stored workspace if it's the current one
             if (this.activeWorkspace?.id === workspaceId) {
@@ -90,7 +90,7 @@ class WorkspaceService {
     // Delete workspace
     async deleteWorkspace(workspaceId) {
         try {
-            const response = await axiosInstance.delete(`/workspaces/${workspaceId}`);
+            const response = await axiosInstance.delete(`/workspace/${workspaceId}`);
             
             // Clear stored workspace if it's the deleted one
             if (this.activeWorkspace?.id === workspaceId) {
@@ -102,6 +102,16 @@ class WorkspaceService {
         } catch (error) {
             console.error('Error while deleting workspace:', error);
             throw handleWorkspaceError(error);
+        }
+    }
+
+    // Get Workspace 
+    async getWorkspaceProfiles(workspaceGuid){
+        try{
+            const response = await axiosInstance.get(`/workspace/dropdown?workspaceGuid=${workspaceGuid}`);
+            return response.data;
+        }catch(error){
+            throw error;
         }
     }
 
@@ -126,6 +136,8 @@ class WorkspaceService {
         localStorage.removeItem('currentWorkspaceId');
         this.activeWorkspace = null;
     }
+
+
 }
 
 const workspaceService = new WorkspaceService();

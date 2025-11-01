@@ -19,6 +19,7 @@ import Sprints from './pages/sprints';
 import "./App.css";
 import { LoginForm } from './pages/login-form';
 import Sprint from './pages/sprint';
+import Leaderboard from './pages/leaderboard';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -64,6 +65,7 @@ function InnerApp({ isAuthenticated }) {
         <Route path='/projects/:projectId' element={<Project/>}/>
         <Route path='/team' element={<Team/>}/>
         <Route path='/analytics' element={<Analytics/>}/>
+        <Route path='/leaderboard' element={<Leaderboard/>}/>
         <Route path='/sprints/:sprintId' element={<Sprint/>}/>
         {/* <Route path='/report' element={<Report/>}/> */}
         <Route path='/settings' element={<Settings/>}/>

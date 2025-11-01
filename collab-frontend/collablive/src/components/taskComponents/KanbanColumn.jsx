@@ -21,9 +21,8 @@ function KanbanColumn({ status, title, count, children, onDrop, isDropTarget, on
       <Card className="flex items-center justify-between sticky top-0 p-3 rounded-lg shadow-sm mb-4">
         <h3 className="font-semibold flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full ${
-            status === 'todo' ? 'bg-gray-400' :
-            status === 'progress' ? 'bg-blue-500' :
-            status === 'review' ? 'bg-yellow-500' :
+            status === 'NotStarted' ? 'bg-gray-400' :
+            status === 'InProgress' ? 'bg-blue-500' :
             'bg-green-500'
           }`}></div>
           {title}

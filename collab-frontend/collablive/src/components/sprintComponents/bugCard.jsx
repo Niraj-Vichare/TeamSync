@@ -6,12 +6,12 @@ import { Button } from "../ui/button";
 
 const BugCard = ({
   bug,
-  onViewClick,
+  onStepViewClick,
   onEditClick,
   onIncludeInSprint
 }) => {
   const getStatusBadge = () => {
-    switch (bug.status.toLowerCase()) {
+    switch (bug.statusInString.toLowerCase()) {
       case "open": return "bg-red-600 text-white";
       case "progress": return "bg-orange-500 text-white";
       case "closed": return "bg-purple-800 text-white";
@@ -20,13 +20,14 @@ const BugCard = ({
   };
 
   const getPriorityBadge = () => {
-    switch (bug.priority.toLowerCase()) {
+    switch (bug.priorityInString.toLowerCase()) {
       case "high": return "bg-red-500 text-white";
       case "medium": return "bg-yellow-500 text-white";
       case "low": return "bg-green-500 text-white";
       default: return "bg-gray-400 text-white";
     }
   };
+  console.log("BugCard", bug);
 
   return (
     <Card className="w-full shadow-md border rounded-xl hover:shadow-xl transition-all">
@@ -36,26 +37,26 @@ const BugCard = ({
           <CardTitle className="text-lg font-semibold">{bug.title}</CardTitle>
           <Badge className={`mb-2 flex items-center gap-1 ${getStatusBadge()}`}>
             <CircleDot className="w-4 h-4" />
-            {bug.status.charAt(0).toUpperCase() + bug.status.slice(1)}
+            {bug.statusInString.charAt(0).toUpperCase() + bug.statusInString.slice(1)}
           </Badge>
         </div>
         <div className="flex flex-wrap gap-2 mt-1">
           <Badge variant="default">UI Bugs</Badge>
           {bug.sprintId ? (
-            <Badge variant="outline">{bug.sprintId}</Badge>
+            <Badge variant="outline">{bug.sprintName}</Badge>
           ) : (
             <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
               Backlog
             </Badge>
           )}
-          <Badge className={`${getPriorityBadge()}`}>{bug.priority}</Badge>
+          <Badge className={`${getPriorityBadge()}`}>{bug.priorityInString}</Badge>
         </div>
       </CardHeader>
 
       {/* Content */}
       <CardContent>
         <p className="leading-relaxed mt-2 line-clamp-3">{bug.description}</p>
-        <p className="mt-2 text-xs text-gray-400">Reported By: {bug.reportedBy}</p>
+        <p className="mt-2 text-xs text-gray-400">Reported By: {bug.assignedToName || "Unassigned"}</p>
       </CardContent>
 
       {/* Footer */}
@@ -72,7 +73,7 @@ const BugCard = ({
         {!bug.sprintId && (
           <Button
             variant="outline"
-            onClick={() => onIncludeInSprint(bug)}
+            onClick={() => onIncludeInSprint(bug.ticketGuid)}
             className="flex items-center gap-1"
           >
             <CalendarPlus className="w-4 h-4" />
@@ -83,7 +84,7 @@ const BugCard = ({
         <Button
           variant="default"
           className="text-white"
-          onClick={() => onViewClick(bug)}
+          onClick={() => onStepViewClick(bug)}
         >
           View / Generate Steps
         </Button>

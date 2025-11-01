@@ -19,7 +19,7 @@ import {
   SidebarMenu,
 } from "@/components/ui/sidebar"
 import { WorkspaceSwitcher } from "./workspace-switcher"
-import { AudioWaveform, Command, Frame, GalleryVerticalEnd, Map, PieChart } from "lucide-react"
+import { AudioWaveform, Command, Frame, GalleryVerticalEnd, Map, MedalIcon, PieChart } from "lucide-react"
 import { NavProjects } from "./nav-projects"
 import { useAuth } from "@/context/AuthContext"
 import { Skeleton } from "@/components/ui/skeleton" // ✅ ShadCN Skeleton
@@ -46,10 +46,15 @@ const staticData = {
       url: "/tasks",
       icon: IconNotebook,
     },
+    // {
+    //   title: "Report & Analytics",
+    //   url: "/analytics",
+    //   icon: IconChartBar,
+    // },
     {
-      title: "Report & Analytics",
-      url: "/analytics",
-      icon: IconChartBar,
+      "title":"Leaderboard",
+      url:"/leaderboard",
+      icon: MedalIcon
     },
     {
       title: "Team",

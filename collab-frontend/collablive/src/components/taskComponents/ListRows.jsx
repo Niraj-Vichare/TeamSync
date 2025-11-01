@@ -20,13 +20,14 @@ function ListRows({
   onDrop,
   onDragStart,
   onDragEnd,
+  onEdit,
+  onDelete,
   status
 }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'todo': return 'bg-muted';
       case 'progress': return 'bg-blue-500';
-      case 'review': return 'bg-yellow-500';
       case 'completed': return 'bg-green-500';
       default: return 'bg-muted';
     }
@@ -82,6 +83,8 @@ function ListRows({
                           isDragging={draggedTask?.id === task.id}
                           onDragStart={onDragStart}
                           onDragEnd={onDragEnd}
+                          onEdit={(task)=>onEdit(task)}
+                          onDelete={(task)=>onDelete(task)}
                         />
                       ))}
                     </AnimatePresence>

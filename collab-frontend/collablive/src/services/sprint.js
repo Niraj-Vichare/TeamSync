@@ -38,6 +38,39 @@ class SprintService {
         }
     }
 
+    async AddTicketToSprint(workspaceGuid,sprintId,ticketGuid){
+        try {
+            console.log("AddTicketToSprint",workspaceGuid,sprintId,ticketGuid);
+            const response = await axiosInstance.post(`/sprints/${sprintId}/tickets/${ticketGuid}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error adding ticket to sprint:", error);
+            throw error;
+        }
+    }
+
+    async getSprintByProject(workspaceGuid,projectId){
+        try {
+            const response = await axiosInstance.get(`/sprints/project/${projectId}`,{
+                params:{workspaceGuid}
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching sprints by project:", error);
+            throw error;
+        }   
+    }
+
+    async getSprintsByProject(projectId){
+        try {
+            const response = await axiosInstance.get(`/projects/${projectId}/sprints`);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching sprints by project:", error);
+            throw error;
+        }
+    }
+
 
 }
 

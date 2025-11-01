@@ -1,23 +1,24 @@
-import axiosInstance from "./axiosInstance";
+import { default as axiosInstance } from "./axiosInstance";
 
 class TaskService {
-  constructor(apiClient) {
-    this.apiClient = apiClient;
-  }
-
-  async getTasks() {
+ 
+  async getTasksAssignedToUser(workspaceGuid, projectId, sprintId, ticketId, status, priority) {
     try {
-      const response = await this.apiClient.get("/tasks");
+      const response = await axiosInstance.get(`/tasks/assigned?workspaceGuid=${workspaceGuid}`, {
+        params: { workspaceGuid, projectId, sprintId, ticketId,priority,status }
+      });
       return response.data;
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console.error("Error while getting tasks assigned to user", error);
       throw error;
     }
   }
 
-  async createTask(taskData) {
+
+  async createTask(workspaceGuid,taskDto) {
     try {
-      const response = await this.apiClient.post("/tasks", taskData);
+      const response = await axiosInstance.post(`/tasks?workspaceGuid=${workspaceGuid}`, taskDto);
+      console.log(response);  
       return response.data;
     } catch (error) {
       console.error("Error creating task:", error);
@@ -25,9 +26,9 @@ class TaskService {
     }
   }
 
-  async updateTask(taskId, taskData) {
+  async updateTask(workspaceGuid,taskGuid, taskModel) {
     try {
-      const response = await this.apiClient.put(`/tasks/${taskId}`, taskData);
+      const response = await axiosInstance.patch(`/tasks/${taskGuid}`, taskModel);
       return response.data;
     } catch (error) {
       console.error("Error updating task:", error);
@@ -37,13 +38,25 @@ class TaskService {
 
   async deleteTask(taskId) {
     try {
-      const response = await this.apiClient.delete(`/tasks/${taskId}`);
+      const response = await axiosInstance.delete(`/tasks/${taskId}`);
       return response.data;
     } catch (error) {
       console.error("Error deleting task:", error);
       throw error;
     }
   }
+
+  async updateTaskStatus(workspaceGuid,taskId, status) {
+    try {
+      const response = await axiosInstance.patch(`/tasks/${taskId}/status?status=${status}`,{});
+      return response.data;
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      throw error;
+    
+    }
+  }
 }
 
-export default new TaskService(axiosInstance);
+const taskService = new TaskService();
+export default taskService;

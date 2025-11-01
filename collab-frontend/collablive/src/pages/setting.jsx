@@ -4,13 +4,17 @@ import BillingTab from '@/components/settingComponents/BillingTab';
 import NotificationsTab from '@/components/settingComponents/NotificationsTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator'
+import profileService from '@/services/profile';
 import { AnimatePresence,motion } from 'framer-motion';
 import { Bell, CreditCard, Palette, Shield, User } from 'lucide-react';
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 function Settings() {
   const [activeTab, setActiveTab] = useState('account');
   const [showPlans, setShowPlans] = useState(false);
+
+  const [profileData,setProfileData] = useState(null);
+  
   const [notifications, setNotifications] = useState({
     emailAssignments: true,
     emailMentions: true,
@@ -31,6 +35,19 @@ function Settings() {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const getProfile=async()=>{
+    const response = await profileService.getUserProfile();
+    if(response.data){
+      const {data,message,statusCode,success} = response.data;
+      console.log(response.data)
+      setProfileData(data);
+    }
+  }
+
+  useEffect(()=>{
+    getProfile();
+  },[])
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
@@ -46,6 +63,7 @@ function Settings() {
             <div className="border border-border rounded-lg bg-card p-1">
               <nav className="space-y-1">
                 {tabs.map((tab) => {
+                  if (!false && ['billing', 'notifications'].includes(tab.id)) return null;
                   const Icon = tab.icon;
                   return (
                     <button
@@ -75,7 +93,7 @@ function Settings() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                {activeTab === 'account' && <AccountTab />}
+                {activeTab === 'account' && <AccountTab profile={profileData}/>}
                 {activeTab === 'billing' && <BillingTab showPlans={showPlans} setShowPlans={setShowPlans} />}
                 {activeTab === 'appearance' && <AppearanceTab />}
                 {activeTab === 'notifications' && (

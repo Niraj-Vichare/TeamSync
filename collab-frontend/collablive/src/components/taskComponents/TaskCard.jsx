@@ -1,7 +1,7 @@
 import React from 'react'
 import {motion} from 'framer-motion'
 import { Badge } from '../ui/badge'
-import { MessageCircleIcon, MoreHorizontal, Paperclip } from 'lucide-react'
+import { Edit2Icon, MessageCircleIcon, MoreHorizontal, Paperclip, Trash2Icon } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
@@ -32,13 +32,12 @@ function TaskCard({ task, onCardClick, onEdit, onDelete, isDragging, onDragStart
         cursor: isDragging ? 'grabbing' : 'grab'
       }}
     >
-        <div className='flex justify-between mb-2 gap-2'>
+        <div className='flex justify-between mb-2 gap-1'>
           <div>
-            {task.tags && task.tags.map((tag, index) => (
-              <Badge key={index} className="text-xs mr-1" variant="outline">{tag}</Badge>
-            ))}
+            <Badge className="text-xs mr-1" variant="outline">{task.project.projectTitle}</Badge>
+            <Badge className="text-xs mr-1" variant="outline">{task.sprint.title}</Badge>
           </div>
-        <DropdownMenu>
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -57,11 +56,30 @@ function TaskCard({ task, onCardClick, onEdit, onDelete, isDragging, onDragStart
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+            onClick={() => onEdit(task)}
+          >
+            <Edit2Icon className="w-4 h-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+            onClick={() => onDelete(task)}
+          >
+            <Trash2Icon className="w-4 h-4" />
+          </Button>
+        </div>
 
         </div>
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-medium text-sm line-clamp-2">{task.name}</h3>
+          <h3 className="font-medium text-sm line-clamp-2">{task.title}</h3>
         </div>
         <div className='min-h-min[40px] mb-4'>
           {task.description && task.description !== '-' && (
@@ -70,19 +88,22 @@ function TaskCard({ task, onCardClick, onEdit, onDelete, isDragging, onDragStart
         </div>
         <div className='flex items-center justify-between'>
           <div>
-            {task.priority === 'High' && <Badge variant="destructive" className="text-xs">High</Badge>}
-            {task.priority === 'Medium' && <Badge className="text-xs bg-yellow-400 text-white">Medium</Badge>}
-            {task.priority === 'Low' && <Badge className="text-xs text-white">Low</Badge>}
+            {task.priorityInString === 'High' && <Badge variant="destructive" className="text-xs">High</Badge>}
+            {task.priorityInString === 'Medium' && <Badge className="text-xs bg-yellow-400 text-white">Medium</Badge>}
+            {task.priorityInString === 'Low' && <Badge className="text-xs text-white">Low</Badge>}
           </div>
           <div className='flex items-center gap-4'>
-            <div className=''>
+            <div className='text-gray-600 text-xs'>
+              {task.startDateInString} {task.endDateInString}
+            </div>
+            {/* <div className=''>
               <Paperclip className='inline-block mr-1' size={14} />
               <span className='text-xs text-gray-500'>{task.attachments}</span>
             </div>
             <div>
               <MessageCircleIcon className='inline-block mr-1' size={14}/>
               <span className='text-xs text-gray-500'>{task.comments}</span>
-            </div>
+            </div> */}
           </div>
 
 

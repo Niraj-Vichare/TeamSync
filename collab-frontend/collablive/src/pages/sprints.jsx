@@ -1,8 +1,8 @@
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { BugIcon, CalendarIcon, CheckCircle, CircuitBoardIcon, Clock, Clock3, Clock3Icon, DatabaseIcon, FileText, GiftIcon, ListIcon, Pause, PauseIcon, Pencil, PencilIcon, PenIcon, Plus, PlusIcon, Search, SquareKanbanIcon, Tag, Target, Trash, Trash2Icon } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import { BugIcon, CalendarIcon, CheckCircle, CircuitBoardIcon, Clock, Clock3, Clock3Icon, DatabaseIcon, File, FileText, GiftIcon, ListIcon, Pause, PauseIcon, Pencil, PencilIcon, PenIcon, Plus, PlusIcon, Search, SquareKanbanIcon, Tag, Target, Trash, Trash2Icon } from 'lucide-react'
+import React, { act, useEffect, useState } from 'react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, set } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -26,6 +26,9 @@ import { toast } from 'sonner';
 import TicketDialog from '@/components/sprintComponents/TicketDialog';
 import { useAuth } from '@/context/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import ticketService from '@/services/ticket';
+import { AnimatePresence,motion } from 'framer-motion';
+import workspaceService from '@/services/workspace';
 
 
 
@@ -34,215 +37,63 @@ function Sprints() {
 
   const [loading,setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [teams, setTeams] = useState([]);
+  const [project,setProjects] = useState([]);
+  const [users,setUsers] = useState([]);
     
   // Get today's date for date inputs
   const today = new Date().toISOString().split('T')[0];
 
-
-  const [bugs, setBugs] = useState(
-    [
-      {
-        sprintId: null,
-        title: "Login page crashes on special characters",
-        description: "The login page crashes when a user enters special characters in the username field. No error message is displayed.",
-        reportedBy: "Alice Johnson",
-        assignedTo: "Bob Smith",
-        status: "open",
-        priority: "High",
-        reportedOn: "2025-09-18",
-        steps: [
-          "Go to the login page",
-          "Enter special characters in the username field",
-          "Click the login button",
-          "Observe the page crash"
-        ],
-        images: [
-          "https://via.placeholder.com/150",
-          "https://via.placeholder.com/150/ff0000"
-        ]
-      },
-      {
-        sprintId: "SPR-102",
-        title: "Dashboard metrics not updating",
-        description: "After syncing data, some metrics on the dashboard do not update, causing inconsistency in the displayed values.",
-        reportedBy: "Clara Lee",
-        assignedTo: "David Kim",
-        status: "progress",
-        priority: "Medium",
-        reportedOn: "2025-09-19",
-        steps: [
-          "Open the dashboard",
-          "Perform a data sync",
-          "Check metrics values",
-          "Observe which metrics do not update"
-        ],
-        images: [
-          "https://via.placeholder.com/150/00ff00",
-          "https://via.placeholder.com/150/0000ff"
-        ]
-      },
-      {
-        sprintId: "SPR-103",
-        title: "Report generation throws error 500",
-        description: "Generating reports sometimes results in a server error (500) due to timeout issues with large datasets.",
-        reportedBy: "Bob Smith",
-        assignedTo: "Alice Johnson",
-        status: "closed",
-        priority: "High",
-        reportedOn: "2025-09-20",
-        steps: [
-          "Go to the reports section",
-          "Select a large date range",
-          "Click generate report",
-          "Observe server error 500"
-        ],
-        images: [
-          "https://via.placeholder.com/150/ff00ff"
-        ]
-      },
-      {
-        sprintId: "SPR-104",
-        title: "Profile picture upload fails for large files",
-        description: "Users cannot upload profile pictures larger than 2MB. No error message is shown; the image simply doesn't upload.",
-        reportedBy: "David Kim",
-        assignedTo: "Clara Lee",
-        status: "open",
-        priority: "Low",
-        reportedOn: "2025-09-21",
-        steps: [
-          "Go to user profile page",
-          "Attempt to upload a picture larger than 2MB",
-          "Click save",
-          "Observe the upload fails silently"
-        ],
-        images: [
-          "https://via.placeholder.com/150/ffff00"
-        ]
-      }]);
-
-  const [userStories, setUserStories] = useState([
-    {
-      storyId: "US-101",
-      title: "User can reset password",
-      description: "As a user, I want to reset my password so that I can regain access if I forget it.Hellow heiwevhkwevgwwuevgnwo wvwvogwivyowvv wgiwgvwwe",
-      project: "Authentication Module",
-      sprint: "5",
-      status: "In Progress",
-      priority: "High",
-      storyPoints: 5,
-      tags: ["Frontend", "Security"]
-    },
-    {
-      storyId: "US-102",
-      title: "Dashboard shows user activity",
-      description: "Display a summary of the user’s activities including logins, purchases, and messages.",
-      project: "Dashboard Module",
-      sprint: "5",
-      status: "Open",
-      priority: "Medium",
-      storyPoints: 3,
-      tags: ["Frontend", "Backend", "API"]
-    },
-    {
-      storyId: "US-103",
-      title: "Profile picture upload",
-      description: "Allow users to upload a profile picture and crop it to a square format.",
-      project: "User Profile",
-      sprint: null, // Backlog story
-      status: "Open",
-      priority: "Low",
-      storyPoints: 2,
-      tags: ["Frontend", "UI/UX"]
-    },
-    {
-      storyId: "US-104",
-      title: "Email notifications for comments",
-      description: "Send email notifications to users when someone comments on their post.",
-      project: "Notification System",
-      sprint: null, // Backlog story
-      status: "Open",
-      priority: "Medium",
-      storyPoints: 3,
-      tags: ["Backend", "API"]
-    },
-    {
-      storyId: "US-105",
-      title: "Search functionality",
-      description: "Implement search to allow users to search posts by keywords and hashtags.",
-      project: "Search Module",
-      sprint: "6",
-      status: "In Progress",
-      priority: "High",
-      storyPoints: 8,
-      tags: ["Backend", "Frontend", "Performance"]
-    },
-    {
-      storyId: "US-106",
-      title: "Dark mode toggle",
-      description: "Allow users to toggle between light and dark mode in the settings.",
-      project: "UI Enhancements",
-      sprint: null, // Wishlist story
-      status: "Open",
-      priority: "Low",
-      storyPoints: 1,
-      tags: ["Frontend", "UI/UX"]
-    },
-    {
-      storyId: "US-107",
-      title: "Export data as CSV",
-      description: "Users should be able to export their account data in CSV format for offline analysis.",
-      project: "Reporting Module",
-      sprint: "6",
-      status: "Completed",
-      priority: "High",
-      storyPoints: 5,
-      tags: ["Backend", "API"]
-    }
-  ]);
-
-
   const [tabs, setTabs] = useState("sprints");
   const { getCurrentWorkspaceId } = useAuth();
 
-  
-  // User Story's States
-  const [storyOpen,setStoriesOpen] = useState(false);
-  const [storyLoading,setStoryLoading] = useState(false);
-  const [story,setStory] = useState({
+  // Generic States
+  const [tickets,setTickets]  = useState([]);
+  const [ticketOpen,setTicketOpen] = useState(false);
+  const [ticketLoading,setTicketLoading] = useState(false);
+  const [ticketPage,setTicketPage] = useState(1);
+  const [ticketPageSize,setTicketPageSize] = useState(9);
+  const [ticketTotalCount,setTicketTotalCount] = useState(0);
+  const [ticketTotalPages,setTicketTotalPages]= useState(0);
+  const [ticketSearchTerm,setTicketSearchTerm] = useState('');
+  const [ticketStatusFilter,setTicketStatusFilter] = useState('');
+  const [ticketPriority,setTicketPriority] = useState('');
+  const [ticketsFormData,setTicketsFormData] = useState({
     "title":'',
     "description":'',
+    "tags":'',
     "priority":'',
     "status":'',
-    "tags":'',
     "projectId":'',
-    "reportBy":"",
-    "points":"",
-    "ticketType":""
-
+    "sprintId":'',
+    "reportedBy":'',
+    "steps":''.split(","),
+    "points":'',
+    "ticketType":'',
+    "startDate":'',
+    "endDate":'',
+    "assignedTo":'',
   });
+  const [updateTicketGuid,setSelectedTicketGuid] = useState(null);
 
+  // User Story & Bug States
+  const [displaySteps,setDisplaySteps] = useState(false);
+  const [stepLoading,setStepLoading] = useState(false);
+  const [ticketStepId,setTicketStepId] = useState(null);
+  const [stepSaving,setStepSaving] = useState(false);
+  const [stepData,setStepData] = useState([]);
+  const [actionType,setActionType] = useState("create"); // create or update
 
-  // Bug's States
-  const [bugOpen,setBugOpen] = useState(false);
-  const [bugLoading,setBugLoading] = useState(false);
-  const [bugFormData,setBugFormData] = useState({
-    "title":'',
-    "description":'',
-    "priority":'',
-    "status":'',
-    "tags":'',
-    "projectId":'',
-    "reportBy":"",
-    "points":"",
-    "ticketType":""
-  });
+  const [sprintDialogOpen,setSprintDialogOpen] = useState(false); 
+  const [sprintDialogLoading,setSprintDialogLoading] = useState(false);
+  const [selectedSprintId,setSelectedSprintId] = useState(null);
+  const [includeTicketGuid,setIncludeTicketGuid] = useState(null);
 
 
   // Sprint's States
   const [sprints, setSprints] = useState([]);
   const [sprintOpen, setSprintOpen] = useState(false);
   const [sprintLoading, setSprintLoading] = useState(false);
-  const [teams, setTeams] = useState([]);
   const [sprintPage,setPage] = useState(1);
   const [sprintPageSize,setSprintPageSize] = useState(9);
   const [sprintTotalCount, setSprintTotalCount] = useState(0);
@@ -250,7 +101,6 @@ function Sprints() {
   const [sprintSearchTerm, setSprintSearchTerm] = useState('');
   const [sprintStatusFilter, setSprintStatusFilter] = useState('');
   const [sprintProjectFilter, setProjectStatusFilter] = useState('');
-
 
   const [sprintFormData, setSprintFormData] = useState({
     title: "",
@@ -263,7 +113,6 @@ function Sprints() {
     tags: "",
     teamId: "",
   });
-  const [project,setProjects] = useState([]);
   const workspaceGuid = getCurrentWorkspaceId();
 
   const handleInputChange = (key, value) => {
@@ -273,7 +122,7 @@ function Sprints() {
 
   // 🔹 Validation
    // ✅ Client-side validation
-  const validateForm = () => {
+  const validateSprintForm = () => {
     let newErrors = {};
     if (!sprintFormData.title.trim())
       newErrors.title = "Sprint title is required";
@@ -297,6 +146,38 @@ function Sprints() {
       newErrors.endDate = "End date cannot be earlier than start date";
     }
 
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+
+  const validateTicketForm = () => {
+    let newErrors = {};
+    if (!ticketsFormData.title.trim())
+      newErrors.title = "Ticket title is required";
+    if(!ticketsFormData.description.trim()){
+      newErrors.description = "Description is required";
+    }
+    if(!ticketsFormData.projectId){
+      newErrors.projectId = "Project needed to be selected";
+    }
+    if(!ticketsFormData.priority){
+      newErrors.priority = "Priority is required";
+    }
+    if(!ticketsFormData.points){
+      newErrors.points = "Point is required";
+    }
+    if(!ticketsFormData.status){
+      newErrors.points = "Status is required";
+    }
+    if(!ticketsFormData.reportedBy){
+      newErrors.reportedBy = "Who reported is required";
+    }
+    if(ticketsFormData.endDate<ticketsFormData.startDate){
+      newErrors.endDate = "End date should be greater than start date";
+      newErrors.startDate = "End date should be greater than start date";
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -331,13 +212,11 @@ function Sprints() {
     }
   };
 
-  const createTicket=()=>{
 
-  }
   
   // ✅ Create Sprint
   const createSprint = async () => {
-    if (!validateForm()) return;
+    if (!validateSprintForm()) return;
     setSprintLoading(true);
 
     try {
@@ -358,7 +237,7 @@ function Sprints() {
         tags: sprintFormData.tags
       };
       const response = await sprintService.createSprint(workspaceGuid, sprintData);
-      resetForm();
+      resetSprintForm();
       
       toast("Sprint Created 🎉",{description: `${sprintFormData.title} has been added successfully.`});
 
@@ -398,23 +277,148 @@ function Sprints() {
     }
   };
 
+  const handleCreateUpdate = async (actionType, type) => {
+    console.log("Handle Create Update", actionType, type);
 
-  const fetchUserStories = async ()=>{
+    if (!validateTicketForm()) return;
+
+    if (actionType === "create") {
+      await createTicket(type);
+    } else {
+      await updateTicket(type);
+    }
+  };
+
+  const updateTicket = async (type) => {
+    setTicketLoading(true);
+    try {
+      const ticketData = {
+        title: ticketsFormData.title,
+        description: ticketsFormData.description,
+        tags: ticketsFormData.tags,
+        priority: parseInt(ticketsFormData.priority),
+        status: parseInt(ticketsFormData.status),
+        projectId: ticketsFormData.projectId,
+        reportedBy: parseInt(ticketsFormData.reportedBy),
+        steps: ticketsFormData.steps.join(","),
+        points: parseInt(ticketsFormData.points),
+        typeId: type === "bug" ? 1 : 2,
+        startDate:ticketsFormData.startDate,
+        endDate: ticketsFormData.endDate,
+        assignedTo:ticketsFormData.assignedTo
+      };
+
+      await ticketService.updateTicket(workspaceGuid, updateTicketGuid, ticketData);
+
+      toast("Ticket Updated ✅", {
+        description: `${ticketsFormData.title} has been updated successfully.`,
+      });
+      if(type === "bug")
+        fetchTickets("1")
+      else{
+        fetchTickets("2");
+      }
+      setTicketOpen(false);
+    } catch (error) {
+      console.error("Error updating ticket:", error);
+      toast.error("Something went wrong while updating the ticket.");
+    } finally {
+      setTicketLoading(false);
+    }
+  };
+
+
+ 
+  // Create Ticket
+  const createTicket = async(type)=>{
+    if(!validateTicketForm()) return;
+      setTicketLoading(true);
+      try{
+        const ticketData = {
+          "title": ticketsFormData.title,
+          "description": ticketsFormData.description,
+          "tags": ticketsFormData.tags,
+          "priority": parseInt(ticketsFormData.priority),
+          "status": parseInt(ticketsFormData.status),
+          "projectId": ticketsFormData.projectId,
+          "sprintId": null,
+          "reportedBy": parseInt(ticketsFormData.reportedBy),
+          "steps": ticketsFormData.steps,
+          "points": parseInt(ticketsFormData.points),
+          "typeId": type === "bug" ? 1 : 2, // small fix here
+        }
+
+        const response = await ticketService.createTickets(workspaceGuid,type,ticketData);
+        setTicketOpen(false);
+        resetTicketForm();
+        toast("Ticket Created 🎉",{description: `${ticketsFormData.title} has been added successfully.`});
+        if(type === "bug"){
+          fetchTickets("1");
+        }else{
+          fetchTickets("2");
+        }
+
+      }catch(error){
+        console.error("Something went wrong while creating the ticket",error);
+        setErrors({});
+        toast.error("Something went wrong while creating sprint.");
+      }finally{
+        setTicketLoading(false);
+      }
+  }
+
+  const fetchTickets = async (type)=>{
+    if (!workspaceGuid) return;
+
+    try {
+      setTicketLoading(true);
+      const response = await ticketService.getTickets(
+        workspaceGuid,
+        ticketSearchTerm,
+        type,
+        ticketStatusFilter,
+        ticketPriority,
+        ticketPage,
+        ticketPageSize
+      );
+
+      if (response.success && response.data) {
+        const { data, totalCount, pageSize } = response.data;
+        console.log(data);
+        setTickets(data);
+        setTicketTotalCount(totalCount);
+        setTicketTotalPages(Math.ceil(totalCount / pageSize));
+      } else {
+        console.warn("Failed to fetch ticket:", response.message);
+      }
+    } catch (error) {
+      console.error("Error fetching ticket:", error);
+    } finally {
+      setTicketLoading(false);
+    }
 
   }
 
-  const fetchTicket = async ()=>{
-
+  const handleDisplayDialogChange = (display) => {
+    setDisplaySteps(display);
   }
 
-  const handleDialogChange = (isOpen) => {
+  const handleTicketDialogChange = (action, type) => {
+    console.log(action, type);
+    setActionType(action); // "create" or "edit"
+    resetTicketForm();     // clear form when creating
+    setTicketOpen(true);
+  };
+
+
+  const handleSprintDialogChange = (isOpen) => {
     setSprintOpen(isOpen);
     if (!isOpen) {
-      resetForm();
+      resetSprintForm();
     }
   };
   // 🧠 Helper: Reset all form fields and errors
-  const resetForm = () => {
+  const resetSprintForm = () => {
     setSprintFormData({
       title: "",
       goal: "",
@@ -429,6 +433,24 @@ function Sprints() {
     setErrors({});
   };
 
+  const resetTicketForm=()=>{
+    setTicketsFormData({
+      "title": '',
+      "description": '',
+      "tags": '',
+      "priority": '',
+      "status": '',
+      "projectId": '',
+      "sprintId": '',
+      "reportedBy": '',
+      "steps": '',
+      "points": '',
+      "ticketType": ''
+    });
+    setErrors({});
+    setSelectedTicketGuid(null);
+  }
+
     
   useEffect(() => {
   const fetchData = async () => {
@@ -437,10 +459,8 @@ function Sprints() {
 
       if (tabs === "sprints") {
         await fetchSprints();
-      } else if (tabs === "bugs") {
-        await fetchTicket();
-      } else if (tabs === "user-story") {
-        await fetchUserStories();
+      } else if (tabs === "bugs" || tabs == "user-story") {
+        tabs == "bugs" ? await fetchTickets("1"): await fetchTickets("2");
       }
 
     } finally {
@@ -471,9 +491,109 @@ function Sprints() {
 
   }
 
+  const handleIncludeInSprint =async () => {
+    try{
+      setSprintDialogLoading(true);
+      console.log("Include in Sprint",includeTicketGuid,selectedSprintId);
+      var response = await sprintService.AddTicketToSprint(workspaceGuid,selectedSprintId,includeTicketGuid);
+      if(response.success){
+        toast.success("Ticket added to sprint successfully");
+        setSprintDialogOpen(false);
+      }
+    }catch(error){
+      console.error("Error including ticket in sprint",error);
+      toast.error("Something went wrong while adding the ticket to the sprint");
+      setSprintDialogOpen(false);
+    }finally{
+      setSprintDialogLoading(false);
+    }
+  }
+
+  const handleEditClick = (type,ticket) => {
+
+    if (!ticket) return;
+    setSelectedTicketGuid(ticket.ticketGuid);
+    setActionType("update");
+    console.log("Edit Ticket:", type, ticket);
+    // Pre-fill form
+    setTicketsFormData({
+      title: ticket.title || "",
+      description: ticket.description || "",
+      tags: ticket.tags || "",
+      priority: ticket.priority?.toString() || "",
+      status: ticket.status?.toString() || "",
+      projectId: ticket.projectId?.toString() || "",
+      reportedBy: ticket.reportedBy?.toString() || "",
+      steps: ticket.steps?.split(",") || [],
+      points: ticket.points?.toString() || "",
+    });
+
+    setTicketOpen(true);
+  };
+
+
+  // Step Functions
+  const handleStepViewClick=async(story)=>{
+    setStepLoading(true);
+    setStepData([]);
+    console.log("View / Generate Steps for bug:", story)
+    try{
+      setTicketStepId(story.ticketGuid);
+      //const response = await ticketService.ViewTicketSteps(workspaceGuid,ticketGuid);
+      if(story.steps && story.steps.split(",").length > 0)
+      {
+        var steps = story.steps.split(",");
+        console.log("Ticket Steps Data",steps);
+        setStepData(steps);
+      }
+      setDisplaySteps(true);
+    }catch(error){
+      console.error("Something went wrong while fetching the ticket steps",error);
+      toast.error("Something went wrong while fetching the ticket steps");
+    }
+    finally{
+      setStepLoading(false);
+    }
+  }
+
+  const handleStepChange = (index, value) => {
+    const updatedSteps = [...stepData];
+    updatedSteps[index] = value;
+    setStepData(updatedSteps);
+  };
+
+  const handleAddStep = () => setStepData([...stepData, ""]);
+  const handleRemoveStep = (index) => setStepData(stepData.filter((_, i) => i !== index));
+
+  const handleSaveSteps = async () => {
+    setStepSaving(true);
+    try {
+      //const updatedSteps = stepData.join(", ");
+      const response = await ticketService.UpdateTicketSteps(workspaceGuid, ticketStepId, stepData);
+
+      if (response.success) {
+        toast.success("Steps updated successfully!");
+        setDisplaySteps(false);
+      } else {
+        toast.error("Failed to update steps. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error saving steps:", error);
+      toast.error("An unexpected error occurred while saving steps.");
+    } finally {
+      setStepSaving(false);
+    }
+  };
+
+  const fetchWorkspaceUsers=async()=>{
+    const response = await workspaceService.getWorkspaceProfiles(workspaceGuid);
+    setUsers(response.data);
+  }
+
   useEffect(()=>{
     fetchProjects();
     fetchTeams();
+    fetchWorkspaceUsers();
   },[])
   
 
@@ -506,7 +626,7 @@ function Sprints() {
           {/* Toolbar Row */}
           <div className="flex items-center justify-between pb-2">
             {/* Left: Add Button */}
-            <Dialog open={sprintOpen} onOpenChange={handleDialogChange}>
+            <Dialog open={sprintOpen} onOpenChange={handleSprintDialogChange}>
               <DialogTrigger asChild>
                 <Button className="text-white">
                   <PlusIcon className="w-3 h-3 mr-2" />
@@ -800,21 +920,24 @@ function Sprints() {
           {/* Toolbar Row */}
           <div className="flex items-center justify-between pb-2">
             {/* Left: Add Button */}
-            <Button className={'text-white'} onClick={()=>setStoriesOpen(true)}>
+            <Button className={'text-white'} onClick={() => handleTicketDialogChange("create", "user story")}>
               <PlusIcon className="w-3 h-3" />
               Add New Story
             </Button>
             <TicketDialog
-              open={storyOpen}
-              setOpen={setStoriesOpen}
-              loading={storyLoading}
-              setLoading={setStoryLoading}
-              projects={projectWithName}
-              formData={story}
-              setFormData={setUserStories}
+              open={ticketOpen}
+              setOpen={setTicketOpen}
+              loading={ticketLoading}
+              setLoading={setTicketLoading}
+              projects={project}
+              formData={ticketsFormData}
+              workspaceUsers={users}
+              setFormData={setTicketsFormData}
               errors={errors}
-              onSubmit={createTicket}   // your bugService call
+              onClose={()=>setTicketOpen(false)}
+              onSubmit={()=>handleCreateUpdate(actionType,"user story")}   // your userStoryService call
               type="User Story"
+              actionType={actionType}
             />
 
             
@@ -841,13 +964,71 @@ function Sprints() {
               </Select>
             </div>
           </div>
-          <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-6 p-6'>
-            {userStories.map((story, index) => (
-              <UserStoryCard key={index} story={story} onViewDetails={(story) => {
-                // Open dialog to view details  
-                console.log("View details for story:", story);
-              }} />
-            ))}
+          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6 p-6">
+            <AnimatePresence mode="wait">
+              {ticketLoading ? (
+                // 🟡 Animated Skeleton Loader
+                Array.from({ length: 6 }).map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    className="border border-gray-800 rounded-xl bg-background/50 p-4 space-y-4"
+                  >
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <div className="flex gap-2 mt-3">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                    <div className="flex justify-between items-center pt-4">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-8 w-24 rounded-lg" />
+                    </div>
+                  </motion.div>
+                ))
+              ) : tickets?.length > 0 ? (
+                tickets.map((story, index) => (
+                  <motion.div
+                    key={story.id || index}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.35, delay: index * 0.05 }}
+                  >
+                    <UserStoryCard
+                      story={story}
+                      onViewClick={(story) =>
+                        console.log("View / Generate Steps for bug:", story)
+                      }
+                      onViewDetails={(ticket) =>
+                        handleEditClick("user story",ticket)
+                      }
+                      onIncludeInSprint={(ticketGuid) => setSprintDialogOpen(true) & setIncludeTicketGuid(ticketGuid)
+                      }
+                    />
+                  </motion.div>
+                ))
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="col-span-full flex flex-col items-center justify-center py-16 text-center text-muted-foreground"
+                >
+                      <File className='w-10 h-10' />
+                      <p className="text-lg font-medium">No user stories found</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Start by creating a new story to plan your project’s next features.
+                      </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </TabsContent>
         <TabsContent value="bugs" className='mt-6'>
@@ -856,22 +1037,25 @@ function Sprints() {
             {/* Left: Add Button */}
             <Button
               className="text-white"
-              onClick={() => setBugOpen(true)}
+              onClick={() => handleTicketDialogChange("create","bug")}
             >
               <PlusIcon className="w-3 h-3" />
               Add New Bug
             </Button>
 
             <TicketDialog
-              open={bugOpen}
-              setOpen={setBugOpen}
-              loading={bugLoading}
-              setLoading={setBugLoading}
-              projects={projectWithName}
-              formData={bugFormData}
-              setFormData={setBugFormData}
+              open={ticketOpen}
+              setOpen={setTicketOpen}
+              loading={ticketLoading}
+              setLoading={setTicketLoading}
+              projects={project}
+              formData={ticketsFormData}
+              workspaceUsers={users}
+              setFormData={setTicketsFormData}
               errors={errors}
-              onSubmit={createTicket}   // your bugService call
+              onClose={()=>setTicketOpen(false)}
+              onSubmit={()=>handleCreateUpdate(actionType,"bug")}   // your bugService call
+              actionType={actionType}
               type="Bug"
             />
 
@@ -899,22 +1083,214 @@ function Sprints() {
               </Select>
             </div>
           </div>
-          
-          <div className='grid md:grid-cols-2 lg:grid-cols-2 gap-6 p-6'>
-            {bugs.map((bug, index) => (
-              <BugCard key={index} bug={bug} onViewClick={(bug) => {
-                // Open dialog to view / generate steps
-                console.log("View / Generate Steps for bug:", bug);
-              }} />
-            ))}
+
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6 p-6">
+            <AnimatePresence mode="wait">
+              {ticketLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    className="border border-gray-800 rounded-xl bg-background/50 p-4 space-y-4"
+                  >
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <div className="flex gap-2 mt-3">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                    <div className="flex justify-between items-center pt-4">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-8 w-24 rounded-lg" />
+                    </div>
+                  </motion.div>
+                ))
+              ) : tickets?.length > 0 ? (
+                tickets.map((bug, index) => (
+                  <motion.div
+                    key={bug.id || index}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.35, delay: index * 0.05 }}
+                  >
+                    <BugCard
+                      bug={bug}
+                      onStepViewClick={(ticketGuid) =>
+                        handleStepViewClick(ticketGuid)
+                      }
+                      onEditClick={(ticket) =>
+                        handleEditClick("bug",ticket)
+                      }
+                      onIncludeInSprint={(ticketGuid) => setSprintDialogOpen(true) & setIncludeTicketGuid(ticketGuid)
+                      }
+                    />
+                  </motion.div>
+                ))
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="col-span-full flex flex-col items-center justify-center py-16 text-center text-muted-foreground"
+                >
+                  <File className='w-10 h-10'/>
+                  <p className="text-lg font-medium">No bugs found</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Great job! No active bugs in this project.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </TabsContent>
 
 
       </Tabs>
-      <div>
 
-      </div>
+      <Dialog open={displaySteps} onOpenChange={handleDisplayDialogChange}>
+        <DialogContent className="sm:max-w-[600px] p-6">
+          <DialogHeader className="px-2 border-b-2 py-2">
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              Ticket Steps
+            </DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[70vh]">
+            <div className="space-y-5 p-4">
+              {stepLoading ? (
+                <p className="text-sm text-muted-foreground">Loading steps...</p>
+              ) : (
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Steps</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddStep}
+                      className="h-8"
+                      disabled={stepLoading}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Step
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {stepData.map((step, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          value={step}
+                          onChange={(e) => handleStepChange(index, e.target.value)}
+                          placeholder={`Step ${index + 1}`}
+                          className="flex-1"
+                          disabled={stepLoading}
+                        />
+                        {stepData.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveStep(index)}
+                            className="h-10 w-10 text-red-500 hover:text-red-700"
+                            disabled={stepLoading}
+                          >
+                            <Trash2Icon className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="px-6 py-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setDisplaySteps(false)}
+              disabled={stepLoading}
+            >
+              Close
+            </Button>
+            <Button
+              className="text-white"
+              onClick={handleSaveSteps}
+              disabled={stepLoading}
+            >
+              {stepSaving ? "Saving..." : "Edit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sprintDialogOpen} onOpenChange={setSprintDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] p-6">
+          <DialogHeader className="px-2 border-b-2 py-2">
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              Add Ticket to Sprint
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[70vh]">
+            <div className="space-y-5 p-4">
+              {sprintDialogLoading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : (
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Select Sprint</Label>
+                    <Select
+                      value={selectedSprintId ? selectedSprintId.toString() : null}
+                      onValueChange={(value) => setSelectedSprintId(value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Sprint" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sprints?.map((sprint) => (
+                          <SelectItem
+                            key={sprint.sprintId}
+                            value={sprint.sprintGuid.toString()}
+                          >
+                            {sprint.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.selectedSprint && (
+                      <p className="text-sm text-red-500">{errors.selectedSprint}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter className="px-6 py-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setSprintDialogOpen(false) & setIncludeTicketGuid(null)}
+              disabled={sprintDialogLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="text-white"
+              onClick={handleIncludeInSprint}
+              disabled={sprintDialogLoading}
+            >
+              {sprintDialogLoading ? "Adding..." : "Add to Sprint"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
