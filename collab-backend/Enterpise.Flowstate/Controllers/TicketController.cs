@@ -75,6 +75,52 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet]
+        [Route("tickets/users")]
+        public async Task<ApiResponseModel<object>> GetUserTickets(string workspaceGuid)
+        {
+            try
+            {
+                // 2️ Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+                var userTickets = await _omniService.TicketService.GetUserTickets(workspaceGuid, userId.ToString());
+                if(!userTickets.Any())
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        StatusCode = StatusCodes.Status204NoContent,
+                        Success = false,
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = userTickets,
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+            }catch(Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex.Data,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = ex.Message,
+                };
+            }
+        }
+        [HttpGet]
         public async Task<ApiResponseModel<PaginationResponse<TicketDto>>> GetTickets([FromQuery] string workspaceGuid, [FromQuery] string? searchTerm, [FromQuery] string? type, [FromQuery] string? status, [FromQuery] string? priority, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try

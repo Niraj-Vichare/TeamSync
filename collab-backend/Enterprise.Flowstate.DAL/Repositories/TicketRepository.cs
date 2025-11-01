@@ -106,6 +106,21 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return ticketDropdowns;
         }
 
+        public async Task<List<Ticket>> GetUserTickets(string workspaceGuid, string userGuid)
+        {
+            var userResponse = await _supabaseClient.From<Profile>().Where(user=>user.Guid == userGuid).Get();
+            if (userResponse == null)
+                return new List<Ticket>();
+            var user = userResponse.Models.FirstOrDefault();
+            int userId = user.Id;
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(ticket => ticket.AssignedToUser.Id == userId).Get();
+            if(ticketResponse == null)
+            {
+                return new List<Ticket>();
+            }
+            return ticketResponse.Models.ToList();
+        }
+
         public async Task<int> GetTicketsCountAsync(string workspaceId, string type, string searchTerm, string status, string priority)
         {
             var workspaceResult = await _supabaseClient
@@ -187,7 +202,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             // 4️. Build the sprint query
             var query = _supabaseClient.From<Ticket>()
-                .Select("*,project:project_id(project_name),sprint:sprint_id(title),profile:reported_by(display_name)")
+
+                .Select("*,project:project_id(project_name),sprint:sprint_id(title),assignedByUser:profile!reported_by(display_name),assignedToUser:profile!assigned_to(display_name)")
                 .Filter("project_id", Supabase.Postgrest.Constants.Operator.In, projectIds);
 
             if (!string.IsNullOrEmpty(searchTerm))

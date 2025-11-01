@@ -16,6 +16,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         public ITeamRepository TeamRepository { get; set; }
         public ISprintRepository SprintRepository { get; set; }
         public ITicketRepository TicketRepository { get; set; }
+        public IDashboardRepository DashboardRepository { get; set; }
         private readonly Supabase.Client _supabaseClient;
 
         public OmniRepository(Supabase.Client supabaseClient)
@@ -28,6 +29,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             SprintRepository = new SprintRepository(_supabaseClient);
             ProjectRepository = new ProjectRepository(_supabaseClient);
             TicketRepository = new TicketRepository(_supabaseClient);
+            DashboardRepository = new DashboardRepository(_supabaseClient);
         }
     }
 }

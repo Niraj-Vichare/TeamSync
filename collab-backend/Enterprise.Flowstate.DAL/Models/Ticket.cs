@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.Models
@@ -32,6 +33,8 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("reported_by")]
         public int? ReportedBy { get; set; }
 
+        [Column("assigned_to")]
+        public int? AssignedTo { get; set; }
         [Column("status")]
         public int? StatusId { get; set; }
 
@@ -55,11 +58,19 @@ namespace Enterprise.Flowstate.DAL.Models
 
         [Column("ticket_guid")]
         public Guid TicketGuid { get; set; }
+        [Column("start_date")]
+        public DateTime? StartDate { get; set; }
+        [Column("end_date")]
+        public DateTime? EndDate { get; set; }
 
         [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Sprint? Sprint { get; set; }
-        [Column(ignoreOnInsert:true,ignoreOnUpdate:true)]
-        public Profile? Profile { get; set; }
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
+        public Profile? AssignedToUser { get; set; }
+
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
+
+        public Profile? AssignedByUser { get; set; }
         [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Project? Project { get; set; }
 

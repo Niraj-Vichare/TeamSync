@@ -40,9 +40,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return isCreated;
         }
 
-        public Task<bool> DeleteTask(int taskId)
+        public async Task<bool> DeleteTask(string taskId)
         {
-            throw new NotImplementedException();
+            return await _omniRepository.TaskRepository.DeleteTask(taskId);
         }
 
         public Task<TaskDto> GetTaskById(int taskId)
@@ -158,7 +158,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
                     Project = new ProjectDto
                     {
-                        ProjectTitle = task.Title,
+                        ProjectTitle = task.Project.ProjectName,
                         ProjectGuid = task.Project.ProjectGuid
                     },
                     Status = (TaskEnums.TaskStatus)task.Status,
@@ -200,9 +200,24 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         }
 
-        public Task<bool> UpdateTask(TaskDto task)
+        public async Task<bool> UpdateTask(string taskGuid,string userId,TaskDto taskModel)
         {
-            throw new NotImplementedException();
+            Task task = new Task
+            {
+                AssignedBy = taskModel.AssignedBy,
+                AssignedTo = taskModel.AssignedTo,
+                Description = taskModel.Description,
+                CreatedAt = taskModel.CreateAt,
+                ProjectId = taskModel.ProjectId,
+                EndDate = taskModel.EndDate,
+                Priority = (int)taskModel.Priority,
+                SprintId = taskModel.SprintId,
+                Status = (int)taskModel.Status,
+                TicketId = taskModel.TicketId,
+                Title = taskModel.Title
+            };
+            bool isUpdated =await _omniRepository.TaskRepository.UpdateTask(taskGuid,userId,task);
+            return isUpdated;
         }
 
         public Task<bool> UpdateTaskStatus(string userGuid, int taskId, string taskStatus)

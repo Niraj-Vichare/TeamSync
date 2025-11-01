@@ -17,7 +17,9 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public TicketPriority? Priority { get; set; }
         public string? PriorityInString => ((TicketPriority)Priority).ToString();
         public int? ReportedBy { get; set; }
-        public string? AssignedName { get; set; }
+        public int? AssignedTo { get; set; }
+        public string? AssignedToName { get; set; }
+        public string? AssignedByName { get; set; }
         public TicketStatus Status { get; set; }
         public string? StatusInString => ((TicketStatus)Status).ToString();
         public string? ProjectName { get; set; }
@@ -30,6 +32,9 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public TicketType? TypeId { get; set; }
         public string? TypeName => ((TicketType)TypeId).ToString();
         public Guid? TicketGuid { get; set; }
-
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string StartDateInString => StartDate?.ToString("dd MM yyyy");
+        public string EndDateInString => EndDate?.ToString("dd MM yyyy");
     }
 }

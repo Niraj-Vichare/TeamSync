@@ -89,7 +89,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Title = ticket.Title,
                     Points = ticket.Points,
                     TicketGuid = ticket.TicketGuid,
-                    AssignedName = ticket.Profile?.DisplayName,
+                    AssignedByName = ticket.AssignedByUser?.DisplayName,
+                    AssignedToName = ticket.AssignedToUser?.DisplayName,
                     Priority = (TicketEnums.TicketPriority)ticket.PriorityId,
                     SprintId = ticket.SprintId,
                     SprintName = ticket.Sprint?.Title,
@@ -167,6 +168,30 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             string stepsString = string.Join(",", steps);
             bool isUpdated = await _omniRepository.TicketRepository.UpdateTicketSteps(ticketGuid, stepsString);
             return isUpdated;
+        }
+
+        public async Task<List<TicketDto>> GetUserTickets(string workspaceGuid, string userGuid)
+        {
+            var userTicketsResponse = await _omniRepository.TicketRepository.GetUserTickets(workspaceGuid, userGuid);
+            if (userTicketsResponse == null)
+            {
+                return new List<TicketDto>();
+            }
+            List<TicketDto> result = new List<TicketDto>();
+            foreach (var ticket in userTicketsResponse)
+            {
+                result.Add(new TicketDto
+                {
+                    Points = ticket.Points,
+                    Priority = (TicketEnums.TicketPriority)ticket.PriorityId,
+                    Tags = ticket.Tags,
+                    Title = ticket.Title,
+                    StartDate = ticket.StartDate,
+                    EndDate = ticket.EndDate
+                }
+                );
+            }
+            return result;
         }
 
         public async Task<List<TicketDropdownModel>> GetTicketsBySprintId(string sprintId)

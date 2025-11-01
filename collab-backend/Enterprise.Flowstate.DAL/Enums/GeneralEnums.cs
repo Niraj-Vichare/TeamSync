@@ -45,5 +45,10 @@ namespace Enterprise.Flowstate.DAL.Enums
         }
 
         
+        public enum EventType
+        {
+            TaskCreated =1,
+
+        }
     }
 }

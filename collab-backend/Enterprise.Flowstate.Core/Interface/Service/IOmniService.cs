@@ -16,5 +16,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         ITeamService TeamService { get; set; }
         ISprintService SprintService { get; set; }
         ITicketService TicketService { get; set; }
+        IDashboardService DashboardService { get; set; }
     }
 }

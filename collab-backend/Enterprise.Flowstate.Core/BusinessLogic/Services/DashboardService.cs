@@ -1,0 +1,123 @@
+﻿using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.DAL.DTO;
+using Enterprise.Flowstate.DAL.Interfaces;
+using Enterprise.Flowstate.DAL.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
+{
+    public class DashboardService : IDashboardService
+    {
+        private IOmniRepository _omniRepository;
+        public DashboardService(IOmniRepository omniRepository)
+        {
+            _omniRepository = omniRepository;
+        }
+        public async Task<OrganizationMetricDto> GetOrganizationMetric(string workspaceGuid)
+        {
+            var orgMetric = await _omniRepository.DashboardRepository.GetOrganizationMetric(workspaceGuid);
+            OrganizationMetricDto organizationMetricDto = new OrganizationMetricDto
+            {
+                ActiveProject = orgMetric.ActiveProject,
+                ActiveSprints = orgMetric.ActiveSprints,
+                ActiveTask = orgMetric.ActiveTask,
+                CompletedTask = orgMetric.CompletedTask,
+                ActiveTickets = orgMetric.ActiveTickets
+            };
+            return organizationMetricDto;
+
+        }
+
+        public async Task<UserMetricDto> GetUserMetric(string workspaceGuid, string userGuid)
+        {
+            // Get all metrics for current + previous week from repository
+            var userMetrics = await _omniRepository.DashboardRepository.GetUserMetric(workspaceGuid, userGuid);
+
+            if (userMetrics == null || userMetrics.Count == 0)
+                return null;
+
+            // Sort by CreatedAt descending
+            var orderedMetrics = userMetrics.OrderByDescending(m => m.CreatedAt).ToList();
+
+            // Current week = latest record
+            var currentWeekMetric = orderedMetrics.FirstOrDefault();
+
+            // Previous week = second latest record (if it exists)
+            var lastWeekMetric = orderedMetrics.Skip(1).FirstOrDefault();
+
+            // Build DTO
+            var dto = new UserMetricDto
+            {
+                Id = currentWeekMetric.Id,
+                CreatedAt = currentWeekMetric.CreatedAt,
+                TotalHours = currentWeekMetric.TotalHours,
+                TasksCompleted = currentWeekMetric.TasksCompleted,
+                Points = currentWeekMetric.Points,
+                ContributionScore = currentWeekMetric.ContributionScore,
+                UserId = currentWeekMetric.UserId,
+                WorkspaceId = currentWeekMetric.WorkspaceId,
+                Efficiency = currentWeekMetric.Efficiency,
+
+                // Previous week data (if exists)
+                LastWeekPoints = lastWeekMetric?.Points,
+                LastWeekEffiency = lastWeekMetric?.Efficiency,
+                LastWeekTaskCompeleted = lastWeekMetric?.TasksCompleted
+            };
+
+            return dto;
+        }
+
+
+        public async Task<List<DailyLogging>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid)
+        {
+            var dailyLogging = await _omniRepository.DashboardRepository.GetWeeklyDailyLoggingMetrics(workspaceGuid, userGuid);
+            Dictionary<string, double> pairs = new Dictionary<string, double>();
+
+            foreach (var dailyLog in dailyLogging)
+            {
+                // Assuming your model has: TimeOnly CheckIn, TimeOnly CheckOut, DateTime CheckingDate
+                string dayOfWeek = dailyLog.CheckingDate.DayOfWeek.ToString();
+
+                // Calculate total hours between CheckIn and CheckOut
+                TimeSpan workedTime = dailyLog.CheckOut.ToTimeSpan() - dailyLog.CheckIn.ToTimeSpan();
+
+                if (workedTime.TotalHours < 0)
+                {
+                    workedTime = workedTime.Add(TimeSpan.FromHours(24));
+                }
+
+                double totalHours = workedTime.TotalHours;
+
+                // Add to dictionary (you may want to sum if multiple logs exist for same day)
+                if (pairs.ContainsKey(dayOfWeek))
+                    pairs[dayOfWeek] += totalHours;
+                else
+                    pairs.Add(dayOfWeek, totalHours);
+            }
+
+            // Optional: If you need to return the data in a specific format, you can create DTOs or return the dictionary.
+            return dailyLogging;
+        }
+
+        public async Task<DailyLogging> GetTodayLogging(string workspaceId, string userId)
+        {
+            var result = await _omniRepository.DashboardRepository.GetTodayLogging(workspaceId, userId);
+            return result;
+        }
+        public async Task<bool> ClockOut(string workspaceId, string userId)
+        {
+            var result = await _omniRepository.DashboardRepository.ClockOut(workspaceId, userId);
+            return result;
+        }
+        public async Task<bool> ClockIn(string workspaceGuid, string userId)
+        {
+            var result = await _omniRepository.DashboardRepository.ClockIn(workspaceGuid, userId);
+            return result;
+        }
+
+    }
+}

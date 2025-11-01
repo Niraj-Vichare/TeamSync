@@ -19,6 +19,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<string> GetTicketSteps(string ticketGuid);
         Task<bool> UpdateTicketSteps(string ticketGuid, string steps);
         Task<List<TicketDropdownModel>> GetTicketsBySprintId(int ticketId);
+        Task<List<Ticket>> GetUserTickets(string workspaceGuid, string userGuid);
     }
 
 }

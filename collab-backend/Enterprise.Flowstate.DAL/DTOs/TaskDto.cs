@@ -33,7 +33,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public TicketDto? Ticket { get; set; }
         public string? StatusInString => ((TaskEnums.TaskStatus)Status).ToString();
         public string? PriorityInString => ((TaskEnums.TaskPriority)Priority).ToString();
-        public string? StartDateInString => StartDate?.ToString("d MMMM ,yyyy");
-        public string? EndDateInString => EndDate?.ToString("d MMMM ,yyyy");
+        public string? StartDateInString => StartDate?.ToString("d MMMM,yyyy");
+        public string? EndDateInString => EndDate?.ToString("d MMMM,yyyy");
     }
 }

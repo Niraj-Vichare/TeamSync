@@ -181,8 +181,47 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
+        [HttpPatch("{taskGuid}")]
+        public async Task<ApiResponseModel<object>> UpdateTask(string taskGuid, [FromBody] TaskDto taskModel)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                bool isEdited = await _omniService.TaskService.UpdateTask(taskGuid,userId.ToString(),taskModel);
+
+                return new ApiResponseModel<object>
+                {
+                    Message = "",
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true
+                };
+
+
+            }
+            catch(Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
         [HttpPatch]
-        [Route("{taskId}")]
+        [Route("{taskId}/status")]
         public async Task<ApiResponseModel<object>> UpdateTaskStatus(int taskId,[FromQuery] string status)
         {
             try
@@ -256,10 +295,31 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpDelete]
         [Route("{taskId}")]
-        public async Task<ApiResponseModel<object>> DeleteTask(int taskId)
+        public async Task<ApiResponseModel<object>> DeleteTask(string taskId)
         {
             try
             {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                bool isDeleted = await _omniService.TaskService.DeleteTask(taskId);
+                if (!isDeleted)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Unable delete the task."
+                    };
+                }
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status200OK,
