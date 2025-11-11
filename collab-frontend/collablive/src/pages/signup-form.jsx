@@ -66,7 +66,9 @@ export function Signup() {
       {
         toast.success("Signed up successfully!");
         navigate("/workspace/create-workspace");
+        return;
       }
+      toast.error("Signup failed");
 
     } catch (err) {
       toast.error("Signup failed");

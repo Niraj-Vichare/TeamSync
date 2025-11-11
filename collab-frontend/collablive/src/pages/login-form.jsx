@@ -35,7 +35,7 @@ export function LoginForm({
   const [resetEmail,setResetEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingProvider,setLoadingProvider] = useState();
-  const { login } = useAuth();
+  const { login,getCurrentWorkspaceId } = useAuth();
   const navigate = useNavigate(); 
     
 
@@ -71,18 +71,6 @@ export function LoginForm({
     }
   };
 
-  const handleGithubLogin = ()=>
-  {
-    try{
-      setLoadingProvider("github");
-
-    }catch(err){
-      console.error("Github login failed",err);
-    }finally{
-      setLoadingProvider(null);
-    }
-  }
-  
 
   const handleEmailLogin = async (e) => {
     var loginData = {
@@ -95,11 +83,16 @@ export function LoginForm({
 
       var response = await login(loginData);
       if (response && response.success) {
+        if(!getCurrentWorkspaceId()){
+          navigate("/workspace/create-workspace");
+          return;
+        }
         toast.success("Logged in successfully!");
         navigate("/");
       }
 
     } catch (error) {
+      toast.error("Login failed. Please check your email and password.");
       setError(error);
       setLoading(false);
     }finally{

@@ -99,7 +99,7 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
             <Eye className="w-4 h-4 mr-1" />
             View Details
           </Button>
-          {!story.sprint && (
+          {!story.sprintName && (
             console.log("Include in Sprint Button Rendered",story.ticketGuid),
             <Button 
               className="flex-1 text-white"
