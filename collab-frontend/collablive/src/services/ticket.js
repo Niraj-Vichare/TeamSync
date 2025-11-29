@@ -77,10 +77,23 @@ class TicketService {
 
     async fetchTicketBySprintId(sprintId) {
         try {
-            const response = await axiosInstance.get(`/sprints/${sprintId}/tickets`);
+            const response = await axiosInstance.get(`/tickets/${sprintId}/dropdown`);
             return response.data;
         } catch (error) {
             console.error("Error while fetching the tickets by sprint id", error);
+            throw error;
+        }
+    }
+
+    async getUserAssignedTickets(workspaceGuid){
+        try{
+            const response = await axiosInstance.get(`/tickets/users`,{
+                params:{workspaceGuid}
+            });
+            return response.data;
+
+        }catch(error){
+            console.error("Error while fetching user assigned tickets", error);
             throw error;
         }
     }

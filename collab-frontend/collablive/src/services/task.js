@@ -28,7 +28,7 @@ class TaskService {
 
   async updateTask(workspaceGuid,taskGuid, taskModel) {
     try {
-      const response = await axiosInstance.patch(`/tasks/${taskGuid}`, taskModel);
+      const response = await axiosInstance.patch(`/tasks/${workspaceGuid}/${taskGuid}`, taskModel);
       return response.data;
     } catch (error) {
       console.error("Error updating task:", error);

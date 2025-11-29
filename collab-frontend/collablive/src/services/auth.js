@@ -128,6 +128,7 @@ class AuthService {
       // Clear local data
       this.currentUser = null;
       this.currentWorkspaceId = null;
+      cookieStore.delete('authToken');
       localStorage.removeItem('currentWorkspaceId');
       
       return { success: true };

@@ -31,12 +31,14 @@ import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
 
 export function NavUser({ user }) {
   const { isMobile } = useSidebar()
   const [open, setOpen] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
   const { logout } = useAuth()
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
@@ -102,15 +104,15 @@ export function NavUser({ user }) {
 
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={()=>navigate('/settings')}>
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={()=>navigate('/settings')}>
                 <IconCreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={()=>navigate('/settings')}>
                 <IconNotification />
                 Notifications
               </DropdownMenuItem>
