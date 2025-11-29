@@ -11,6 +11,8 @@ namespace Enterprise.Flowstate.DAL.Interfaces
     {
         Task<bool> CreateWorkspace(string userIdClaims, string name, string description);
         Task<List<WorkspaceUserMapping>> GetWorkspaces(string userGuid);
+        Task<bool> HasWorkspace(string email);
+        Task<Ranking> GetUserRanking(string workspaceId, string userId);
 
     }
 }

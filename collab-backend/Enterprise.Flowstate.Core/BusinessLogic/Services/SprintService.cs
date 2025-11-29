@@ -105,5 +105,79 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 TotalCount = totalCount
             };
         }
+
+        public async Task<SprintDto> GetSprint(string workspaceGuid, string sprintGuid)
+        {
+            var sprint = await _omniRepository.SprintRepository.GetSprint(sprintGuid);
+            SprintDto sprintDto = new SprintDto
+            {
+                EndDate = sprint.EndDate,
+                Goal = sprint.Description,
+                Id = sprint.SprintId,
+                ProjectId = sprint.ProjectId,
+                ProjectName = sprint.Project.ProjectName,
+                StartDate = sprint.StartDate,
+                Tagline = sprint.Tagline,
+                Status = (SprintEnums.SprintStatus)sprint.StatusId,
+                Tags = sprint.Tags,
+                Title = sprint.Title,
+                UpdateDate = sprint.UpdateDate,
+                SprintGuid = sprint.SprintGuid,
+                TeamModel = new TeamDropdownModel
+                {
+                    TeamId = sprint.Team.TeamId,
+                    TeamName = sprint.Team.TeamName
+                }
+            };
+            return sprintDto;
+        }
+
+        
+
+        public async Task<List<TeamDto>> GetAssignedTeam(string sprintGuid)
+        {
+            var result = await _omniRepository.SprintRepository.GetAssignedTeam(sprintGuid);
+            TeamDto team = new TeamDto();
+            team.Name = result.FirstOrDefault().Team.TeamName;
+            team.TeamId = result.FirstOrDefault().Team.TeamId;
+            List<TeamMemberDto> members = new List<TeamMemberDto>();
+            foreach(var teamMapping in result)
+            {
+                members.Add(new TeamMemberDto
+                {
+                    Profile = new ProfileDto
+                    {
+                        DisplayName = teamMapping.Member.Profile.DisplayName,
+                        ProfileImageUrl = teamMapping.Member.Profile.ProfileImageUrl,
+                        Guid = teamMapping.Member.Profile.Guid,
+                    }
+                }); 
+            }
+            team.Members = members;
+            return null;
+        }
+
+        public Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize)
+        {
+            return _omniRepository.SprintRepository.GetSprintActivities(sprintGuid, pagNumber, pageSize);
+        }
+
+        public Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid)
+        {
+            return _omniRepository.SprintRepository.GetSprintProgress(sprintGuid);
+        }
+
+        public async Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid)
+        {
+            var breakDown =await _omniRepository.SprintRepository.GetSprintBreakdown(sprintGuid);
+            SprintBreakdownModel sprintBreakdown = new SprintBreakdownModel
+            {
+                TotalTickets = breakDown.TotalTickets,
+                SprintVelocity = breakDown.SprintVelocity,
+                Effiency = breakDown.SprintEffiency
+            };
+
+            return sprintBreakdown;
+        }
     }
 }

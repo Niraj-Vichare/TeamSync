@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> UpdateWorkspace(int workspaceId, string name, string description);
         Task<bool> DeleteWorkspace(int workspaceId);
         Task<List<WorkspaceDto>> GetAllWorkspaces(string userClaimId);
-
+        Task<bool> HasWorkspace(string email);
+        Task<RankingDto> GetUserRanking(string workspaceId, string userId);
     }
 }

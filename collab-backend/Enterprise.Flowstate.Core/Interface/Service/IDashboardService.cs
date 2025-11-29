@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTO;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -16,5 +17,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<DailyLogging> GetTodayLogging(string workspaceId, string userId);
         Task<bool> ClockOut(string workspaceId, string userId);
         Task<bool> ClockIn(string workspaceGuid, string userId);
+        Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid);
     }
 }

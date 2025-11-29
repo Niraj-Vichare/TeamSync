@@ -1,5 +1,6 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.DTO;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using System;
@@ -117,6 +118,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             var result = await _omniRepository.DashboardRepository.ClockIn(workspaceGuid, userId);
             return result;
+        }
+
+        public async Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid)
+        {
+            var userWorkMetric = await _omniRepository.DashboardRepository.GetUserWorkMetric(workspaceGuid, userGuid);
+            return userWorkMetric;
         }
 
     }

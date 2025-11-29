@@ -237,5 +237,33 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return updated.Models.Any();
         }
 
+
+        public async Task<List<Task>> GetOngoingUserTask(string userGuid, string workspaceGuid)
+        {
+            var userResult = await _supabaseClient
+                .From<Profile>()
+                .Where(w => w.Guid == userGuid)
+                .Get();
+
+
+            if (!userResult.Models.Any())
+            {
+                return null;
+            }
+
+
+            var workspaceResult = await _supabaseClient
+            .From<Workspace>()
+            .Where(w => w.WorkspaceGuid == workspaceGuid)
+            .Get();
+
+            if (workspaceResult.Models.Any())
+            {
+                return null;
+            }
+            var profileId = userResult.Models.FirstOrDefault().Id;
+            var result = await _supabaseClient.From<Task>().Select("*, project:project_id(*), sprint:sprint_id(*), assignedByUser:profile!assigned_by(*),assignedToUser:profile!assigned_to(*), ticket:ticket_id(*)").Where(tasks => tasks.AssignedTo == profileId && tasks.EndDate>=DateTime.Now).Get();
+            return result.Models.ToList();
+        }
     }
 }

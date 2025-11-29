@@ -21,5 +21,14 @@ namespace Enterprise.Flowstate.DAL.Enums
             InActive=2,
             Pending = 3
         }
+
+        public enum RoleEnum
+        {
+            Owner = 1,
+            Admin = 2,
+            Manager = 3,
+            Member = 4,
+            Viewer = 5
+        }
     }
 }

@@ -32,8 +32,14 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
     );
 });
 
+
+builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
 builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IOmniService, OmniService>();
+builder.Services.AddScoped<ICache,CacheService>();
+builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
+builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();
+builder.Services.AddHostedService<MessageConsumer>();
 
 builder.Services.AddCors(options =>
 {
@@ -74,6 +80,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         });
 
 var app = builder.Build();
+
+try
+{
+    var topologySetup = app.Services.GetRequiredService<IRabbitMqTopologySetup>();
+    await topologySetup.SetupAsync();
+    Console.WriteLine("RabbitMQ topology setup completed");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to setup RabbitMQ topology: {ex.Message}");
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

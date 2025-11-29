@@ -18,6 +18,9 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<List<TicketDto>> GetUserTickets(string workspaceGuid, string userGuid);
         Task<List<string>> GetTicketStep(string ticketGuid);
         Task<bool> UpdateTicketSteps(string ticketGuid, List<string> steps);
-        Task<List<TicketDropdownModel>> GetTicketsBySprintId(string sprintId);
+        Task<List<TicketDropdownModel>> GetTicketsBySprintId(int sprintId);
+        Task<List<TaskDto>> GetTicketTasks(string ticketGuid);
+        Task<List<TicketDto>> GetSprintTickets(int sprintId);
+        Task<bool> UpdateTicketStatus(string workspaceGuid, int ticketId, int status);
     }
 }

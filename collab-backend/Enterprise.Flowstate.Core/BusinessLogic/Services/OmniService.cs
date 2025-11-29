@@ -22,14 +22,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public IProjectService ProjectService { get; set; }
         public ISprintService SprintService { get; set; }
         public ITicketService TicketService { get; set; }
+        private IEventPublisher eventPublisher;
         public IDashboardService DashboardService { get; set; }
         private IOmniRepository _omniRepository;
-        public OmniService(IOmniRepository omniRepository,Supabase.Client client)
+        public OmniService(IOmniRepository omniRepository,Supabase.Client client,IEventPublisher eventPublish)
         {
             _client = client;
             _omniRepository = omniRepository;
+            eventPublisher = eventPublish;
             AuthService = new AuthService(_client);
-            TaskService = new TaskService(_omniRepository);
+            TaskService = new TaskService(_omniRepository,eventPublisher);
             ProfileService = new ProfileService(_omniRepository);
             WorkspaceService = new WorkspaceService(_omniRepository);
             ProjectService = new ProjectService(_omniRepository);

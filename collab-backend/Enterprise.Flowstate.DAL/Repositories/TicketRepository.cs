@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Task = Enterprise.Flowstate.DAL.Models.Task;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
@@ -83,12 +84,6 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             // Return true if the update succeeded
             return updateResponse.Models.Any();
-        }
-
-
-        public async Task<TicketDetailDto> GetTicket(string ticketGuid)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<List<TicketDropdownModel>> GetTicketsBySprintId(int sprintId)
@@ -267,6 +262,57 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var updateResponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Update(ticket);
 
             return updateResponse.Models.Any();
+        }
+
+
+        public async Task<List<Ticket>> GetSprintTickets(int sprintId)
+        {
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintId == sprintId).Get();
+            if (!sprint.Models.Any())
+            {
+                return null;
+            }
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(ticket => ticket.SprintId == sprintId).Get();
+            return ticketResponse.Models.ToList();
+
+        }
+
+        public async Task<List<Models.Task>> GetTicketTask(string ticketGuid)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return null; // invalid ticketGuid
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(task=>task.TicketGuid == guid).Get();
+            if (!ticketResponse.Models.Any())
+            {
+                return null;
+            }
+            var ticketId = ticketResponse.Models.FirstOrDefault().TicketId;
+            var tasks = await _supabaseClient.From<Task>().Where(task => task.TaskId == ticketId).Get();
+            return tasks.Models.ToList();
+
+        }
+
+        public async Task<Ticket> GetTicket(string ticketGuid)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return null;
+            var ticket = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == guid).Get();
+            return ticket.Models.FirstOrDefault();
+        }
+
+        public async Task<Ticket?> UpdateTicketStatus(string workspaceGuid,int ticketId, int status)
+        {
+            var workspaceResult = await _supabaseClient
+                .From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
+            if (workspaceResult == null)
+            {
+                return null;
+            }
+            var workspace = workspaceResult.Models.FirstOrDefault();
+            var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketId == ticketId).Update(new Ticket { StatusId = status });
+            return result.Models.FirstOrDefault();
         }
     }
 }

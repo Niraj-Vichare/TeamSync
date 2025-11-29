@@ -75,7 +75,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet]
-        [Route("tickets/users")]
+        [Route("users")]
         public async Task<ApiResponseModel<object>> GetUserTickets(string workspaceGuid)
         {
             try
@@ -93,7 +93,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
                 var userTickets = await _omniService.TicketService.GetUserTickets(workspaceGuid, userId.ToString());
-                if(!userTickets.Any())
+                if (!userTickets.Any())
                 {
                     return new ApiResponseModel<object>
                     {
@@ -109,7 +109,7 @@ namespace Enterprise.Flowstate.Controllers
                     StatusCode = StatusCodes.Status200OK
                 };
 
-            }catch(Exception ex)
+            } catch (Exception ex)
             {
                 return new ApiResponseModel<object>
                 {
@@ -223,10 +223,10 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPatch("{ticketGuid}")]
-        public async Task<ApiResponseModel<object>> UpdateTicket(string ticketGuid,[FromBody] TicketDto ticketDto)
+        public async Task<ApiResponseModel<object>> UpdateTicket(string ticketGuid, [FromBody] TicketDto ticketDto)
         {
             try
-            {   
+            {
                 var identity = HttpContext.User.Identity as ClaimsIdentity;
                 var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -343,7 +343,7 @@ namespace Enterprise.Flowstate.Controllers
                 {
                     return new ApiResponseModel<object>
                     {
-                        Success = false,    
+                        Success = false,
                         Message = "Authentication fails",
                         StatusCode = StatusCodes.Status401Unauthorized,
                     };
@@ -368,8 +368,8 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("/sprints/{sprintId}/tickets")]
-        public async Task<List<TicketDropdownModel>> GetProjectDropdowns(string sprintId)
+        [HttpGet("{sprintId}/dropdown")]
+        public async Task<List<TicketDropdownModel>> GetProjectDropdowns(int sprintId)
         {
             try
             {
@@ -381,7 +381,7 @@ namespace Enterprise.Flowstate.Controllers
                     return null;
                 }
 
-                if (string.IsNullOrEmpty(sprintId))
+                if (sprintId<=0)
                 {
                     return null;
                 }
@@ -394,5 +394,124 @@ namespace Enterprise.Flowstate.Controllers
                 return null;
             }
         }
+
+        [HttpGet("/{ticketGuid}/tasks")]
+        public async Task<ApiResponseModel<object>> GetTicketTasks(string ticketGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Sprint GUID is required to create a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var tickets = await _omniService.TicketService.GetTicketTasks(ticketGuid);
+                if (tickets == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no tickets with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = tickets,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
+
+        //[HttpPut("status")]
+        //public async Task<ApiResponseModel<object>> UpdateTicketStatus([FromQuery] string workspaceGuid,[FromBody] string ticketGuid,[FromBody]string status)
+        //{
+        //    try
+        //    {
+        //        if (string.IsNullOrEmpty(workspaceGuid))
+        //        {
+        //            return new ApiResponseModel<object>
+        //            {
+        //                StatusCode = StatusCodes.Status400BadRequest,
+        //                Success = false,
+        //                Message = "Workspace GUID is required to create a sprint."
+        //            };
+        //        }
+
+        //        // 2️. Get user identity
+        //        var identity = HttpContext.User.Identity as ClaimsIdentity;
+        //        var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        //        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        //        {
+        //            return new ApiResponseModel<object>
+        //            {
+        //                StatusCode = StatusCodes.Status401Unauthorized,
+        //                Success = false,
+        //                Message = "Authentication failed."
+        //            };
+        //        }
+
+        //        //bool isUpdated = await _omniService.TicketService.UpdateTicketStatus(workspaceGuid, ticketGuid, status);
+        //        if (!false)
+        //        {
+        //            return new ApiResponseModel<object>
+        //            {
+        //                Data = null,
+        //                Message = "Not able to update the ticket status",
+        //                StatusCode = StatusCodes.Status400BadRequest,
+        //                Success = false
+        //            };
+        //        }
+        //        return new ApiResponseModel<object>
+        //        {
+        //            Message = "Updated the ticket status successfully",
+        //            StatusCode = StatusCodes.Status200OK,
+        //            Success = true
+        //        };
+        //    }catch(Exception ex)
+        //    {
+        //        return new ApiResponseModel<object>
+        //        {
+        //            Data = ex,
+        //            Message = ex.Message,
+        //            Success = false,
+        //            StatusCode = StatusCodes.Status500InternalServerError
+        //        };
+        //    }
+        //}
     }
 }

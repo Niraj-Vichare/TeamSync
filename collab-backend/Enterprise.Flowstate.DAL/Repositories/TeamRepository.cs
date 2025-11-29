@@ -69,5 +69,20 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return dropdown;
         }
 
+        public async Task<List<TeamMemberMapping>> GetAssignedMember(string sprintGuid)
+        {
+            var sprintResponse = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            if (!sprintResponse.Models.Any())
+            {
+                return null;
+            }
+            var sprint = sprintResponse.Models.FirstOrDefault();
+            long assignedTeamId = sprint.WorkingTeamId;
+            
+            var mappingResult = await _supabaseClient.From<TeamMemberMapping>().Where(mapping=>mapping.TeamId == assignedTeamId).Get();
+            return mappingResult.Models.ToList();
+        }
+
+
     }
 }

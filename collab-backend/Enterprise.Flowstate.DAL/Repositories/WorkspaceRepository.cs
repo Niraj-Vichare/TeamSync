@@ -1,5 +1,6 @@
 ﻿using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Supabase.Gotrue;
 using Supabase.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -55,6 +56,33 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 return workspaces.Models.ToList();
             }
             return null;
+        }
+
+        public async Task<bool> HasWorkspace(string profileGuid)
+        {
+            var profile = await _supabaseClient.From<Profile>().Where(profile=>profile.Guid == profileGuid).Get();
+            string workspaceGuid = profile.Models.FirstOrDefault().WorkspaceId;
+            if(workspaceGuid == null)
+            {
+                return false;
+            }
+            return true;
+
+        }
+
+        public async Task<Ranking> GetUserRanking(string workspaceId, string userId)
+        {
+            var workspaceGuid = await _supabaseClient.From<Workspace>().Where(workspace=>workspace.WorkspaceGuid == workspaceId).Get();
+            int workspaceDbId = workspaceGuid.Models.FirstOrDefault().Id;
+            var userProfile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userId).Get();
+            int userDbId = userProfile.Models.FirstOrDefault().Id;
+            if(userDbId == 0 || workspaceDbId == 0)
+            {
+                return null;
+            }
+
+            var userRanking = await _supabaseClient.From<Ranking>().Where(ranking => ranking.OrganizationId == workspaceDbId && ranking.UserId == userDbId).Get();
+            return userRanking.Models.FirstOrDefault();
         }
     }
 }

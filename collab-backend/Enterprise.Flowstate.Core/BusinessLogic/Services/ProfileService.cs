@@ -50,6 +50,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return profile;
         }
 
+        
         public async Task<List<ProfileDto>> GetWorkspaceUsers(string workspaceGuid)
         {
             var result = await _omniRepository.ProfileRepository.GetWorkspaceUsers(workspaceGuid);

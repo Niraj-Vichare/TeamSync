@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.DTOs
 {
-    public class TeamDto
+    public class DepartmentDto
     {
-        public long TeamId { get; set; }
-        public List<TeamMemberDto> Members { get; set; }
-        public string Name { get; set; }
+        public int DepartmentId { get; set; }
+        public DateTime CreateAt { get; set; }
+        public string DepartmentName { get; set; }
         public string Tagline { get; set; }
     }
 }

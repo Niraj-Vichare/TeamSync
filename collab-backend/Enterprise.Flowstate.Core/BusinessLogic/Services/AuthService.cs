@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Enterprise.Flowstate.DAL.Enums;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -45,7 +46,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-                var response = await _supabaseClient.Auth.SignUp(email, password);
+                var option = new SignUpOptions
+                {
+                    Data = new Dictionary<string, object>
+                    {
+                        {"role",AuthEnums.RoleEnum.Owner}
+                    }
+                };
+                var response = await _supabaseClient.Auth.SignUp(email, password, option);
                 if(response?.User != null)
                 {
                     return response;

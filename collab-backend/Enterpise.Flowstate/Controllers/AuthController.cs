@@ -4,8 +4,7 @@ using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Models;
 using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Mvc;
-using Supabase.Gotrue;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -214,10 +213,11 @@ namespace Enterpise.Flowstate.Controllers
         public async Task<ApiResponseModel<object>> Signout()
         {
             try
-            {
+            {   
+                await _supabaseClient.Auth.SignOut();
                 return new ApiResponseModel<object>
                 {
-                    Message = "",
+                    Message = "User signed out successfully.",
                     StatusCode = StatusCodes.Status200OK,
                     Success = true
 

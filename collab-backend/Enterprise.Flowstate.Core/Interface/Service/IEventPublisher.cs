@@ -5,10 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Enterprise.Flowstate.DAL.Models
+namespace Enterprise.Flowstate.BAL.Interface.Service
 {
-    public class TicketDetailDto:TicketDto
+    public interface IEventPublisher
     {
-
+        Task<bool> PublishAsync(EventsLogDto body,int initalizeRetryCount);
     }
 }

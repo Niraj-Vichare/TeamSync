@@ -18,5 +18,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<Task>> GetAllTaskAssignedToUser(string userGuid, string projectId, string sprintId, string ticketId, string priority, string status);
         Task<bool> UpdateTaskStatus(string userGuid, int taskId, int taskStatus);
         Task<bool> UpdateTask(string taskGuid,string userGuid,Task task);
+        Task<List<Task>> GetOngoingUserTask(string userGuid, string workspaceGuid);
     }
 }

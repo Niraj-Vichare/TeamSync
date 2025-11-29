@@ -21,7 +21,7 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("user_id")]
         public int? UserId { get; set; }
         [Column("workspace_id")]
-        public int? WorkspaceId { get; set; }
+        public string? WorkspaceId { get; set; }
         [Column("sprint_id")]
         public int? SprintId
         {
@@ -34,6 +34,8 @@ namespace Enterprise.Flowstate.DAL.Models
         public int? TaskId { get; set; }
         [Column("metadata")]
         public string Metadata { get; set; }
+        [Column("event_guid")]
+        public string EventGuid { get; set; }
 
     }
 

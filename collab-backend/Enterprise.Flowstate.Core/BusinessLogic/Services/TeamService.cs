@@ -31,7 +31,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 result.Select(team => new TeamMemberDto
                 {
-                    DepartmentId = team.DepartmentId,
+                    Profile = null,
                     StatusId = team.StatusId,
                     CreateAt = team.CreateAt,
                 });
@@ -43,6 +43,22 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             return await _omniRepository.TeamRepository.GetTeamDropDown(workspaceGuid);
         }
+
+        public Task<TeamDto> GetAssignedTeam(string sprintGuid)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        //public async Task<List<TeamMemberDto>> GetAssignedMember(string sprintGuid)
+        //{
+        //    var mapping = await _omniRepository.SprintRepository.GetAssignedTeam(sprintGuid);
+        //    List<Tea>
+        //    foreach (var item in mapping)
+        //    {
+
+        //    }
+        //}
 
     }
 }

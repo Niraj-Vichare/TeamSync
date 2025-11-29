@@ -9,20 +9,21 @@ namespace Enterprise.Flowstate.DAL.DTOs
     {
         public long Id { get; set; }
         public DateTime CreatedAt { get; set; }
-        public int? EventTypeId { get; set; }
+        public int EventTypeId { get; set; }
         public string? EventDescription { get; set; }
-        public int? UserId { get; set; }
-        public int? WorkspaceId { get; set; }
+        public string? UserId { get; set; }
+        public string? WorkspaceId { get; set; }
         public int? SprintId
         {
             get; set;
         }
+        public string EventGuid { get; set; }
         public int? TicketId { get; set; }
 
         public int? TaskId { get; set; }
         public string Metadata { get; set; }
 
-        public GeneralEnums.EventType EventTypeInString => (GeneralEnums.EventType)(EventTypeId ?? 0);
+        public GeneralEnums.EventType EventTypeInString => (GeneralEnums.EventType)EventTypeId;
     }
 
 }

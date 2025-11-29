@@ -181,8 +181,8 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpPatch("{taskGuid}")]
-        public async Task<ApiResponseModel<object>> UpdateTask(string taskGuid, [FromBody] TaskDto taskModel)
+        [HttpPatch("{workspaceGuid}/{taskGuid}")]
+        public async Task<ApiResponseModel<object>> UpdateTask(string taskGuid,string workspaceGuid, [FromBody] TaskDto taskModel)
         {
             try
             {
@@ -197,7 +197,7 @@ namespace Enterpise.Flowstate.Controllers
                         StatusCode = StatusCodes.Status401Unauthorized,
                     };
                 }
-                bool isEdited = await _omniService.TaskService.UpdateTask(taskGuid,userId.ToString(),taskModel);
+                bool isEdited = await _omniService.TaskService.UpdateTask(workspaceGuid,taskGuid,userId.ToString(),taskModel);
 
                 return new ApiResponseModel<object>
                 {
@@ -237,7 +237,7 @@ namespace Enterpise.Flowstate.Controllers
                         StatusCode = StatusCodes.Status401Unauthorized,
                     };
                 }
-                bool isUpdated = await _omniService.TaskService.UpdateTaskStatus(userId.ToString(),taskId,status);
+                bool isUpdated = await _omniService.TaskService.UpdateTaskStatus(null,userId.ToString(),taskId,status);
                 if (!isUpdated)
                 {
                     return new ApiResponseModel<object>
@@ -334,6 +334,53 @@ namespace Enterpise.Flowstate.Controllers
                     StatusCode = StatusCodes.Status500InternalServerError,
                     Success = false,
                     Message = ex.Message
+                };
+            }
+        }
+
+        [HttpGet("ongoing-task")]
+        public async Task<ApiResponseModel<object>> GetUserOngoingTask([FromQuery] string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var result = await _omniService.TaskService.GetOngoingUserTask(userId.ToString(), workspaceGuid);
+
+                if (result == null || result.Count <= 0)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status204NoContent,
+                        Success = false,
+                        Message = "No ongoing task found."
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Ongoing task retrieved successfully.",
+                    Data = result
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Message = "An error occurred while retrieving ongoing ticket",
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false
                 };
             }
         }

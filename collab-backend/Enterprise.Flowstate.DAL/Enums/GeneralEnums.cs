@@ -47,7 +47,39 @@ namespace Enterprise.Flowstate.DAL.Enums
         
         public enum EventType
         {
-            TaskCreated =1,
+            ProjectCreated =1,
+            ProjectCompleted,
+            ProjectDeleted,
+            ProjectClosed,
+            ProjectPaused,
+            SprintCreated,
+            SprintCompleted,
+            SprintDeleted,
+            SprintClosed,
+            SprintPaused,
+            
+            TaskCreated,
+            TaskCompleted,
+            TaskDeleted,
+            TaskClosed,
+            TaskPaused,
+            AssignedUserToTask,
+
+            TicketCreated,
+            TicketCompleted,
+            TicketDeleted,
+            TicketClosed,
+            TicketPaused,
+
+            AddMember,
+            RemoveMember,
+            AssignMemberRole,
+            CheckIn,
+            CheckOut,
+
+            CreateWorkspace,
+            DeleteWorkspace,
+            
 
         }
     }

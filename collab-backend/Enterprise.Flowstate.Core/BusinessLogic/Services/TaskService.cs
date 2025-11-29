@@ -5,16 +5,21 @@ using Enterprise.Flowstate.DAL.Interfaces;
 
 using Enterprise.Flowstate.DAL.Models;
 using Task = Enterprise.Flowstate.DAL.Models.Task;
+using Supabase.Gotrue;
+using Supabase.Postgrest.Models;
+using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
     public class TaskService : ITaskService
     {
         private IOmniRepository _omniRepository;
-        public TaskService(IOmniRepository omniRepository)
+        private IEventPublisher _eventPublisher;
+        public TaskService(IOmniRepository omniRepository,IEventPublisher eventPublisher)
         {
             // Initialize any required services or repositories here
-            _omniRepository = omniRepository;   
+            _omniRepository = omniRepository;
+            _eventPublisher = eventPublisher;
         }
         public async Task<bool> CreateTask(string userGuid,TaskDto task)
         {
@@ -200,7 +205,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         }
 
-        public async Task<bool> UpdateTask(string taskGuid,string userId,TaskDto taskModel)
+        public async Task<bool> UpdateTask(string workspaceGuid, string taskGuid,string userId,TaskDto taskModel)
         {
             Task task = new Task
             {
@@ -217,14 +222,93 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Title = taskModel.Title
             };
             bool isUpdated =await _omniRepository.TaskRepository.UpdateTask(taskGuid,userId,task);
+            if (isUpdated)
+            {
+                if(taskModel.Status == TaskEnums.TaskStatus.Complete)
+                {
+                    EventsLogDto eventDto = new EventsLogDto
+                    {
+                        EventTypeId = (int)GeneralEnums.EventType.TaskCompleted,
+                        EventDescription = userId,
+                        WorkspaceId = workspaceGuid,
+                        UserId = userId,
+                        SprintId = taskModel.SprintId,
+                        TicketId = task.TicketId,
+                        CreatedAt = DateTime.UtcNow,
+                        TaskId = taskModel.Id   
+                    };
+                    _eventPublisher.PublishAsync(eventDto,0);
+                }
+            }
             return isUpdated;
         }
 
-        public Task<bool> UpdateTaskStatus(string userGuid, int taskId, string taskStatus)
+        public async Task<bool> UpdateTaskStatus(string workspaceGuid,string userGuid, int taskId, string taskStatus)
         {
             TaskEnums.TaskStatus statusEnum = Enum.Parse<TaskEnums.TaskStatus>(taskStatus);
             int taskStatusInInt = (int)statusEnum;
-            return _omniRepository.TaskRepository.UpdateTaskStatus(userGuid, taskId, taskStatusInInt);
+            bool isUpdated = await _omniRepository.TaskRepository.UpdateTaskStatus(userGuid, taskId, taskStatusInInt);
+            return isUpdated;
         }
+
+        public async Task<List<TaskDto>> GetOngoingUserTask(string userGuid, string workspaceGuid)
+        {
+            var result = await _omniRepository.TaskRepository.GetOngoingUserTask(userGuid, workspaceGuid);
+            List<TaskDto> tasks = new List<TaskDto>();
+            foreach (var task in result)
+            {
+                tasks.Add(new TaskDto
+                {
+                    Description = task.Description,
+                    TicketId = task.TicketId,
+                    ProjectId = task.ProjectId,
+                    Project = new ProjectDto
+                    {
+                        ProjectTitle = task.Project.ProjectName,
+                        ProjectGuid = task.Project.ProjectGuid,
+                    },
+                    Status = (TaskEnums.TaskStatus)task.Status,
+                    Title = task.Title,
+                    TaskGuid = task.TaskGuid,
+                    Priority = (TaskEnums.TaskPriority)task.Priority,
+                    SprintId = task.SprintId,
+
+                    Sprint = new SprintDto
+                    {
+                        Title = task.Title,
+                        SprintGuid = task.Sprint.SprintGuid,
+                        Status = (SprintEnums.SprintStatus)task.Sprint.StatusId
+                    },
+                    AssignedBy = task.AssignedBy,
+                    StartDate = task.StartDate,
+                    EndDate = task.EndDate,
+                    AssignedByUser = new ProfileDto
+                    {
+                        Guid = task?.AssignedByUser.Guid,
+                        DisplayName = task?.AssignedByUser.DisplayName,
+
+                    },
+                    AssignedTo = task.AssignedTo,
+                    AssignedToUser = new ProfileDto
+                    {
+                        DisplayName = task?.AssignedToUser.DisplayName,
+                        Guid = task?.AssignedToUser.Guid
+                    },
+                    Ticket = new TicketDto
+                    {
+                        Title = task.Ticket.Title,
+                        TicketGuid = task.Ticket.TicketGuid,
+                        Status = (TicketEnums.TicketStatus)task.Ticket.StatusId,
+                        Priority = (TicketEnums.TicketPriority)task.Ticket.PriorityId,
+                        TypeId = (TicketEnums.TicketType)task.Ticket.TypeId
+                    }
+                });
+
+            }
+
+            return tasks;
+        }
+
+
     }
 }

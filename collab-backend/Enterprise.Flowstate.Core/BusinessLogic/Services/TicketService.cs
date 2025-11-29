@@ -14,11 +14,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     public class TicketService : ITicketService
     {
         private IOmniRepository _omniRepository;
+        private readonly IEventPublisher _eventPublisher;
         public TicketService(IOmniRepository omniRepository)
         {
             _omniRepository = omniRepository;
         }
-
 
         public async Task<bool> DeleteTicket(string ticketId)
         {
@@ -50,8 +50,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<TicketDto> GetTicket(string ticketGuid)
         {
-            TicketDetailDto ticketDetail = await _omniRepository.TicketRepository.GetTicket(ticketGuid);
-            return ticketDetail;
+            //TicketDto ticketDetail = await _omniRepository.TicketRepository.GetTicket(ticketGuid);
+            //return ticketDetail;
+            return null;
         }
 
         public async Task<PaginationResponse<TicketDto>> GetTickets(string workspaceGuid, string type, string searchTerm, string statusFilter, string priorityFilter, int pageNumber, int pageSize)
@@ -194,15 +195,138 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return result;
         }
 
-        public async Task<List<TicketDropdownModel>> GetTicketsBySprintId(string sprintId)
+        public async Task<List<TicketDropdownModel>> GetTicketsBySprintId(int sprintId)
         {
-            int sprintInt = Convert.ToInt32(sprintId);
-            if (sprintInt == 0)
+
+            if (sprintId == 0)
             {
                 return null;
             }
-            var result = await _omniRepository.TicketRepository.GetTicketsBySprintId(sprintInt);
+            var result = await _omniRepository.TicketRepository.GetTicketsBySprintId(sprintId);
             return result;
+        }
+        
+        public async Task<List<TicketDto>> GetSprintTickets(int sprintId)
+        {
+            var tickets = await _omniRepository.TicketRepository.GetSprintTickets(sprintId);
+            List<TicketDto> ticketDto = new List<TicketDto>();
+            foreach (var ticket in tickets)
+            {
+                ticketDto.Add(new TicketDto
+                {
+                    Description = ticket.Description,
+                    TicketId = ticket.TicketId,
+                    ProjectId = ticket.ProjectId,
+                    ProjectName = ticket.Project?.ProjectName,
+                    Status = (TicketEnums.TicketStatus)ticket.StatusId,
+                    CreatedAt = ticket.CreatedAt,
+                    Tags = ticket.Tags,
+                    Title = ticket.Title,
+                    Points = ticket.Points,
+                    TicketGuid = ticket.TicketGuid,
+                    AssignedByName = ticket.AssignedByUser?.DisplayName,
+                    AssignedToName = ticket.AssignedToUser?.DisplayName,
+                    Priority = (TicketEnums.TicketPriority)ticket.PriorityId,
+                    SprintId = ticket.SprintId,
+                    SprintName = ticket.Sprint?.Title,
+                    TypeId = (TicketEnums.TicketType)ticket.TypeId,
+                    ReportedBy = ticket.ReportedBy,
+                    Steps = ticket.Steps,
+                    UpdatedAt = ticket.UpdatedAt
+                });
+            }
+            return ticketDto;
+        }
+        public async Task<List<TaskDto>> GetTicketTasks(string ticketGuid)
+        {
+            var tasks = await _omniRepository.TicketRepository.GetTicketTask(ticketGuid);
+            List<TaskDto> taskDto = new List<TaskDto>();
+            foreach (var task in tasks)
+            {
+                taskDto.Add(new TaskDto
+                {
+                    Description = task.Description,
+                    TicketId = task.TicketId,
+                    ProjectId = task.ProjectId,
+                    Project = new ProjectDto
+                    {
+                        ProjectTitle = task.Project.ProjectName,
+                        ProjectGuid = task.Project.ProjectGuid,
+                    },
+                    Status = (TaskEnums.TaskStatus)task.Status,
+                    Title = task.Title,
+                    TaskGuid = task.TaskGuid,
+                    Priority = (TaskEnums.TaskPriority)task.Priority,
+                    SprintId = task.SprintId,
+
+                    Sprint = new SprintDto
+                    {
+                        Title = task.Title,
+                        SprintGuid = task.Sprint.SprintGuid,
+                        Status = (SprintEnums.SprintStatus)task.Sprint.StatusId
+                    },
+                    AssignedBy = task.AssignedBy,
+                    StartDate = task.StartDate,
+                    EndDate = task.EndDate,
+                    AssignedByUser = new ProfileDto
+                    {
+                        Guid = task?.AssignedByUser.Guid,
+                        DisplayName = task?.AssignedByUser.DisplayName,
+
+                    },
+                    AssignedTo = task.AssignedTo,
+                    AssignedToUser = new ProfileDto
+                    {
+                        DisplayName = task?.AssignedToUser.DisplayName,
+                        Guid = task?.AssignedToUser.Guid
+                    },
+                    Ticket = new TicketDto
+                    {
+                        Title = task.Ticket.Title,
+                        TicketGuid = task.Ticket.TicketGuid,
+                        Status = (TicketEnums.TicketStatus)task.Ticket.StatusId,
+                        Priority = (TicketEnums.TicketPriority)task.Ticket.PriorityId,
+                        TypeId = (TicketEnums.TicketType)task.Ticket.TypeId
+                    }
+                });
+            }
+            return taskDto;
+        }
+
+        public async Task<bool> UpdateTicketStatus(string workspaceGuid, int ticketId, int status)
+        {
+            TicketEnums.TicketStatus ticketStatus;
+            
+            Ticket updatedTicket = await _omniRepository.TicketRepository.UpdateTicketStatus(workspaceGuid, ticketId, status);
+            if(updatedTicket == null)
+            {
+                return false;
+            }
+            string displayName = updatedTicket.AssignedToUser?.DisplayName;
+
+            if (updatedTicket!=null)
+            {
+                // Make the event model
+                EventsLogDto eventLogs = new EventsLogDto
+                {
+                    TicketId = ticketId,
+                    EventDescription = "Ticket is resolved by user",
+                    //UserId = updatedTicket.AssignedTo,
+                    SprintId = null,
+                    WorkspaceId = workspaceGuid,
+                    EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                    CreatedAt = DateTime.UtcNow,
+                };
+
+                // Publish inside the rabbitmq message broker.
+                string json = System.Text.Json.JsonSerializer.Serialize(eventLogs);
+                byte[] body = Encoding.UTF8.GetBytes(json);
+                //_eventPublisher.PublishAsync(body);
+
+                // Save the event log to database
+            }
+
+            return true;
         }
     }
 }

@@ -268,5 +268,379 @@ namespace Enterprise.Flowstate.Controllers
                 return null;
             }
         }
+
+
+
+        [HttpGet("/sprints/{sprintGuid}")]
+        public async Task<ApiResponseModel<object>> GetSprint(string workspaceGuid,string sprintGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Workspace GUID is required to create a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var sprint = await _omniService.SprintService.GetSprint(workspaceGuid,sprintGuid);
+                if(sprint == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no sprint with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = sprint,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
+
+        [HttpGet("{sprintGuid}/activities")]
+        public async Task<ApiResponseModel<object>> GetSprintActivity(string sprintGuid,int pageNumber,int pageSize)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sprintGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Sprint GUID is required a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var activity = await _omniService.SprintService.GetSprintActivities(sprintGuid,pageNumber,pageSize);
+                if (activity == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no sprint with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = activity,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
+
+        [HttpGet("{sprintGuid}/assignedTeam")]
+        public async Task<ApiResponseModel<object>> GetAssignedTeam(string sprintGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sprintGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Workspace GUID is required to create a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var sprint = await _omniService.SprintService.GetAssignedTeam(sprintGuid);
+                if (sprint == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no sprint with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = sprint,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
+
+        [HttpGet("{sprintId}/tickets")]
+        public async Task<ApiResponseModel<object>> GetSprintTickets(int sprintId)
+        {
+            try
+            {
+                if (sprintId<=0)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Sprint GUID is required to create a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var tickets = await _omniService.TicketService.GetSprintTickets(sprintId);
+                if (tickets == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no tickets with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = tickets,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
+
+        [HttpGet("{sprintGuid}/progress")]
+        public async Task<ApiResponseModel<object>> GetSprintProgress(string sprintGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sprintGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Sprint GUID is required to create a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var tickets = await _omniService.SprintService.GetSprintProgress(sprintGuid);
+                if (tickets == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no tickets with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = tickets,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
+
+        [HttpGet("{sprintGuid}/breakdown")]
+        public async Task<ApiResponseModel<object>> GetSprintBreakdown(string sprintGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sprintGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Sprint GUID is required to create a sprint."
+                    };
+                }
+
+                // 2️. Get user identity
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var tickets = await _omniService.SprintService.GetSprintBreakdown(sprintGuid);
+                if (tickets == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "There is no tickets with this guid",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = tickets,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
     }
 }

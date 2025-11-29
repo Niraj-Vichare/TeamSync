@@ -14,5 +14,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> AddMember(string workspaceId, TeamMemberWorkspaceMapping mapping);
         Task<List<TeamMemberWorkspaceMapping>> GetTeamMembers(string workspaceId);
         Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid);
+        Task<List<TeamMemberMapping>> GetAssignedMember(string sprintGuid);
     }
 }

@@ -190,5 +190,112 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var response = await _supabaseClient.From<Ticket>().Update(ticket);
             return response.Models.Any();
         }
+
+        public async Task<Sprint> GetSprint(string sprintGuid)
+        {
+
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            if (sprint.Models.Any())
+            {
+                return null;
+            }
+            var sprintResult = sprint.Models.FirstOrDefault();
+            return sprintResult;
+        }
+
+
+        public async Task<List<TeamMemberMapping>> GetAssignedTeam(string sprintGuid)
+        {
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            if (sprint.Models.Any())
+            {
+                return null;
+            }
+            var assignedTeam = sprint.Models.FirstOrDefault().WorkingTeamId;
+            var teamMemberMappings = await _supabaseClient.From<TeamMemberMapping>().Where(teamMapping=>teamMapping.TeamId == assignedTeam).Get();
+            return teamMemberMappings.Models.ToList();
+        }
+
+        public async Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize)
+        {
+            var sprint =await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            if (!sprint.Models.Any())
+            {
+                return null;
+            }
+            var sprintId = sprint.Models.FirstOrDefault().SprintId;
+            var events =await _supabaseClient.From<EventsLog>().Where(eventLogs=>eventLogs.SprintId == sprintId).Get();
+            return events.Models.ToList();
+        }
+
+        // When task compelete event happen in the week
+        public async Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid)
+        {
+            // Get sprint info
+            var sprintResult = await _supabaseClient
+                .From<Sprint>()
+                .Where(s => s.SprintGuid == sprintGuid)
+                .Get();
+
+            var sprint = sprintResult.Models.FirstOrDefault();
+            if (sprint == null) return new List<SprintProgressModel>();
+
+            var startDate = sprint.StartDate;
+            var endDate = sprint.EndDate?.Date ?? DateTime.UtcNow.Date;
+
+            // Get total tickets for this sprint
+            var totalTicketsResult = await _supabaseClient
+                .From<Ticket>()
+                .Where(t => t.SprintId == sprint.SprintId)
+                .Get();
+
+            var totalTickets = totalTicketsResult.Models.Count;
+
+            // Get all completed ticket events for this sprint
+            var eventLogsResult = await _supabaseClient
+                .From<EventsLog>()
+                .Where(e => e.SprintId == sprint.SprintId &&
+                            e.EventTypeId == 2 && // completed
+                            e.CreatedAt >= startDate &&
+                            e.CreatedAt <= endDate)
+                .Get();
+
+            var completedByDay = eventLogsResult.Models
+                .GroupBy(e => e.CreatedAt.Date)
+                .Select(g => new { Date = g.Key, Count = g.Count() })
+                .OrderBy(g => g.Date)
+                .ToList();
+
+            var progress = new List<SprintProgressModel>();
+            int cumulativeCompleted = 0;
+
+            for (var day = startDate; day <= endDate; day = day.Value.AddDays(1))
+            {
+                var dayData = completedByDay.FirstOrDefault(d => d.Date == day);
+                if (dayData != null)
+                    cumulativeCompleted += dayData.Count;
+
+                progress.Add(new SprintProgressModel
+                {
+                    Date = (DateTime)day,
+                    Completed = cumulativeCompleted,
+                    Pending = totalTickets - cumulativeCompleted
+                });
+            }
+
+            return progress;
+        }
+
+        public async Task<SprintMetric> GetSprintBreakdown(string sprintGuid)
+        {
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            if (!sprint.Models.Any())
+            {
+                return null;
+            }
+            var sprintId = sprint.Models.FirstOrDefault().SprintId;
+            var sprintMetric =await _supabaseClient.From<SprintMetric>().Where(sprint => sprint.SprintId == sprintId).Get();
+            return sprintMetric.Models.FirstOrDefault();
+        }
     }
 }

@@ -14,5 +14,10 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<PaginationResponse<SprintDto>> GetSprints(string workspaceGuid, string searchTerm, string statusFilter, string projectFilter, int pageNumber, int pageSize);
         Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid);
         Task<List<SprintDropdownModel>> GetSprintsByProjectId(string projectGuid);
+        Task<SprintDto> GetSprint(string workspaceGuid, string sprintGuid);
+        Task<List<TeamDto>> GetAssignedTeam(string sprintGuid);
+        Task<List<EventsLog>> GetSprintActivities(string sprintGuid,int pagNumber,int pageSize);
+        Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
+        Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid);
     }
 }

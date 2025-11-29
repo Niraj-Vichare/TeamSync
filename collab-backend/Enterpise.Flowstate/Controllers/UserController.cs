@@ -13,7 +13,7 @@ namespace Enterpise.Flowstate.Controllers
         private IOmniService _omniService;
         public UserController(IOmniService omniService)
         {
-            _omniService = omniService; 
+            _omniService = omniService;
         }
         [HttpGet("profile")]
         public async Task<ApiResponseModel<object>> GetProfile()
@@ -67,5 +67,55 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
+        [HttpGet("work")]
+        public async Task<ApiResponseModel<object>> GetUserWork([FromQuery] string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                var result = await _omniService.DashboardService.GetUserWorkMetric(workspaceGuid,userId.ToString());
+                if(result == null || result.Count == 0)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Message = "No work metrics found",
+                        Success = false
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Data = result,
+                    Message = "User work metrics retrieved successfully",
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                //_logger.LogError(ex, "Error retrieving user profile");
+
+                return new ApiResponseModel<object>
+                {
+                    Message = "An error occurred while retrieving profile",
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false
+                };
+            }
+        }
     }
 }
+    

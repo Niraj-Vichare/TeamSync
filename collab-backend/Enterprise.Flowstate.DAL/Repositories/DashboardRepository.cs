@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Task = Enterprise.Flowstate.DAL.Models.Task;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
@@ -159,6 +160,106 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return result.Models.Any();
         }
 
+        // Need to optmized...
+        public async Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid)
+        {
+            // Load workspace
+            var workspaceResponse = await _supabaseClient
+                .From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
+
+            // Load user
+            var userResponse = await _supabaseClient
+                .From<Profile>()
+                .Where(u => u.Guid == userGuid)
+                .Get();
+
+            if (!workspaceResponse.Models.Any() || !userResponse.Models.Any())
+                return new List<UserWorkMetric>();
+
+            int workspaceId = workspaceResponse.Models.First().Id;
+            int profileId = userResponse.Models.First().Id;
+
+            // Load member record
+            var memberResponse = await _supabaseClient
+                .From<Members>()
+                .Where(m => m.ProfileId == profileId)
+                .Get();
+
+            if (!memberResponse.Models.Any())
+                return new List<UserWorkMetric>();
+
+            int memberId = memberResponse.Models.First().Id;
+
+            // Load mapping of projects under workspace
+            var mappingResult = await _supabaseClient
+                .From<ProjectWorkspaceMapping>()
+                .Where(m => m.WorkspaceId == workspaceId)
+                .Get();
+
+            var mappedProjects = mappingResult.Models.ToList();
+
+            // Load teams where user is a member
+            var teamResponse = await _supabaseClient
+                .From<TeamMemberMapping>()
+                .Where(t => t.MemberId == memberId)
+                .Get();
+
+            var userTeams = teamResponse.Models.Select(t => t.TeamId).ToList();
+
+            List<UserWorkMetric> metrics = new List<UserWorkMetric>();
+
+            foreach (var map in mappedProjects)
+            {
+                int projectId = map.ProjectId;
+
+                // 1️⃣ Tickets
+                var tickets = await _supabaseClient
+                    .From<Ticket>()
+                    .Where(t => t.AssignedTo == profileId)
+                    .Where(t => t.ProjectId == projectId)
+                    .Get();
+
+                // 2️⃣ Tasks
+                var tasks = await _supabaseClient
+                    .From<Task>()
+                    .Where(t => t.AssignedTo == profileId)
+                    .Where(t => t.ProjectId == projectId)
+                    .Get();
+
+                // 3️⃣ Sprints — Fix: IN query
+                var sprintQuery = _supabaseClient
+                    .From<Sprint>()
+                    .Where(s => s.ProjectId == projectId);
+
+                if (userTeams.Any())
+                {
+                    string teamIdList = string.Join(",", userTeams);
+                    sprintQuery = sprintQuery.Filter("working_team_id",Supabase.Postgrest.Constants.Operator.In, teamIdList);
+                }
+
+                var sprints = await sprintQuery.Get();
+
+                // 4️⃣ Project object loaded?
+                // If not auto-joined, fetch manually
+                var project = map.Project ?? (await _supabaseClient
+                    .From<Project>()
+                    .Where(p => p.ProjectId == projectId)
+                    .Get()).Models.FirstOrDefault();
+
+                metrics.Add(new UserWorkMetric
+                {
+                    ProjectId = projectId,
+                    ProjectName = project?.ProjectName ?? "Unknown",
+                    NumberOfTicketsAssigned = tickets.Models.Count,
+                    NumberOfTasks = tasks.Models.Count,
+                    NumberOfSprintIncluded = sprints.Models.Count
+                });
+            }
+
+            return metrics;
+        }
 
         public async Task<OrganizationMetric> GetOrganizationMetric(string workspaceGuid)
         {
