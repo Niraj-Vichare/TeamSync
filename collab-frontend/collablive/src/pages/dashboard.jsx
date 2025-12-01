@@ -40,6 +40,9 @@ import dashboardService from "@/services/dashboard";
 import taskService from "@/services/task";
 import ticketService from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
+import { ca, ta } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock Data
 const userRole = "employee"; // or "admin"
@@ -226,15 +229,7 @@ const teamStats = [
   { name: "QA", members: 3, activeProjects: 5 },
 ];
 
-const employeeChartData = [
-  { day: "Monday", Hours: 7.5 },
-  { day: "Tuesday", Hours: 7.5 },
-  { day: "Wednesday", Hours: 7 },
-  { day: "Thursday", Hours: 8 },
-  { day: "Friday", Hours: 6.5 },
-  { day: "Saturday", Hours: 7 },
-  { day: "Sunday", Hours: 8.5 },
-]
+
 
 const lineChartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -284,8 +279,18 @@ function Dashboard() {
     }
   };
 
-   const [dashboardCards, setDashboardCards] = useState(null);
+   const [dashboardCards, setDashboardCards] = useState({
+    totalTasks: 0,
+    myPoint : 0,
+    totalHours:0,
+    efficiency:0
+   });
+   const [loadingTickets,setLoadingTicket]=useState(false);
+   const [barLoading,setBarLoading]=useState(false);
   const [weeklyLogging, setWeeklyLogging] = useState(null);
+  const [userTickets,setUserTickets]=useState([]);
+  const [userongoingTasks,setOngoingTasks]=useState([]);
+  const [userProjectWork,setUserProjectWork] = useState([]);
   const [clockInTime, setClockInTime] = useState(null);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -322,20 +327,62 @@ function Dashboard() {
   const fetchDashboardCards = async () => {
     try {
       const result = await dashboardService.getDashboardCard(workspaceGuid);
+      console.log(result);
       setDashboardCards(result);
     } catch (error) {
       console.error("Failed to fetch dashboard cards:", error);
     }
   };
 
+  const fetchUserOngoingTask=async()=>{
+    try{
+      const result = await taskService.getUserOngoingTasks(workspaceGuid);
+      setOngoingTasks(result);
+      console.log("Ongoing Tasks",result);
+      console.log(result);
+
+    }catch(error){
+      console.error("Failed to fetch user ongoing tasks:", error);
+    }
+  }
+
+  const fetchUserAssignedTickets=async()=>{
+    try{
+      setLoadingTicket(true);
+      const result = await ticketService.getUserAssignedTickets(workspaceGuid);
+      console.log("User Assigned Tickets",result);  
+      if(result && result.success){
+        console.log("User Assigned Tickets Data",result.data);
+        setUserTickets(result.data);
+      }
+    }catch(error){
+      console.error("Failed to fetch user assigned tickets:", error);
+    }finally{
+      setLoadingTicket(false);
+    }
+  }
+
+
   const fetchWeeklyLogging = async () => {
     try {
+      setBarLoading(true);
       const result = await dashboardService.getWeeklyLogging(workspaceGuid);
-      setWeeklyLogging(result);
+
+      if (result && result.statusCode === 200) {
+        const raw = result.data;
+        const formatted = Object.keys(raw).map((day) => ({
+          day,
+          Hours: raw[day]
+        }));
+        setWeeklyLogging(formatted);
+      }
     } catch (error) {
       console.error("Failed to fetch weekly logging:", error);
+    } finally {
+      setBarLoading(false);
     }
   };
+
 
   const checkClockInStatus = async () => {
     try {
@@ -351,6 +398,25 @@ function Dashboard() {
       console.error("Failed to check clock-in status:", error);
     }
   };
+
+  const getUserWork=async()=>{
+    if(!workspaceGuid) return;
+    try{
+      var result = await dashboardService.getUserWork(workspaceGuid);
+      console.log("User Work:",result);
+      setUserProjectWork(result);
+      
+    }catch(error){
+      console.error("Error while getting user work", error);
+    }
+  }
+
+  const navigate = useNavigate();
+
+  const handleRedirect=async(redirect)=>{
+    navigate(redirect); 
+  }
+
 
   const handleClockIn = async () => {
     try {
@@ -379,6 +445,9 @@ function Dashboard() {
     fetchDashboardCards();
     fetchWeeklyLogging();
     checkClockInStatus();
+    fetchUserAssignedTickets();
+    fetchUserOngoingTask();
+    getUserWork();
   }, []);
 
   // Progress value (capped at 100%)
@@ -585,7 +654,7 @@ function Dashboard() {
         <div className={`grid gap-6 ${userRole === 'admin' ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-5'}`}>
           
           <div className={`space-y-6 ${userRole === 'admin' ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-            
+
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -593,72 +662,160 @@ function Dashboard() {
             >
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <CardTitle className="text-xl">
-                        {userRole === 'admin' ? 'Team Tasks Overview' : 'My Tasks'}
-                      </CardTitle>
-                      <Badge variant="secondary">{tasks.length}</Badge>
+                  {loadingTickets ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-24" />
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Filter className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm">
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add Task
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {tasks.slice(0, userRole === 'admin' ? 6 : 8).map((task, index) => (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 * index }}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <div className="flex items-center space-x-2">
+                          <CardTitle className="text-xl">
+                            {userRole === "admin" ? "Team Tickets Overview" : "My Tickets"}
+                          </CardTitle>
+                          <Badge variant="secondary">{userTickets.length}</Badge>
+                        </div>
+
+                        {/* Tagline */}
+                        {userTickets?.[0]?.tagline && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {userTickets[0].tagline}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* View More */}
+                      <button
+                        onClick={() => navigate('/sprints')}
+                        className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
                       >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-2 h-2 rounded-full ${
-                            task.status === 'completed' ? 'bg-green-500' : 
-                            task.status === 'in-progress' ? 'bg-blue-500' : 'bg-gray-400'
-                          }`} />
-                          <div className="space-y-1">
-                            <p className="font-medium text-sm">{task.title}</p>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant={getPriorityColor(task.priority)} className="text-xs">
-                                {task.priority}
-                              </Badge>
-                              {task.labels.slice(0, 2).map((label, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {label}
-                                </Badge>
-                              ))}
-                              {userRole === 'employee' && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {task.storyPoints} pts
-                                </Badge>
-                              )}
+                        View More →
+                      </button>
+                    </div>
+                  )}
+                </CardHeader>
+
+                <CardContent>
+                  {/* ----------------------------------------- */}
+                  {/* LOADING STATE — SKELETHON */}
+                  {/* ----------------------------------------- */}
+                  {loadingTickets ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3,4].map((i) => (
+                        <div
+                          key={i}
+                          className="p-3 rounded-lg border flex items-center justify-between"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Skeleton className="h-2 w-2 rounded-full" />
+
+                            <div className="space-y-2">
+                              <Skeleton className="h-3 w-48" />
+                              <div className="flex gap-2">
+                                <Skeleton className="h-3 w-20" />
+                                <Skeleton className="h-3 w-16" />
+                                <Skeleton className="h-3 w-20" />
+                              </div>
                             </div>
                           </div>
+
+                          <Skeleton className="h-3 w-24" />
                         </div>
-                        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
-                          {userRole === 'admin' && (
-                            <Avatar className="w-6 h-6">
-                              <AvatarFallback className="text-xs">{task.assignee}</AvatarFallback>
-                            </Avatar>
-                          )}
-                          <span>{task.due}</span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* ----------------------------------------- */
+                    /* TICKET LIST */
+                    /* ----------------------------------------- */
+                    <div className="space-y-3">
+                      {userTickets.slice(0, 4).map((ticket, index) => (
+                        <motion.div
+                          key={ticket.ticketId}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.08 * index }}
+                          onClick={() => navigate(`/ticket/${ticket.ticketGuid}`)}
+                          className="
+                    flex items-center justify-between 
+                    p-3 rounded-lg border cursor-pointer 
+                    hover:bg-muted/50 transition 
+                    hover:scale-[1.01]
+                  "
+                        >
+                          <div className="flex items-center space-x-3">
+                            {/* Status Dot */}
+                            <div
+                              className={`w-2 h-2 rounded-full ${ticket.statusInString === "Closed"
+                                  ? "bg-green-500"
+                                  : ticket.statusInString === "InProgress"
+                                    ? "bg-blue-500"
+                                    : "bg-red-400"
+                                }`}
+                            />
+
+                            <div className="space-y-1">
+                              <p className="font-medium text-sm">{ticket.title}</p>
+
+                              {/* Ticket-level tagline */}
+                              {ticket.description && (
+                                <p className="text-xs text-muted-foreground">{ticket.description}</p>
+                              )}
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={getPriorityColor(ticket.priorityInString)} className="text-xs">
+                                  {ticket.priorityInString}
+                                </Badge>
+
+                                <Badge variant="outline" className="text-xs">
+                                  {ticket.statusInString}
+                                </Badge>
+
+                                {ticket.projectName && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {ticket.projectName}
+                                  </Badge>
+                                )}
+
+                                {ticket.sprintName && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {ticket.sprintName}
+                                  </Badge>
+                                )}
+                                {ticket.typeName && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {ticket.typeName}
+                                  </Badge>
+                                )}
+
+                                {userRole === "employee" && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {ticket.points} pts
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Dates & Avatar */}
+                          <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+                            {userRole === "admin" && (
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback className="text-xs">{ticket.assignedByName}</AvatarFallback>
+                              </Avatar>
+                            )}
+                            <span>
+                              {ticket.startDateInString} → {ticket.endDateInString}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
+
 
             {userRole === 'employee' ? (
               // Employee-specific sections
@@ -737,43 +894,74 @@ function Dashboard() {
                     </CardFooter>
                   </Card>
                 </motion.div>
+
+
                 <motion.div>
                   <Card>
                     <CardHeader>
                       <CardTitle>Bar Chart</CardTitle>
-                      <CardDescription>January - June 2024</CardDescription>
+                      <CardDescription>Last 7 Days</CardDescription>
                     </CardHeader>
+
                     <CardContent>
-                      <ChartContainer config={{
-                        "label":"Hours"
-                      }}>
-                        <BarChart accessibilityLayer data={employeeChartData}>
-                          <CartesianGrid vertical={false} />
-                          <XAxis
-                            dataKey="day"
-                            tickLine={false}
-                            tickMargin={10}
-                            axisLine={false}
-                            tickFormatter={(value) => value.slice(0, 3)}
-                          />
-                          <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent hideLabel />}
-                          />
-                          <Bar dataKey="Hours" fill="var(--color-desktop)" radius={8} />
-                        </BarChart>
-                      </ChartContainer>
+                      {barLoading ? (
+                        // --------------------------------
+                        // SKELETON BAR CHART PLACEHOLDER
+                        // --------------------------------
+                        <div className="space-y-4 w-full">
+                          <Skeleton className="h-6 w-24" />
+
+                          <div className="flex items-end justify-between h-48 gap-2">
+                            {Array.from({ length: 7 }).map((_, i) => (
+                              <Skeleton
+                                key={i}
+                                className="w-10 rounded-md"
+                                style={{ height: `${30 + i * 10}px` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        // -----------------------------
+                        // REAL CHART
+                        // -----------------------------
+                        <ChartContainer config={{ label: "Hours" }}>
+                          <BarChart accessibilityLayer data={weeklyLogging}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis
+                              dataKey="day"
+                              tickLine={false}
+                              tickMargin={10}
+                              axisLine={false}
+                              tickFormatter={(value) => value.slice(0, 3)}
+                            />
+                            <ChartTooltip
+                              cursor={false}
+                              content={<ChartTooltipContent hideLabel />}
+                            />
+                            <Bar
+                              dataKey="Hours"
+                              fill="var(--color-desktop)"
+                              radius={8}
+                            />
+                          </BarChart>
+                        </ChartContainer>
+                      )}
                     </CardContent>
+
                     <CardFooter className="flex-col items-start gap-2 text-sm">
                       <div className="flex gap-2 leading-none font-medium">
                         Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
                       </div>
                       <div className="text-muted-foreground leading-none">
-                        Showing total visitors for the last 6 months
+                        Showing weekly logging for the last 7 days
                       </div>
                     </CardFooter>
                   </Card>
                 </motion.div>
+
+
+
                 <motion.div>
                   <span></span>
                 </motion.div>

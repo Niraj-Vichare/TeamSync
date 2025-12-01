@@ -166,7 +166,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     loading,
-    isAuthenticated:isAuthenticated,
+    isAuthenticated: isAuthenticated,
     signup,
     login,
     loginWithGoogle,

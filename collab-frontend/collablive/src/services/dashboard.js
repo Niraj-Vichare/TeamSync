@@ -5,7 +5,7 @@ class DashboardService {
   async getDashboardCard(workspaceGuid) {
     if (!workspaceGuid) throw new Error("Workspace GUID is required");
     try {
-      const response = await axiosInstance.get(`/dashboard/metric?workspaceGuid=${workspaceGuid}`);
+      const response = await axiosInstance.get(`/dashboard/metrics?workspaceGuid=${workspaceGuid}`);
       return response.data;
     } catch (error) {
       console.error("Error while getting the dashboard cards", error);
@@ -20,7 +20,7 @@ class DashboardService {
       return response.data;
     } catch (error) {
       console.error("Error while getting weekly logging", error);
-      throw error;
+      throw error;  
     }
   }
 
@@ -42,6 +42,17 @@ class DashboardService {
       return res.data;
     } catch (error) {
       console.error("Error while clocking in", error);
+      throw error;
+    }
+  }
+
+  async getUserWork(workspaceGuid){
+    try{
+      const res = await axiosInstance.get(`/user/work?workspaceGuid=${workspaceGuid}`);
+      return res.data;
+
+    }catch(error){
+      console.error("Error while getting user work", error);
       throw error;
     }
   }
