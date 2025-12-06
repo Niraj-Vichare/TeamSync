@@ -1,8 +1,10 @@
+using Enterprise.Flowstate.BAL.BusinessLogic.BGService;
 using Enterprise.Flowstate.BAL.BusinessLogic.Services;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Repositories;
+using Enterprise.Flowstate.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Supabase;
@@ -31,15 +33,18 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
         }
     );
 });
-
+builder.Services.AddSignalR();
 
 builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
 builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IOmniService, OmniService>();
 builder.Services.AddScoped<ICache,CacheService>();
+builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
 builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
 builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();
 builder.Services.AddHostedService<MessageConsumer>();
+//builder.Services.AddHostedService<DatabaseSyncService>();
+//builder.Services.AddHostedService<WeeklyPeriodResetService>();
 
 builder.Services.AddCors(options =>
 {
@@ -98,6 +103,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.MapHub<LeaderboardHub>("/hubs/leaderboard");
 app.UseCors("AllowSpecificOrigins");
 app.UseHttpsRedirection();
 app.UseAuthentication();

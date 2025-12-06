@@ -254,6 +254,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task<List<TaskDto>> GetOngoingUserTask(string userGuid, string workspaceGuid)
         {
             var result = await _omniRepository.TaskRepository.GetOngoingUserTask(userGuid, workspaceGuid);
+            if(result == null)
+            {
+                return null;
+            }
             List<TaskDto> tasks = new List<TaskDto>();
             foreach (var task in result)
             {

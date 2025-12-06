@@ -108,7 +108,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 return new List<Ticket>();
             var user = userResponse.Models.FirstOrDefault();
             int userId = user.Id;
-            var ticketResponse = await _supabaseClient.From<Ticket>().Where(ticket => ticket.AssignedToUser.Id == userId).Get();
+            var ticketResponse = await _supabaseClient.From<Ticket>().Select("*,project:project_id(project_name),sprint:sprint_id(title),assignedByUser:profile!reported_by(display_name),assignedToUser:profile!assigned_to(display_name)").Where(ticket => ticket.AssignedTo == userId).Get();
             if(ticketResponse == null)
             {
                 return new List<Ticket>();
@@ -265,13 +265,14 @@ namespace Enterprise.Flowstate.DAL.Repositories
         }
 
 
-        public async Task<List<Ticket>> GetSprintTickets(int sprintId)
+        public async Task<List<Ticket>> GetSprintTickets(string sprintGuid)
         {
-            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintId == sprintId).Get();
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
             if (!sprint.Models.Any())
             {
                 return null;
             }
+            var sprintId = sprint.Models.FirstOrDefault().SprintId;
             var ticketResponse = await _supabaseClient.From<Ticket>().Where(ticket => ticket.SprintId == sprintId).Get();
             return ticketResponse.Models.ToList();
 

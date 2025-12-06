@@ -186,9 +186,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Points = ticket.Points,
                     Priority = (TicketEnums.TicketPriority)ticket.PriorityId,
                     Tags = ticket.Tags,
+                    TicketId = ticket.TicketId,
                     Title = ticket.Title,
                     StartDate = ticket.StartDate,
-                    EndDate = ticket.EndDate
+                    EndDate = ticket.EndDate,
+                    Description = ticket.Description,
+                    TicketGuid = ticket.TicketGuid,                    
+                    AssignedByName = ticket.AssignedByUser?.DisplayName,
+                    SprintName = ticket.Sprint?.Title,
+                    ProjectName = ticket.Project?.ProjectName,
+                    Status = (TicketEnums.TicketStatus)ticket.StatusId,
+                    TypeId = (TicketEnums.TicketType)ticket.TypeId,
                 }
                 );
             }
@@ -206,7 +214,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return result;
         }
         
-        public async Task<List<TicketDto>> GetSprintTickets(int sprintId)
+        public async Task<List<TicketDto>> GetSprintTickets(string sprintId)
         {
             var tickets = await _omniRepository.TicketRepository.GetSprintTickets(sprintId);
             List<TicketDto> ticketDto = new List<TicketDto>();

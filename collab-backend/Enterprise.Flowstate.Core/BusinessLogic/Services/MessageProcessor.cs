@@ -2,6 +2,7 @@
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     {
         private ICache _cache;
         private IOmniService _omniService;
-        public MessageProcessor(ICache cacheRepository,IOmniService omniService)
+        private readonly ILeaderboardHubService _hubService;
+        private ILogger<MessageProcessor> _logger;
+        public MessageProcessor(ICache cacheRepository,IOmniService omniService,ILogger<MessageProcessor> logger,ILeaderboardHubService leaderboardHubService)
         {
             _cache = cacheRepository;
             _omniService = omniService;
+            _logger = logger;
+            _hubService = leaderboardHubService;
         }
         public async Task<bool> ProcessMessageAsync(EventsLogDto eventLogDto)
         {
@@ -25,67 +30,107 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 throw new InvalidOperationException("Invalid message payload");
             }
+            /*
+            #region First Version
+            try
+            {
+                // Get or create metric from cache
+                RankingCacheModel metric = await _cache.GetUserMetricAsync(eventLogDto.UserId, eventLogDto.WorkspaceId);
 
-            // Get or create metric from cache
-            RankingCacheModel metric = await _cache.GetUserMetricAsync(eventLogDto.UserId, eventLogDto.WorkspaceId);
+                if (metric == null)
+                {
+                    var userDbMetric = await _omniService.DashboardService.GetUserMetric(eventLogDto.WorkspaceId, eventLogDto.UserId);
+                    var rankingMetric = await _omniService.WorkspaceService.GetUserRanking(eventLogDto.WorkspaceId, eventLogDto.UserId);
+
+                    if (userDbMetric == null || rankingMetric == null)
+                    {
+                        _logger.LogWarning("User metric not found for UserId={UserId}, WorkspaceId={WorkspaceId}", eventLogDto.UserId, eventLogDto.WorkspaceId);
+                        // NACK the message to requeue it
+                        //await _channel.BasicNackAsync(@event.DeliveryTag, false, true);
+                        return false;
+                    }
+
+                    // FIX: Assign the created model to 'metric'
+                    metric = new RankingCacheModel
+                    {
+                        ContributionScore = userDbMetric.ContributionScore,
+                        Efficiency = userDbMetric.Efficiency,
+                        Point = userDbMetric.Points,
+                        Ranking = rankingMetric.RankPosition,
+                        TotalHours = userDbMetric.TotalHours,
+                        TotalTaskCompleted = userDbMetric.TasksCompleted,
+                    };
+                }
+            
+                double newMetricScore = ComputeScore(metric);
+
+                // Update metric based on event
+                UpdateRankingMetric(eventLogDto, metric);
+
+                var rank = await _cache.UpdateWorkspaceRankingAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, newMetricScore);
+
+                // Create or Update the existing metric in cache
+                await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId,metric);
+
+            
+                return true;
+            }
+            #endregion
+            */
+
+
+            var metric = await _cache.GetUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId);
 
             if (metric == null)
             {
-                var userDbMetric = await _omniService.DashboardService.GetUserMetric(eventLogDto.WorkspaceId, eventLogDto.UserId);
-                var rankingMetric = await _omniService.WorkspaceService.GetUserRanking(eventLogDto.WorkspaceId, eventLogDto.UserId);
-
-                if (userDbMetric == null || rankingMetric == null)
-                {
-                    //_logger.LogWarning("User metric not found for UserId={UserId}, WorkspaceId={WorkspaceId}", eventLogDto.UserId, eventLogDto.WorkspaceId);
-                    // NACK the message to requeue it
-                    //await _channel.BasicNackAsync(@event.DeliveryTag, false, true);
-                    return false;
-                }
-
-                // FIX: Assign the created model to 'metric'
                 metric = new RankingCacheModel
                 {
-                    ContributionScore = userDbMetric.ContributionScore,
-                    Efficiency = userDbMetric.Efficiency,
-                    Point = userDbMetric.Points,
-                    Ranking = rankingMetric.RankPosition,
-                    TotalHours = userDbMetric.TotalHours,
-                    TotalTaskCompleted = userDbMetric.TasksCompleted,
+                    ContributionScore = 0,
+                    Efficiency = 0,
+                    Point = 0,
+                    Ranking = 0,
+                    TotalHours = 0,
+                    TotalTaskCompleted = 0
                 };
-
-                // Add to cache
-                await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, metric);
             }
-            // Get the updated score
-            double newMetricScore = ComputeScore(metric);
 
-            // Update the ranking cache
-            var rank = await _cache.UpdateWorkspaceRankingAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, newMetricScore);
+            UpdateMetricFromEvent(eventLogDto, metric);
 
-            RankingCacheModel rankingModel = new RankingCacheModel
+
+            double newScore = ComputeScore(metric);
+
+            var newRank = await _cache.UpdateWorkspaceRankingAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, newScore);
+            if (newRank == -1)
             {
-                Efficiency = metric.Efficiency,
-                Point = metric.Point,
-                Ranking = rank,
-                TotalHours = metric.TotalHours,
-                TotalTaskCompleted = metric.TotalTaskCompleted,
-                ContributionScore = metric.ContributionScore,
-            };
 
-            // Update metric according to event
-            UpdateRankingMetric(eventLogDto, rankingModel);
+            }
+            metric.Ranking = newRank;
 
-            // Update the User Metric Cache
-            await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, rankingModel);
+            await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId,eventLogDto.UserId,metric);
+
+            // Background job will handle actual DB write
+            await _cache.AddPendingUpdateAsync(eventLogDto.WorkspaceId,eventLogDto.UserId);
+
+            var leaderboard = await _omniService.LeaderboardComparisonService.GetLeaderboardWithComparisonAsync(
+                    eventLogDto.WorkspaceId,0,10);
+
+            await _hubService.SendLeaderboardUpdateAsync(
+                eventLogDto.WorkspaceId,
+                leaderboard);
+
+            _logger.LogDebug("Processed event for UserId={UserId}, Rank={Rank}, Score={Score:F2}",eventLogDto.UserId, newRank, newScore);
+
             return true;
 
         }
+
+        #region Private Methods
         private static double ComputeScore(RankingCacheModel m)
         {
-            double eff = m.Efficiency ?? 0;
-            double pts = m.Point ?? 0;
-            double cs = m.ContributionScore ?? 0;
-            double hrs = m.TotalHours ?? 0;
+            double eff = m.Efficiency;
+            double pts = m.Point;
+            double cs = m.ContributionScore;
+            double hrs = m.TotalHours;
 
             var score =
                 (eff * 0.4) +
@@ -96,9 +141,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return Math.Round(score, 2);
         }
 
-
-
-        private void UpdateRankingMetric(EventsLogDto? eventLog, RankingCacheModel rankingCacheModel)
+        private static void UpdateMetricFromEvent(EventsLogDto? eventLog, RankingCacheModel rankingCacheModel)
         {
             if (eventLog == null) return;
 
@@ -121,6 +164,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     break;
             }
         }
+        
+        #endregion
     }
 
 }

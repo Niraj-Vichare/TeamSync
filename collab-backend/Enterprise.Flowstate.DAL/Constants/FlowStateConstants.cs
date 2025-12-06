@@ -31,7 +31,13 @@ namespace Enterprise.Flowstate.DAL.Constants
         // Cache Keys:
         public const string WORKSPACE_RANKING = "workspace_ranking:{0}";
         public const string USER_METRIC = "user_metric:{0}:{1}";
-
+        public const string PENDING_DB_UPDATES = "pending_updates:{0}";
+        public const string PREVIOUS_WEEK_RANKING_KEY = "workspace_ranking:previous:{0}";
+        public const string PREVIOUS_WEEK_METRIC_KEY = "user_metric:previous:{0}:{1}";
+        public const string USER_INFO_KEY = "user_info:{0}";
+        public const string WORKSPACE_PROJECTS_KEY = "workspace_projects:{0}";
+        public const string PROJECT_SPRINTS_KEY = "workspace_project_sprints:{0}:{1}";
+        public const string SPRINT_TICKETS_KEY = "sprint_tickets:{0}";
 
     }
 }

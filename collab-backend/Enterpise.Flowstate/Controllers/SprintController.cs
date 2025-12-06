@@ -271,8 +271,8 @@ namespace Enterprise.Flowstate.Controllers
 
 
 
-        [HttpGet("/sprints/{sprintGuid}")]
-        public async Task<ApiResponseModel<object>> GetSprint(string workspaceGuid,string sprintGuid)
+        [HttpGet("{sprintGuid}")]
+        public async Task<ApiResponseModel<object>> GetSprint([FromQuery]string workspaceGuid,[FromQuery]string sprintGuid)
         {
             try
             {
@@ -282,7 +282,7 @@ namespace Enterprise.Flowstate.Controllers
                     {
                         StatusCode = StatusCodes.Status400BadRequest,
                         Success = false,
-                        Message = "Workspace GUID is required to create a sprint."
+                        Message = "Workspace GUID is required."
                     };
                 }
 
@@ -334,7 +334,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/activities")]
-        public async Task<ApiResponseModel<object>> GetSprintActivity(string sprintGuid,int pageNumber,int pageSize)
+        public async Task<ApiResponseModel<object>> GetSprintActivities(string sprintGuid,int pageNumber,int pageSize)
         {
             try
             {
@@ -457,12 +457,12 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("{sprintId}/tickets")]
-        public async Task<ApiResponseModel<object>> GetSprintTickets(int sprintId)
+        [HttpGet("{sprintGuid}/tickets")]
+        public async Task<ApiResponseModel<object>> GetSprintTickets(string sprintGuid)
         {
             try
             {
-                if (sprintId<=0)
+                if (string.IsNullOrEmpty(sprintGuid))
                 {
                     return new ApiResponseModel<object>
                     {
@@ -485,7 +485,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                var tickets = await _omniService.TicketService.GetSprintTickets(sprintId);
+                var tickets = await _omniService.TicketService.GetSprintTickets(sprintGuid);
                 if (tickets == null)
                 {
                     return new ApiResponseModel<object>

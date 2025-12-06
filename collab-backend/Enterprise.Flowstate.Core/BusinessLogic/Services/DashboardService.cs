@@ -73,36 +73,34 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
 
-        public async Task<List<DailyLogging>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid)
+        public async Task<Dictionary<string, double>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid)
         {
-            var dailyLogging = await _omniRepository.DashboardRepository.GetWeeklyDailyLoggingMetrics(workspaceGuid, userGuid);
-            Dictionary<string, double> pairs = new Dictionary<string, double>();
+            var dailyLogging = await _omniRepository.DashboardRepository
+                .GetWeeklyDailyLoggingMetrics(workspaceGuid, userGuid);
+
+            // Pre-seed all 7 days with 0
+            Dictionary<string, double> pairs = Enum.GetNames(typeof(DayOfWeek))
+                .ToDictionary(d => d, d => 0.0);
 
             foreach (var dailyLog in dailyLogging)
             {
-                // Assuming your model has: TimeOnly CheckIn, TimeOnly CheckOut, DateTime CheckingDate
                 string dayOfWeek = dailyLog.CheckingDate.DayOfWeek.ToString();
 
-                // Calculate total hours between CheckIn and CheckOut
                 TimeSpan workedTime = dailyLog.CheckOut.ToTimeSpan() - dailyLog.CheckIn.ToTimeSpan();
 
+                // Cross-midnight handling
                 if (workedTime.TotalHours < 0)
-                {
                     workedTime = workedTime.Add(TimeSpan.FromHours(24));
-                }
 
                 double totalHours = workedTime.TotalHours;
 
-                // Add to dictionary (you may want to sum if multiple logs exist for same day)
-                if (pairs.ContainsKey(dayOfWeek))
-                    pairs[dayOfWeek] += totalHours;
-                else
-                    pairs.Add(dayOfWeek, totalHours);
+                // Add hours to pre-seeded value
+                pairs[dayOfWeek] += totalHours;
             }
 
-            // Optional: If you need to return the data in a specific format, you can create DTOs or return the dictionary.
-            return dailyLogging;
+            return pairs;
         }
+
 
         public async Task<DailyLogging> GetTodayLogging(string workspaceId, string userId)
         {
@@ -124,6 +122,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             var userWorkMetric = await _omniRepository.DashboardRepository.GetUserWorkMetric(workspaceGuid, userGuid);
             return userWorkMetric;
+        }
+        public async Task<List<UserContributionMetric>> GetUserContribution(string workspaceGuid, string userGuid)
+        {
+            var userContributionMetric = await _omniRepository.DashboardRepository.GetUserContribution(workspaceGuid, userGuid);
+            return userContributionMetric;
         }
 
     }

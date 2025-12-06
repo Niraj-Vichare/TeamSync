@@ -12,6 +12,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public int ProjectId { get; set; }
         public int NumberOfTasks { get; set; }
         public int NumberOfSprintIncluded { get; set; }
+
         public int NumberOfTicketsAssigned { get; set; }
     }
 }

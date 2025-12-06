@@ -338,7 +338,7 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("ongoing-task")]
+        [HttpGet("ongoing")]
         public async Task<ApiResponseModel<object>> GetUserOngoingTask([FromQuery] string workspaceGuid)
         {
             try

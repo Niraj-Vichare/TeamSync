@@ -11,20 +11,25 @@ namespace Enterprise.Flowstate.DAL.Models
         public long Id { get; set; }
 
         [Column("user_id")]
-        public int? UserId { get; set; }
+        public int UserId { get; set; }
 
         [Column("score")]
         // This is calulated like total_score = (efficiency * 0.4) (points* 0.3) (contribution_score* 0.2) + (total_hours* 0.1)
-        public float? Score { get; set; }
+        public float Score { get; set; }
 
         [Column("rank_position")]
-        public int? RankPosition { get; set; }
+        public int RankPosition { get; set; }
 
         [Column("last_calculated")]
         public DateTime? CalculatedLastAt { get; set; }
 
         [Column("organization_id")]
-        public int? OrganizationId { get; set; }
+        public int OrganizationId { get; set; }
+
+        [Column("start_period")]
+        public DateTime StartPeriod { get; set; }
+        [Column("end_period")]
+        public DateTime EndPeriod { get; set; }
 
         [Reference(typeof(Profile))]
         public Profile? User { get; set; }

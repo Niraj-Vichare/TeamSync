@@ -276,24 +276,151 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return null;
         }
 
-        public async Task<List<DailyLogging>> GetWeeklyDailyLoggingMetrics(string workspaceGuid,string userGuid)
+        public async Task<List<DailyLogging>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid)
         {
-            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(w => w.WorkspaceGuid == workspaceGuid).Get();
-            var userResponse = await _supabaseClient.From<Profile>().Where(u => u.Guid == userGuid).Get();
-            if(workspaceResponse != null && userResponse != null)
-            {
-                int workspaceId = workspaceResponse.Models.FirstOrDefault().Id;
-                int userId = userResponse.Models.FirstOrDefault().Id;
+            var workspaceResponse = await _supabaseClient
+                .From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
 
-                DateTime sevenDaysAgo = DateTime.Today.AddDays(-6); // Includes today
+            var userResponse = await _supabaseClient
+                .From<Profile>()
+                .Where(u => u.Guid == userGuid)
+                .Get();
 
-                var dailyLoggingMetric = await _supabaseClient.From<DailyLogging>().Where(dailyLogging => dailyLogging.WorkspaceId == workspaceId && dailyLogging.UserId == userId && dailyLogging.CheckingDate >= sevenDaysAgo)
-                    .Order(d => d.CheckingDate,Supabase.Postgrest.Constants.Ordering.Ascending)
-                    .Get();
-                var dailyLogs = dailyLoggingMetric.Models;
-                return dailyLogs;
-            }
-            return new List<DailyLogging>();
+            var workspace = workspaceResponse?.Models?.FirstOrDefault();
+            var user = userResponse?.Models?.FirstOrDefault();
+            if (workspace == null || user == null) return new List<DailyLogging>();
+
+            int workspaceId = workspace.Id;
+            int userId = user.Id;
+
+            DateTime sevenDaysAgo = DateTime.UtcNow.Date.AddDays(-6);
+
+            // Use explicit column names and string values to avoid expression translation issues.
+            // NOTE: use the exact column names in the DB (likely snake_case)
+            var dailyLoggingMetric = await _supabaseClient
+                .From<DailyLogging>()
+                .Filter("workspace_id",Supabase.Postgrest.Constants.Operator.Equals, workspaceId.ToString())
+                .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId.ToString())
+                .Filter("checking_date", Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, sevenDaysAgo.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")) // ISO UTC
+                .Order("checking_date", Supabase.Postgrest.Constants.Ordering.Ascending)
+                .Get();
+
+            return dailyLoggingMetric?.Models ?? new List<DailyLogging>();
         }
+
+
+        public async Task<List<UserContributionMetric>> GetUserContribution(string workspaceGuid, string userGuid)
+        {
+            // Load workspace
+            var workspace = await _supabaseClient
+                .From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Single();
+
+            if (workspace == null)
+                return new List<UserContributionMetric>();
+
+            // Load profile
+            var profile = await _supabaseClient
+                .From<Profile>()
+                .Where(p => p.Guid == userGuid)
+                .Single();
+
+            if (profile == null)
+                return new List<UserContributionMetric>();
+
+            // Load member ID tied to workspace
+            var member = await _supabaseClient
+                .From<Members>()
+                .Where(x => x.ProfileId == profile.Id)
+                .Where(x => x.WorkspaceGuid == workspaceGuid)
+                .Single();
+
+            if (member == null)
+                return new List<UserContributionMetric>();
+
+            // Project mappings
+            var projectMaps = await _supabaseClient
+                .From<ProjectWorkspaceMapping>()
+                .Where(x => x.WorkspaceId == workspace.Id)
+                .Get();
+
+            var projectIds = projectMaps.Models.Select(x => x.ProjectId).ToList();
+
+            if (!projectIds.Any())
+                return new List<UserContributionMetric>();
+
+            // Load all projects
+            var projects = await _supabaseClient
+                .From<Project>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, "{" + string.Join(",", projectIds) + "}")
+                .Get();
+
+            // USER TASKS (tasks done by user)
+            var userTasks = await _supabaseClient
+                .From<Task>()
+                .Filter("assigned_to", Supabase.Postgrest.Constants.Operator.Equals, profile.Id.ToString())
+                .Filter("is_done", Supabase.Postgrest.Constants.Operator.Equals, "true")
+                .Filter("project_id", Supabase.Postgrest.Constants.Operator.In, "{" + string.Join(",", projectIds) + "}")
+                .Get();
+
+            // ALL PROJECT TASKS (done by all users)
+            var allTasks = await _supabaseClient
+                .From<Task>()
+                .Filter("is_done", Supabase.Postgrest.Constants.Operator.Equals, "true")
+                .Filter("project_id", Supabase.Postgrest.Constants.Operator.In, "{" + string.Join(",", projectIds) + "}")
+                .Get();
+
+            // Team memberships → Sprints
+            var teamMap = await _supabaseClient
+                .From<TeamMemberMapping>()
+                .Where(t => t.MemberId == member.Id)
+                .Get();
+
+            var teamIds = teamMap.Models.Select(t => t.TeamId).ToList();
+
+            List<Sprint> sprints = new();
+
+            if (teamIds.Any())
+            {
+                var sprintResponse = await _supabaseClient
+                    .From<Sprint>()
+                    .Filter("working_team_id", Supabase.Postgrest.Constants.Operator.In, "{" + string.Join(",", teamIds) + "}")
+                    .Filter("project_id", Supabase.Postgrest.Constants.Operator.In, "{" + string.Join(",", projectIds) + "}")
+                    .Get();
+
+                sprints = sprintResponse.Models;
+            }
+
+            // Transform final metrics
+            var result = new List<UserContributionMetric>();
+
+            foreach (var project in projects.Models)
+            {
+                int projectId = project.ProjectId;
+
+                int tasksDoneByUser = userTasks.Models.Count(t => t.ProjectId == projectId);
+                int totalTasksDone = allTasks.Models.Count(t => t.ProjectId == projectId);
+
+                double percent = totalTasksDone == 0
+                    ? 0
+                    : Math.Round(((double)tasksDoneByUser / totalTasksDone) * 100, 2);
+
+                result.Add(new UserContributionMetric
+                {
+                    ProjectId = projectId,
+                    ProjectName = project.ProjectName,
+                    ContributionPercent = percent,
+                    TasksDoneByUser = tasksDoneByUser,
+                    TotalTasksDone = totalTasksDone,
+                    SprintsParticipated = sprints.Count(s => s.ProjectId == projectId)
+                });
+            }
+
+            return result;
+        }
+
     }
 }

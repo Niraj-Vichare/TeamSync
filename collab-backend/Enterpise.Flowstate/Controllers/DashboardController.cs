@@ -279,5 +279,55 @@ namespace Enterprise.Flowstate.Controllers
                 };
             }
         }
+
+        [HttpGet("user-contribution")]
+        public async Task<ApiResponseModel<object>> GetUserContribution(string workspaceGuid, string userGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Authentication failed.",
+                        Success = false,
+                    };
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Workspace GUID is required.",
+                        Success = false
+                    };
+                }
+
+                // Check if the user has an active timer
+                var userContributions = await _omniService.DashboardService.GetUserContribution(workspaceGuid, userIdClaim);
+
+                return new ApiResponseModel<object>
+                {
+                    Success = true,
+                    Message = "User contributions retrieved successfully.",
+                    Data = userContributions,
+                    StatusCode = StatusCodes.Status200OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
     }
 }

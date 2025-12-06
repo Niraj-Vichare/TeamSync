@@ -132,8 +132,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return sprintDto;
         }
 
-        
-
         public async Task<List<TeamDto>> GetAssignedTeam(string sprintGuid)
         {
             var result = await _omniRepository.SprintRepository.GetAssignedTeam(sprintGuid);

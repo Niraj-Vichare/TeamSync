@@ -17,5 +17,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> ClockOut(string workspaceId, string userId);
         Task<bool> ClockIn(string workspaceGuid, string userId);
         Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid);
+        Task<List<UserContributionMetric>> GetUserContribution(string workspaceGuid, string userGuid);
     }
 }
