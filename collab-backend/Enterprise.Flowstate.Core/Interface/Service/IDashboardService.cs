@@ -13,10 +13,11 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
     {
         Task<UserMetricDto> GetUserMetric(string workspaceGuid, string userGuid);
         Task<OrganizationMetricDto> GetOrganizationMetric(string workspaceGuid);
-        Task<List<DailyLogging>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid);
+        Task<Dictionary<string, double>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid);
         Task<DailyLogging> GetTodayLogging(string workspaceId, string userId);
         Task<bool> ClockOut(string workspaceId, string userId);
         Task<bool> ClockIn(string workspaceGuid, string userId);
         Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid);
+        Task<List<UserContributionMetric>> GetUserContribution(string workspaceGuid, string userGuid);
     }
 }

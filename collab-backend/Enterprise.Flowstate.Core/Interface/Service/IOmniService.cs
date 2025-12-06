@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Enterprise.Flowstate.DAL.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,5 +18,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         ISprintService SprintService { get; set; }
         ITicketService TicketService { get; set; }
         IDashboardService DashboardService { get; set; }
+        ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
+        
     }
 }

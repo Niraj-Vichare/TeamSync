@@ -20,7 +20,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> UpdateTicketSteps(string ticketGuid, List<string> steps);
         Task<List<TicketDropdownModel>> GetTicketsBySprintId(int sprintId);
         Task<List<TaskDto>> GetTicketTasks(string ticketGuid);
-        Task<List<TicketDto>> GetSprintTickets(int sprintId);
+        Task<List<TicketDto>> GetSprintTickets(string sprintId);
         Task<bool> UpdateTicketStatus(string workspaceGuid, int ticketId, int status);
     }
 }
