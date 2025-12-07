@@ -1,24 +1,18 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Plus, 
-  Users, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
-  TrendingUp, 
+import {
+  Plus,
+  Users,
+  Calendar,
+  Clock,
+  TrendingUp,
   Activity,
   AlertTriangle,
   Target,
-  BarChart3,
-  PieChart,
   ArrowUpRight,
-  Bell,
-  Filter,
-  MoreHorizontal,
   Zap,
   Timer,
   GitBranch,
@@ -35,24 +29,21 @@ import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar, Pie, LabelList } from 'recharts';
 import { useEffect, useState } from "react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { toast } from "sonner";
 import dashboardService from "@/services/dashboard";
 import taskService from "@/services/task";
 import ticketService from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
-import { ca, ta } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-
 // Mock Data
 const userRole = "employee"; // or "admin"
 //const userRole = "admin"; // or "admin"
 
 const tasks = [
-  { 
-    id: 1, 
-    title: "Update design components", 
-    due: "Tomorrow", 
+  {
+    id: 1,
+    title: "Update design components",
+    due: "Tomorrow",
     priority: "high",
     status: "in-progress",
     assignee: "JD",
@@ -62,10 +53,10 @@ const tasks = [
     timeSpent: 8,
     timeEstimate: 12
   },
-  { 
-    id: 2, 
-    title: "Review presentation deck", 
-    due: "Friday", 
+  {
+    id: 2,
+    title: "Review presentation deck",
+    due: "Friday",
     priority: "medium",
     status: "pending",
     assignee: "SM",
@@ -75,10 +66,10 @@ const tasks = [
     timeSpent: 0,
     timeEstimate: 6
   },
-  { 
-    id: 3, 
-    title: "Implement authentication", 
-    due: "Tuesday", 
+  {
+    id: 3,
+    title: "Implement authentication",
+    due: "Tuesday",
     priority: "high",
     status: "completed",
     assignee: "AB",
@@ -88,10 +79,10 @@ const tasks = [
     timeSpent: 16,
     timeEstimate: 15
   },
-  { 
-    id: 4, 
-    title: "Write unit tests", 
-    due: "Wednesday", 
+  {
+    id: 4,
+    title: "Write unit tests",
+    due: "Wednesday",
     priority: "medium",
     status: "in-progress",
     assignee: "MK",
@@ -104,40 +95,40 @@ const tasks = [
 ];
 
 const projects = [
-  { 
-    id: 1, 
-    name: "Design System", 
-    progress: 75, 
+  {
+    id: 1,
+    name: "Design System",
+    progress: 75,
     tasksTotal: 24,
     tasksCompleted: 18,
     dueDate: "Dec 15",
     team: 4,
     status: "on-track"
   },
-  { 
-    id: 2, 
-    name: "Marketing Launch", 
-    progress: 45, 
+  {
+    id: 2,
+    name: "Marketing Launch",
+    progress: 45,
     tasksTotal: 32,
     tasksCompleted: 14,
     dueDate: "Jan 20",
     team: 6,
     status: "at-risk"
   },
-  { 
-    id: 3, 
-    name: "Web Platform", 
-    progress: 90, 
+  {
+    id: 3,
+    name: "Web Platform",
+    progress: 90,
     tasksTotal: 18,
     tasksCompleted: 16,
     dueDate: "Nov 30",
     team: 5,
     status: "on-track"
   },
-  { 
-    id: 4, 
-    name: "Mobile App", 
-    progress: 20, 
+  {
+    id: 4,
+    name: "Mobile App",
+    progress: 20,
     tasksTotal: 28,
     tasksCompleted: 6,
     dueDate: "Feb 10",
@@ -154,22 +145,13 @@ const activityData = [
   { id: 5, user: "Emma Wilson", action: "assigned ticket", item: "Bug Fix #123", time: "3 hours ago", avatar: "EW" },
 ];
 
-const chartData = [
-  { name: 'Mon', completed: 12, created: 8 },
-  { name: 'Tue', completed: 15, created: 12 },
-  { name: 'Wed', completed: 8, created: 15 },
-  { name: 'Thu', completed: 18, created: 10 },
-  { name: 'Fri', completed: 22, created: 14 },
-  { name: 'Sat', completed: 5, created: 3 },
-  { name: 'Sun', completed: 7, created: 5 },
-];
 
 const sprintData = [
-  { 
-    id: 1, 
-    name: "Sprint 2.3", 
-    startDate: "Nov 1", 
-    endDate: "Nov 15", 
+  {
+    id: 1,
+    name: "Sprint 2.3",
+    startDate: "Nov 1",
+    endDate: "Nov 15",
     status: "active",
     velocity: 45,
     completed: 32,
@@ -193,12 +175,7 @@ const velocityData = [
   { sprint: 'Sprint 2.3', planned: 50, completed: 32, velocity: 32 }
 ];
 
-const issuesByType = [
-  { type: 'Story', count: 24, color: 'hsl(var(--primary))' },
-  { type: 'Bug', count: 8, color: 'hsl(var(--destructive))' },
-  { type: 'Task', count: 15, color: 'hsl(var(--secondary))' },
-  { type: 'Epic', count: 3, color: 'hsl(var(--accent))' }
-];
+
 
 const timeTrackingData = [
   { name: 'Mon', logged: 32, estimated: 40 },
@@ -222,12 +199,6 @@ const riskMetrics = [
   { project: 'Mobile App', riskScore: 8, blockers: 2, overdue: 4 }
 ];
 
-const teamStats = [
-  { name: "Frontend", members: 8, activeProjects: 3 },
-  { name: "Backend", members: 6, activeProjects: 4 },
-  { name: "Design", members: 4, activeProjects: 2 },
-  { name: "QA", members: 3, activeProjects: 5 },
-];
 
 
 
@@ -242,6 +213,31 @@ const lineChartData = [
 
 function Dashboard() {
   const [greeting, setGreeting] = useState("");
+
+  const [loadingTickets, setLoadingTicket] = useState(false);
+  const [barLoading, setBarLoading] = useState(false);
+  const [ongoingTaskLoading, setOngoingTaskLoading] = useState(false);
+  const [rankingLoading, setRankingLoading] = useState(false);  
+
+  const [dashboardCards, setDashboardCards] = useState({
+    totalTasks: 0,
+    myPoint: 0,
+    totalHours: 0,
+    efficiency: 0
+  });
+
+  const [userRankingHistory, setUserRankingHistory] = useState([]);
+  const [userTickets, setUserTickets] = useState([]);
+  const [weeklyLogging, setWeeklyLogging] = useState(null);
+  const [userongoingTasks, setOngoingTasks] = useState([]);
+  const [userProjectWork, setUserProjectWork] = useState([]);
+
+  const [clockInTime, setClockInTime] = useState(null);
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const WORK_DAY_SECONDS = 8 * 3600; // 8 hours
+  const { getCurrentWorkspaceId } = useAuth();
+  const workspaceGuid = getCurrentWorkspaceId();
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -262,7 +258,7 @@ function Dashboard() {
   });
 
   const getPriorityColor = (priority) => {
-    switch(priority) {
+    switch (priority) {
       case 'high': return 'destructive';
       case 'medium': return 'secondary';
       case 'low': return 'outline';
@@ -271,32 +267,13 @@ function Dashboard() {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'on-track': return 'bg-green-500';
       case 'at-risk': return 'bg-yellow-500';
       case 'behind': return 'bg-red-500';
       default: return 'bg-gray-500';
     }
   };
-
-   const [dashboardCards, setDashboardCards] = useState({
-    totalTasks: 0,
-    myPoint : 0,
-    totalHours:0,
-    efficiency:0
-   });
-   const [loadingTickets,setLoadingTicket]=useState(false);
-   const [barLoading,setBarLoading]=useState(false);
-  const [weeklyLogging, setWeeklyLogging] = useState(null);
-  const [userTickets,setUserTickets]=useState([]);
-  const [userongoingTasks,setOngoingTasks]=useState([]);
-  const [userProjectWork,setUserProjectWork] = useState([]);
-  const [clockInTime, setClockInTime] = useState(null);
-  const [isClockedIn, setIsClockedIn] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const WORK_DAY_SECONDS = 8 * 3600; // 8 hours
-  const { getCurrentWorkspaceId } = useAuth();
-  const workspaceGuid = getCurrentWorkspaceId();
 
   // Timer interval
   useEffect(() => {
@@ -334,30 +311,30 @@ function Dashboard() {
     }
   };
 
-  const fetchUserOngoingTask=async()=>{
-    try{
-      const result = await taskService.getUserOngoingTasks(workspaceGuid);
+  const fetchUserOngoingTask = async () => {
+    try {
+      const result = await taskService.getOnGoingTasks(workspaceGuid);
       setOngoingTasks(result);
-      console.log("Ongoing Tasks",result);
+      console.log("Ongoing Tasks", result);
       console.log(result);
 
-    }catch(error){
+    } catch (error) {
       console.error("Failed to fetch user ongoing tasks:", error);
     }
   }
 
-  const fetchUserAssignedTickets=async()=>{
-    try{
+  const fetchUserAssignedTickets = async () => {
+    try {
       setLoadingTicket(true);
       const result = await ticketService.getUserAssignedTickets(workspaceGuid);
-      console.log("User Assigned Tickets",result);  
-      if(result && result.success){
-        console.log("User Assigned Tickets Data",result.data);
+      console.log("User Assigned Tickets", result);
+      if (result && result.success) {
+        console.log("User Assigned Tickets Data", result.data);
         setUserTickets(result.data);
       }
-    }catch(error){
+    } catch (error) {
       console.error("Failed to fetch user assigned tickets:", error);
-    }finally{
+    } finally {
       setLoadingTicket(false);
     }
   }
@@ -383,6 +360,23 @@ function Dashboard() {
     }
   };
 
+  const fetchUserRankingHistory = async () => {
+    try{
+      setRankingLoading(true);
+      const result =  await dashboardService.getUserRankingHistory(workspaceGuid);
+      if(result && result.success === true){
+        setUserRankingHistory(result.data);
+        console.log("User Ranking History:", result);
+      }
+
+    }catch(error){
+      console.error("Failed to fetch user ranking history:", error);
+    }finally{
+      setRankingLoading(false);
+
+    }
+  }
+
 
   const checkClockInStatus = async () => {
     try {
@@ -399,27 +393,28 @@ function Dashboard() {
     }
   };
 
-  const getUserWork=async()=>{
-    if(!workspaceGuid) return;
-    try{
+  const getUserWork = async () => {
+    if (!workspaceGuid) return;
+    try {
       var result = await dashboardService.getUserWork(workspaceGuid);
-      console.log("User Work:",result);
+      console.log("User Work:", result);
       setUserProjectWork(result);
-      
-    }catch(error){
+
+    } catch (error) {
       console.error("Error while getting user work", error);
     }
   }
 
   const navigate = useNavigate();
 
-  const handleRedirect=async(redirect)=>{
-    navigate(redirect); 
+  const handleRedirect = async (redirect) => {
+    navigate(redirect);
   }
 
 
   const handleClockIn = async () => {
     try {
+      console.log("Clock in",workspaceGuid);
       const data = await dashboardService.clockIn(workspaceGuid);
       setClockInTime(new Date(data.ClockInTime));
       setIsClockedIn(true);
@@ -443,6 +438,7 @@ function Dashboard() {
   // Fetch initial data on load
   useEffect(() => {
     fetchDashboardCards();
+    fetchUserRankingHistory();
     fetchWeeklyLogging();
     checkClockInStatus();
     fetchUserAssignedTickets();
@@ -457,7 +453,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-8">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-2"
@@ -476,7 +472,7 @@ function Dashboard() {
           </p>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -636,7 +632,7 @@ function Dashboard() {
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Efficiency
-                  </CardTitle>  
+                  </CardTitle>
                   <Gauge className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -652,7 +648,7 @@ function Dashboard() {
         </motion.div>
 
         <div className={`grid gap-6 ${userRole === 'admin' ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-5'}`}>
-          
+
           <div className={`space-y-6 ${userRole === 'admin' ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
 
             <motion.div
@@ -702,7 +698,7 @@ function Dashboard() {
                   {/* ----------------------------------------- */}
                   {loadingTickets ? (
                     <div className="space-y-3">
-                      {[1, 2, 3,4].map((i) => (
+                      {[1, 2, 3, 4].map((i) => (
                         <div
                           key={i}
                           className="p-3 rounded-lg border flex items-center justify-between"
@@ -747,10 +743,10 @@ function Dashboard() {
                             {/* Status Dot */}
                             <div
                               className={`w-2 h-2 rounded-full ${ticket.statusInString === "Closed"
-                                  ? "bg-green-500"
-                                  : ticket.statusInString === "InProgress"
-                                    ? "bg-blue-500"
-                                    : "bg-red-400"
+                                ? "bg-green-500"
+                                : ticket.statusInString === "InProgress"
+                                  ? "bg-blue-500"
+                                  : "bg-red-400"
                                 }`}
                             />
 
@@ -820,82 +816,113 @@ function Dashboard() {
             {userRole === 'employee' ? (
               // Employee-specific sections
               <>
+              {/* Line Chart for User Ranking History */}
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                   <Card>
-                    <CardHeader>
-                      <CardTitle>Line Chart - Label</CardTitle>
-                      <CardDescription>January - June 2024</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ChartContainer config={{
-                        desktop: {
-                          label: "Desktop",
-                          color: "var(--chart-1)",
-                        },
-                        mobile: {
-                          label: "Mobile",
-                          color: "var(--chart-2)",
-                        },
-                      }}>
-                        <LineChart
-                          accessibilityLayer
-                          data={lineChartData}
-                          margin={{
-                            top: 20,
-                            left: 12,
-                            right: 12,
-                          }}
-                        >
-                          <CartesianGrid vertical={false} />
-                          <XAxis
-                            dataKey="month"
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={8}
-                            tickFormatter={(value) => value.slice(0, 3)}
-                          />
-                          <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent indicator="line" />}
-                          />
-                          <Line
-                            dataKey="desktop"
-                            type="natural"
-                            stroke="var(--color-desktop)"
-                            strokeWidth={2}
-                            dot={{
-                              fill: "var(--color-desktop)",
-                            }}
-                            activeDot={{
-                              r: 6,
+                  <Card>
+                    {rankingLoading ? (
+                      <div className="p-6 space-y-4">
+                        <Skeleton className="h-6 w-40" />
+                        <Skeleton className="h-4 w-60" />
+                        <Skeleton className="h-64 w-full" />
+                      </div>
+                    ) : !userRankingHistory || userRankingHistory.length === 0 ? (
+                      <div className="p-6 flex flex-col items-center justify-center text-center">
+                        <p className="text-muted-foreground">No ranking data available.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <CardHeader>
+                          <CardTitle>User Ranking Trend</CardTitle>
+                          <CardDescription>Last 6 months</CardDescription>
+                        </CardHeader>
+
+                        <CardContent>
+                          <ChartContainer
+                            config={{
+                              score: {
+                                label: "Score",
+                                color: "var(--chart-1)",
+                              },
+                              rank: {
+                                label: "Rank",
+                                color: "var(--chart-2)",
+                              },
                             }}
                           >
-                            <LabelList
-                              position="top"
-                              offset={12}
-                              className="fill-foreground"
-                              fontSize={12}
-                            />
-                          </Line>
-                        </LineChart>
-                      </ChartContainer>
-                    </CardContent>
-                    <CardFooter className="flex-col items-start gap-2 text-sm">
-                      <div className="flex gap-2 leading-none font-medium">
-                        Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-                      </div>
-                      <div className="text-muted-foreground leading-none">
-                        Showing total visitors for the last 6 months
-                      </div>
-                    </CardFooter>
+                            <LineChart
+                              accessibilityLayer
+                              data={userRankingHistory}
+                              margin={{ top: 20, left: 12, right: 12 }}
+                            >
+                              <CartesianGrid vertical={false} />
+
+                              <XAxis
+                                dataKey="month"
+                                tickLine={false}
+                                axisLine={false}
+                                tickMargin={8}
+                                tickFormatter={(value) => (value ? value.slice(0, 3) : "")}
+                              />
+
+                              <ChartTooltip
+                                cursor={false}
+                                content={<ChartTooltipContent indicator="line" />}
+                              />
+
+                              <Line
+                                dataKey="score"
+                                type="natural"
+                                stroke="var(--chart-1)"
+                                strokeWidth={2}
+                                dot={{ fill: "var(--chart-1)" }}
+                                activeDot={{ r: 6 }}
+                              >
+                                <LabelList
+                                  position="top"
+                                  offset={12}
+                                  className="fill-foreground"
+                                  fontSize={12}
+                                />
+                              </Line>
+
+                              <Line
+                                dataKey="rank"
+                                type="natural"
+                                stroke="var(--chart-2)"
+                                strokeWidth={2}
+                                dot={{ fill: "var(--chart-2)" }}
+                                activeDot={{ r: 6 }}
+                              >
+                                <LabelList
+                                  position="top"
+                                  offset={12}
+                                  className="fill-foreground"
+                                  fontSize={12}
+                                />
+                              </Line>
+                            </LineChart>
+                          </ChartContainer>
+                        </CardContent>
+
+                        <CardFooter className="flex-col items-start gap-2 text-sm">
+                          <div className="flex gap-2 leading-none font-medium">
+                            Ranking activity updated <TrendingUp className="h-4 w-4" />
+                          </div>
+                          <div className="text-muted-foreground leading-none">
+                            Showing your performance across the last 6 months
+                          </div>
+                        </CardFooter>
+                      </>
+                    )}
                   </Card>
                 </motion.div>
 
 
+                {/* Bar chart for weekly logging */}
                 <motion.div>
                   <Card>
                     <CardHeader>
@@ -959,9 +986,6 @@ function Dashboard() {
                     </CardFooter>
                   </Card>
                 </motion.div>
-
-
-
                 <motion.div>
                   <span></span>
                 </motion.div>
@@ -1082,7 +1106,7 @@ function Dashboard() {
                 </motion.div>
               </>
             )}
-          </div> 
+          </div>
 
           <div className={`space-y-6 ${userRole === 'admin' ? '' : 'lg:col-span-2'}`}>
             {userRole === 'employee' ? (
@@ -1110,7 +1134,7 @@ function Dashboard() {
                             <span className="text-xs text-muted-foreground">Due: Today</span>
                           </div>
                         </div>
-                        
+
                         <div className="space-y-3">
                           {tasks.slice(0, 3).map((task, index) => (
                             <div key={index} className="flex items-center space-x-3 p-2 rounded border-l-2 border-l-blue-200">
@@ -1194,42 +1218,9 @@ function Dashboard() {
                     </CardContent>
                   </Card>
                 </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl">My Progress This Week</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Tasks Completed</span>
-                          <span className="text-sm text-muted-foreground">18/24</span>
-                        </div>
-                        <Progress value={75} className="h-2" />
-                        
-                        <div className="grid grid-cols-3 gap-4 mt-4">
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-green-600">18</p>
-                            <p className="text-xs text-muted-foreground">Completed</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-blue-600">4</p>
-                            <p className="text-xs text-muted-foreground">In Progress</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-gray-500">2</p>
-                            <p className="text-xs text-muted-foreground">Pending</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                
 
+                {/* Card for Quick Action */}
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1262,6 +1253,7 @@ function Dashboard() {
                   </Card>
                 </motion.div>
 
+                {/* Project Contribution By User */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1294,7 +1286,7 @@ function Dashboard() {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                 </motion.div>
               </>
             ) : (
@@ -1325,7 +1317,7 @@ function Dashboard() {
                             {sprintData[0].startDate} - {sprintData[0].endDate}
                           </span>
                         </div>
-                        
+
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span>Sprint Progress</span>
@@ -1474,10 +1466,10 @@ function Dashboard() {
               </>
             )}
           </div>
-        </div>       
+        </div>
       </div>
     </div>
   );
 }
-    
+
 export default Dashboard;

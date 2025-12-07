@@ -1,11 +1,11 @@
 import { default as axiosInstance } from "./axiosInstance";
 
 class TaskService {
- 
+
   async getTasksAssignedToUser(workspaceGuid, projectId, sprintId, ticketId, status, priority) {
     try {
       const response = await axiosInstance.get(`/tasks/assigned?workspaceGuid=${workspaceGuid}`, {
-        params: { workspaceGuid, projectId, sprintId, ticketId,priority,status }
+        params: { workspaceGuid, projectId, sprintId, ticketId, priority, status }
       });
       return response.data;
     } catch (error) {
@@ -15,10 +15,10 @@ class TaskService {
   }
 
 
-  async createTask(workspaceGuid,taskDto) {
+  async createTask(workspaceGuid, taskDto) {
     try {
       const response = await axiosInstance.post(`/tasks?workspaceGuid=${workspaceGuid}`, taskDto);
-      console.log(response);  
+      console.log(response);
       return response.data;
     } catch (error) {
       console.error("Error creating task:", error);
@@ -26,7 +26,7 @@ class TaskService {
     }
   }
 
-  async updateTask(workspaceGuid,taskGuid, taskModel) {
+  async updateTask(workspaceGuid, taskGuid, taskModel) {
     try {
       const response = await axiosInstance.patch(`/tasks/${workspaceGuid}/${taskGuid}`, taskModel);
       return response.data;
@@ -46,14 +46,25 @@ class TaskService {
     }
   }
 
-  async updateTaskStatus(workspaceGuid,taskId, status) {
+  async updateTaskStatus(workspaceGuid, taskId, status) {
     try {
-      const response = await axiosInstance.patch(`/tasks/${taskId}/status?status=${status}`,{});
+      const response = await axiosInstance.patch(`/tasks/${taskId}/status?status=${status}`, {});
       return response.data;
     } catch (error) {
       console.error("Error updating task status:", error);
       throw error;
-    
+
+    }
+  }
+
+  async getOnGoingTasks(workspaceGuid, userId) {
+    try {
+      const response = await axiosInstance.get(`/tasks/ongoing?workspaceGuid=${workspaceGuid}`);
+      return response.data;
+
+    } catch (error) {
+      console.error("Error while getting ongoing tasks", error);
+      throw error;
     }
   }
 }

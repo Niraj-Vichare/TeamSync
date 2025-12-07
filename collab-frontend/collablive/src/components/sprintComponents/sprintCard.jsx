@@ -5,8 +5,11 @@ import { Badge } from '../ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { EyeIcon, TicketIcon } from 'lucide-react';
 
-function SprintCard({ sprint }) {
+function SprintCard({ sprint,onView }) {
     console.log(sprint);
+    const handleView=()=>{
+        onView(sprint.sprintGuid);
+    }
     const getStatusColor = (statusDescription) => {
         switch (statusDescription) {
             case "Active":
@@ -104,7 +107,7 @@ function SprintCard({ sprint }) {
 
                 {/* FOOTER */}
                 <CardFooter className="flex flex-col gap-2 mt-2">
-                    <Button className="w-full flex items-center justify-center gap-1 bg-black text-white">
+                    <Button className="w-full flex items-center justify-center gap-1 bg-black text-white" onClick={handleView}>
                         <EyeIcon className="w-4 h-4" />
                         View More
                     </Button>

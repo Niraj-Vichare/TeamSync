@@ -1,6 +1,7 @@
 import * as signalR from "@microsoft/signalr";
 
 
+const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL;
 class SignalRService {
     constructor() {
         this.connection = null;
@@ -16,7 +17,7 @@ class SignalRService {
         try {
             // Create connection
             this.connection = new signalR.HubConnectionBuilder()
-                .withUrl("/hubs/leaderboard")
+                .withUrl(`${API_BASE_URL}/hubs/leaderboard`)
                 .withAutomaticReconnect()
                 .build();
 

@@ -20,7 +20,7 @@ class DashboardService {
       return response.data;
     } catch (error) {
       console.error("Error while getting weekly logging", error);
-      throw error;  
+      throw error;
     }
   }
 
@@ -38,7 +38,7 @@ class DashboardService {
   async clockIn(workspaceGuid) {
     if (!workspaceGuid) throw new Error("Workspace GUID is required");
     try {
-      const res = await axiosInstance.post(`/dashboard/timer/clockin`, { workspaceGuid });
+      const res = await axiosInstance.post(`/dashboard/timer/clockin?workspaceGuid=${workspaceGuid}`);
       return res.data;
     } catch (error) {
       console.error("Error while clocking in", error);
@@ -46,12 +46,13 @@ class DashboardService {
     }
   }
 
-  async getUserWork(workspaceGuid){
-    try{
+
+  async getUserWork(workspaceGuid) {
+    try {
       const res = await axiosInstance.get(`/user/work?workspaceGuid=${workspaceGuid}`);
       return res.data;
 
-    }catch(error){
+    } catch (error) {
       console.error("Error while getting user work", error);
       throw error;
     }
@@ -60,10 +61,20 @@ class DashboardService {
   async clockOut(workspaceGuid) {
     if (!workspaceGuid) throw new Error("Workspace GUID is required");
     try {
-      const res = await axiosInstance.post(`/dashboard/timer/clockout`, { workspaceGuid });
+      const res = await axiosInstance.post(`/dashboard/timer/clockout?workspaceGuid=${workspaceGuid}`);
       return res.data;
     } catch (error) {
       console.error("Error while clocking out", error);
+      throw error;
+    }
+  }
+  async getUserRankingHistory(workspaceGuid) {
+    if (!workspaceGuid) throw new Error("Workspace GUID is required");
+    try {
+      const response = await axiosInstance.get(`/leaderboard/ranking-history?workspaceGuid=${workspaceGuid}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error while getting user ranking history", error);
       throw error;
     }
   }

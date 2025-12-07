@@ -29,6 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ticketService from '@/services/ticket';
 import { AnimatePresence,motion } from 'framer-motion';
 import workspaceService from '@/services/workspace';
+import { useNavigate } from 'react-router-dom';
 
 
 
@@ -46,6 +47,7 @@ function Sprints() {
 
   const [tabs, setTabs] = useState("sprints");
   const { getCurrentWorkspaceId } = useAuth();
+  const navigate = useNavigate();
 
   // Generic States
   const [tickets,setTickets]  = useState([]);
@@ -509,6 +511,10 @@ function Sprints() {
     }
   }
 
+  const handleSprintView=(sprintGuid)=>{
+    navigate(`/sprints/${sprintGuid}`);
+
+  }
   const handleEditClick = (type,ticket) => {
 
     if (!ticket) return;
@@ -901,7 +907,7 @@ function Sprints() {
               ))
             ) : sprints.length > 0 ? (
               sprints?.map((sprint) => (
-                <SprintCard key={sprint.sprintId} sprint={sprint} />
+                <SprintCard key={sprint.sprintId} sprint={sprint} onView={handleSprintView}/>
               ))
             ) : (
               <div className="col-span-full flex flex-col items-center justify-center text-center py-10">
