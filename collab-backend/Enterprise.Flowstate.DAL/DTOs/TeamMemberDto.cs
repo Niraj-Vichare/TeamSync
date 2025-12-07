@@ -12,10 +12,8 @@ namespace Enterprise.Flowstate.DAL.DTOs
     public class TeamMemberDto
     {
         public DateTime CreateAt { get; set; }
-        public int PositionId { get; set; }
         public int StatusId { get; set; }
         public string Status => ((UserStatus)StatusId).ToString();
-        public string Position => ((WorkspaceRole)PositionId).ToString();
         public DepartmentDto? DepartmentDto { get; set; }
         public ProfileDto? Profile { get; set; }
     }

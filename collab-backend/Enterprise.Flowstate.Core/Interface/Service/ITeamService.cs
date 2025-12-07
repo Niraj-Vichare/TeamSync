@@ -14,5 +14,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<List<TeamMemberDto>> GetTeamMembers(string workspaceGuid);
         Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid);
         Task<TeamDto> GetAssignedTeam(string sprintGuid);
+        Task<List<TeamDto>> GetCustomTeams(string workspaceGuid); 
+        Task<List<TeamMemberDto>> GetDepartmentWiseMembers(string workspaceGuid);
     }
 }

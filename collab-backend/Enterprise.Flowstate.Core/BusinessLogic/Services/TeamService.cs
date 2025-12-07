@@ -75,13 +75,90 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     {
                         DepartmentName = item.Member.Department?.Title,
                         DepartmentId = item.Member.Department?.Id ?? 0,
-                        Tagline = item.Member.Department?.Tagline
+                        Tagline = item.Member.Department?.Tagline,
+                        PositionId = item.Member.Department.Position
                     },
-                    PositionId = item.Member.Department.Position
                 });
             }
 
             return team;
+        }
+
+        public async Task<List<TeamDto>> GetCustomTeams(string workspaceGuid)
+        {
+            var mappings = await _omniRepository.TeamRepository.GetCustomTeams(workspaceGuid);
+
+            if (mappings == null || !mappings.Any())
+                return new List<TeamDto>();
+
+            // Group mappings by team_id
+            var grouped = mappings
+                .GroupBy(m => new { m.TeamId, m.Team.TeamName, m.Team.Tagline })
+                .Select(group => new TeamDto
+                {
+                    TeamId = group.Key.TeamId,
+                    Name = group.Key.TeamName,
+                    Tagline = group.Key.Tagline,
+                    Members = group.Select(m => new TeamMemberDto
+                    {
+                        StatusId = m.Member.Status,
+                        DepartmentDto = m.Member.Department != null
+                            ? new DepartmentDto
+                            {
+                                DepartmentId = m.Member.Department.Id,
+                                DepartmentName = m.Member.Department.Title,
+                                Tagline = m.Member.Department.Tagline,
+                                PositionId = m.Member.Department.Position,
+                                
+                            }
+                            : null,
+                        Profile = m.Member.Profile != null
+                            ? new ProfileDto
+                            {
+                                Id = m.Member.Profile.Id,
+                                DisplayName = m.Member.Profile.DisplayName,
+                                ProfileImageUrl = m.Member.Profile.ProfileImageUrl,
+                                Guid = m.Member.Profile.Guid,
+                            }
+                            : null
+                    }).ToList()
+                })
+                .ToList();
+
+            return grouped;
+        }
+
+
+        public async Task<List<TeamMemberDto>> GetDepartmentWiseMembers(string workspaceGuid)
+        {
+            var departmentwiseMembers = await _omniRepository.TeamRepository.GetDepartmentWiseMembers(workspaceGuid);
+            List<TeamMemberDto> teamMembers = new List<TeamMemberDto>();
+            foreach (var m in departmentwiseMembers)
+            {
+                var response = new TeamMemberDto()
+                {
+                    DepartmentDto = m.Department != null
+                            ? new DepartmentDto
+                            {
+                                DepartmentId = m.Department.Id,
+                                DepartmentName = m.Department.Title,
+                                Tagline = m.Department.Tagline,
+                                PositionId = m.Department.Position,
+
+                            }
+                            : null,
+                    Profile = m.Profile != null ? new ProfileDto
+                    {
+                        DisplayName = m.Profile.DisplayName,
+                        ProfileImageUrl = m.Profile.ProfileImageUrl,
+                        Bio = m.Profile.Bio,
+                        Guid = m.Profile.Guid
+                    }:null,
+                    StatusId = m.Status,
+                };
+                teamMembers.Add(response);
+            }
+            return teamMembers;
         }
 
 

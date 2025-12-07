@@ -19,6 +19,8 @@ namespace Enterprise.Flowstate.DAL.Models
         public string WorkspaceGuid { get; set; }
         [Column("department_id")]
         public int DepartmentId { get; set; }
+        [Column("status")]
+        public int Status { get; set; }
         [Reference(typeof(Profile))]
         public Profile Profile { get; set; }
         [Reference(typeof(Workspace))]

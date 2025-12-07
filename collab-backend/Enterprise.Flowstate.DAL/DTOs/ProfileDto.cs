@@ -17,6 +17,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string WorkspaceId { get; set; }
+        
         public User? User { get; set; }
     }
 }

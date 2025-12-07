@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Enterprise.Flowstate.DAL.Enums.WorkspaceEnums;
 
 namespace Enterprise.Flowstate.DAL.DTOs
 {
@@ -12,6 +13,8 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public DateTime CreateAt { get; set; }
         public string DepartmentName { get; set; }
         public string Tagline { get; set; }
-        public string Position { get; set; }
+        public int PositionId { get; set; }
+        public string Position => ((WorkspaceRole)PositionId).ToString();
+
     }
 }

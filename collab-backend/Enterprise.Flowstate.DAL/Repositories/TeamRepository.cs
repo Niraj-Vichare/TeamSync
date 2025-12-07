@@ -82,6 +82,43 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return mappingResult.Models.ToList();
         }
 
+        public async Task<List<TeamMemberMapping>> GetCustomTeams(string workspaceGuid)
+        {
+            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if (!workspaceResponse.Models.Any())
+            {
+                return null;
+            }
+            var workspace = workspaceResponse.Models.FirstOrDefault();
+            int workspaceId = workspace.Id;
 
+            var teamResponse = await _supabaseClient.From<Team>().Where(team => team.WorkspaceId == workspaceId).Get();
+            if (!teamResponse.Models.Any())
+            {
+                return null;
+            }
+            var customTeamList = teamResponse.Models.Select(team => team.TeamId).ToList();
+            if (customTeamList.Count == 0)
+            {
+                return null;
+            }
+            var teamMemberMapping = await _supabaseClient.From<TeamMemberMapping>().Filter("team_id", Supabase.Postgrest.Constants.Operator.In,customTeamList).Get();
+            return teamMemberMapping.Models.ToList();
+        }
+
+        public async Task<List<Members>> GetDepartmentWiseMembers(string workspaceGuid)
+        {
+            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if (!workspaceResponse.Models.Any())
+            {
+                return null;
+            }
+            var workspace = workspaceResponse.Models.FirstOrDefault();
+            int workspaceId = workspace.Id;
+
+            var members = await _supabaseClient.From<Members>().Where(member => member.WorkspaceGuid == workspaceGuid).Get();
+            return members.Models.ToList();
+
+        }
     }
 }
