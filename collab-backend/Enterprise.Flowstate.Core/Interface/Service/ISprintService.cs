@@ -15,7 +15,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid);
         Task<List<SprintDropdownModel>> GetSprintsByProjectId(string projectGuid);
         Task<SprintDto> GetSprint(string workspaceGuid, string sprintGuid);
-        Task<List<TeamDto>> GetAssignedTeam(string sprintGuid);
         Task<List<EventsLog>> GetSprintActivities(string sprintGuid,int pagNumber,int pageSize);
         Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
         Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid);

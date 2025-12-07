@@ -7,6 +7,7 @@ using System.Security.Claims;
 
 namespace Enterprise.Flowstate.Controllers
 {
+    [Route("leaderboard")]
     public class LeaderboardController : AuthBaseController
     {
         public IOmniService _omniService;
@@ -14,7 +15,7 @@ namespace Enterprise.Flowstate.Controllers
         {
             _omniService = omniService;
         }
-        [HttpGet("leaderboard")]
+        [HttpGet]
         public async Task<LeaderboardResponse> GetLeaderboardWithComparisonAsync([FromQuery]string workspaceId,[FromQuery]int pageNumber,[FromQuery]int pageSize)
         {  
             try

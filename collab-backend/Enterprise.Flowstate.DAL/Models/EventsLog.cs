@@ -4,7 +4,7 @@ using Supabase.Postgrest.Models;
 
 namespace Enterprise.Flowstate.DAL.Models
 {
-    [Table("events_log")]
+    [Table("events_logs")]
     public class EventsLog : BaseModel
     {
         [PrimaryKey("id")]

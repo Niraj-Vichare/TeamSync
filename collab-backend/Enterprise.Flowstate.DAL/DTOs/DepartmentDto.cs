@@ -12,5 +12,6 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public DateTime CreateAt { get; set; }
         public string DepartmentName { get; set; }
         public string Tagline { get; set; }
+        public string Position { get; set; }
     }
 }

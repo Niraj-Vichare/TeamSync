@@ -44,10 +44,46 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return await _omniRepository.TeamRepository.GetTeamDropDown(workspaceGuid);
         }
 
-        public Task<TeamDto> GetAssignedTeam(string sprintGuid)
+        public async Task<TeamDto> GetAssignedTeam(string sprintGuid)
         {
-            throw new NotImplementedException();
+            var teamMemberMapping = await _omniRepository.TeamRepository.GetAssignedMember(sprintGuid);
+
+            if (teamMemberMapping == null || !teamMemberMapping.Any())
+                return null; 
+
+            var first = teamMemberMapping.First();
+
+            var team = new TeamDto
+            {
+                Name = first.Team?.TeamName,
+                Tagline = first.Team?.Tagline,
+                Members = new List<TeamMemberDto>()
+            };
+
+            foreach (var item in teamMemberMapping)
+            {
+                team.Members.Add(new TeamMemberDto
+                {
+                    Profile = new ProfileDto
+                    {
+                        DisplayName = item.Member.Profile?.DisplayName,
+                        ProfileImageUrl = item.Member.Profile?.ProfileImageUrl,
+                        Guid = item.Member.Profile?.Guid,
+                        Id = item.Member.ProfileId,
+                    },
+                    DepartmentDto = new DepartmentDto
+                    {
+                        DepartmentName = item.Member.Department?.Title,
+                        DepartmentId = item.Member.Department?.Id ?? 0,
+                        Tagline = item.Member.Department?.Tagline
+                    },
+                    PositionId = item.Member.Department.Position
+                });
+            }
+
+            return team;
         }
+
 
 
         //public async Task<List<TeamMemberDto>> GetAssignedMember(string sprintGuid)

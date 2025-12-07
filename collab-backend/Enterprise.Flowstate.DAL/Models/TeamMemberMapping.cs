@@ -17,8 +17,9 @@ namespace Enterprise.Flowstate.DAL.Models
         public long TeamId { get; set; }
         [Column("member_id")]
         public int MemberId { get; set; }
-
-        public Members Member { get; set; }
-        public Team Team { get; set; }
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
+        public Members? Member { get; set; }
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
+        public Team? Team { get; set; }
     }
 }

@@ -32,7 +32,6 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             return teamMembers;
 
-
         }
 
         public async Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid)
@@ -79,7 +78,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var sprint = sprintResponse.Models.FirstOrDefault();
             long assignedTeamId = sprint.WorkingTeamId;
             
-            var mappingResult = await _supabaseClient.From<TeamMemberMapping>().Where(mapping=>mapping.TeamId == assignedTeamId).Get();
+            var mappingResult = await _supabaseClient.From<TeamMemberMapping>().Select("*,team:team_id(team_name),member:member_id(*,profile:profile_id(*), department:department_id(*))").Where(mapping=>mapping.TeamId == assignedTeamId).Get();
             return mappingResult.Models.ToList();
         }
 

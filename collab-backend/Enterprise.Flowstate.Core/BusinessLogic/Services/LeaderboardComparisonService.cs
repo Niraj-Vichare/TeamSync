@@ -161,34 +161,57 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        public async Task<List<RankingHistoryDto>> GetUserRankingHistory(string workspaceGuid,string userGuid)
+        public async Task<List<RankingHistoryDto>> GetUserRankingHistory(string workspaceGuid, string userGuid)
         {
             var rankings = await _omniRepository.LeaderBoardRepository
                 .GetUserRankingHistory(workspaceGuid, userGuid);
 
-            if (rankings == null || !rankings.Any())
-                return new List<RankingHistoryDto>();
-
-            var monthly = rankings
-                .GroupBy(r => new { r.EndPeriod.Year, r.EndPeriod.Month })
-                .OrderBy(g => g.Key.Year)
-                .ThenBy(g => g.Key.Month)
-                .Select(g =>
-                {
-                    var last = g.OrderBy(x => x.EndPeriod).Last();
-
-                    return new RankingHistoryDto
-                    {
-                        Month = CultureInfo.CurrentCulture.DateTimeFormat
-                                .GetMonthName(g.Key.Month),
-                        Score = Math.Round(last.Score, 2),
-                        Rank = last.RankPosition
-                    };
-                })
+            // Build last 6-month window
+            var now = DateTime.UtcNow;
+            var lastSixMonths = Enumerable.Range(0, 6)
+                .Select(i => new DateTime(now.Year, now.Month, 1).AddMonths(-i))
+                .OrderBy(d => d)
                 .ToList();
 
-            return monthly;
+            // Prepare final list
+            var result = new List<RankingHistoryDto>();
+
+            foreach (var monthStart in lastSixMonths)
+            {
+                var year = monthStart.Year;
+                var month = monthStart.Month;
+
+                var recordsForMonth = rankings?
+                    .Where(r => r.EndPeriod.Year == year && r.EndPeriod.Month == month)
+                    .OrderBy(r => r.EndPeriod)
+                    .ToList();
+
+                if (recordsForMonth != null && recordsForMonth.Any())
+                {
+                    var last = recordsForMonth.Last();
+
+                    result.Add(new RankingHistoryDto
+                    {
+                        Month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
+                        Score = Math.Round(last.Score, 2),
+                        Rank = last.RankPosition
+                    });
+                }
+                else
+                {
+                    // Default values when no ranking exists for the month
+                    result.Add(new RankingHistoryDto
+                    {
+                        Month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
+                        Score = 0,
+                        Rank = 0
+                    });
+                }
+            }
+
+            return result;
         }
+
 
         private RankingComparison CalculateComparison(int currentRank,double currentScore,RankingCacheModel currentMetric,int? prevRank,double? prevScore,RankingCacheModel prevMetric)
         {

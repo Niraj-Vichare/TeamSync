@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Supabase.Postgrest.Constants;
 using Task = Enterprise.Flowstate.DAL.Models.Task;
 
 namespace Enterprise.Flowstate.DAL.Repositories
@@ -80,12 +81,12 @@ namespace Enterprise.Flowstate.DAL.Repositories
             int workspaceId = workspaceResponse.Models.First().Id;
             int userId = userResponse.Models.First().Id;
 
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
 
-            var logging = await _supabaseClient
-                .From<DailyLogging>()
-                .Where(d => d.WorkspaceId == workspaceId && d.UserId == userId && d.CheckingDate.Date == today)
-                .Get();
+            var logging = await _supabaseClient.From<DailyLogging>()
+                                .Where(d => d.WorkspaceId == workspaceId && d.UserId == userId)
+                                .Filter("checking_date", Operator.Equals, today)
+                                .Get();
 
             return logging.Models.FirstOrDefault();
             
@@ -115,7 +116,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 if (todayRecord.CheckIn != default)
                     throw new Exception("Already clocked in");
 
-                todayRecord.CheckIn = TimeOnly.FromDateTime(DateTime.UtcNow);
+                todayRecord.CheckIn = DateTime.UtcNow;
                 await _supabaseClient.From<DailyLogging>().Update(todayRecord);
                 return true;
             }
@@ -125,7 +126,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 WorkspaceId = workspaceId,
                 UserId = userId,
                 CheckingDate = today,
-                CheckIn = TimeOnly.FromDateTime(DateTime.UtcNow)
+                CheckIn = DateTime.Now
             };
 
             var result = await _supabaseClient.From<DailyLogging>().Insert(record);
@@ -155,7 +156,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             if (todayRecord == null || todayRecord.CheckIn == null)
                 throw new Exception("Cannot clock out before clocking in");
 
-            todayRecord.CheckOut = TimeOnly.FromDateTime(DateTime.UtcNow);
+            todayRecord.CheckOut = DateTime.UtcNow;
             var result = await _supabaseClient.From<DailyLogging>().Update(todayRecord);
             return result.Models.Any();
         }

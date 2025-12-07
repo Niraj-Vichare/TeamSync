@@ -195,7 +195,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
 
             var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
-            if (sprint.Models.Any())
+            if (!sprint.Models.Any())
             {
                 return null;
             }
@@ -203,18 +203,6 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return sprintResult;
         }
 
-
-        public async Task<List<TeamMemberMapping>> GetAssignedTeam(string sprintGuid)
-        {
-            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
-            if (sprint.Models.Any())
-            {
-                return null;
-            }
-            var assignedTeam = sprint.Models.FirstOrDefault().WorkingTeamId;
-            var teamMemberMappings = await _supabaseClient.From<TeamMemberMapping>().Where(teamMapping=>teamMapping.TeamId == assignedTeam).Get();
-            return teamMemberMappings.Models.ToList();
-        }
 
         public async Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize)
         {

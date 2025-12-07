@@ -86,7 +86,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 string dayOfWeek = dailyLog.CheckingDate.DayOfWeek.ToString();
 
-                TimeSpan workedTime = dailyLog.CheckOut.ToTimeSpan() - dailyLog.CheckIn.ToTimeSpan();
+                TimeSpan workedTime = dailyLog.CheckOut.Value - dailyLog.CheckIn.Value;
 
                 // Cross-midnight handling
                 if (workedTime.TotalHours < 0)

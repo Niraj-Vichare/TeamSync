@@ -14,9 +14,9 @@ namespace Enterprise.Flowstate.DAL.Models
         [PrimaryKey("id")]
         public int Id { get; set; }
         [Column("checkin_time")]
-        public TimeOnly CheckIn { get; set; }
+        public DateTimeOffset? CheckIn { get; set; }
         [Column("checkout_time")]
-        public TimeOnly CheckOut { get; set; }
+        public DateTimeOffset? CheckOut { get; set; }
         [Column("checking_date")]
         public DateTime CheckingDate { get; set; }
         [Column("user_id")]

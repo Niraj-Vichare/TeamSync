@@ -273,7 +273,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 return null;
             }
             var sprintId = sprint.Models.FirstOrDefault().SprintId;
-            var ticketResponse = await _supabaseClient.From<Ticket>().Where(ticket => ticket.SprintId == sprintId).Get();
+            var ticketResponse = await _supabaseClient.From<Ticket>().Select("*,project:project_id(project_name),sprint:sprint_id(title),assignedByUser:profile!reported_by(display_name,avatar_url),assignedToUser:profile!assigned_to(display_name,avatar_url)").Where(ticket => ticket.SprintId == sprintId).Get();
             return ticketResponse.Models.ToList();
 
         }

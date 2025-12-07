@@ -17,7 +17,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid);
         Task<List<SprintDropdownModel>> GetSprintsByProjectId(int projectId);
         Task<Sprint> GetSprint(string sprintGuid);
-        Task<List<TeamMemberMapping>> GetAssignedTeam(string sprintGuid);
         Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize);
         Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
         Task<SprintMetric> GetSprintBreakdown(string sprintGuid);

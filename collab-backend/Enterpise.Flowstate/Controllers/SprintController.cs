@@ -272,7 +272,7 @@ namespace Enterprise.Flowstate.Controllers
 
 
         [HttpGet("{sprintGuid}")]
-        public async Task<ApiResponseModel<object>> GetSprint([FromQuery]string workspaceGuid,[FromQuery]string sprintGuid)
+        public async Task<ApiResponseModel<object>> GetSprint([FromRoute] string sprintGuid,[FromQuery]string workspaceGuid)
         {
             try
             {
@@ -406,7 +406,7 @@ namespace Enterprise.Flowstate.Controllers
                     {
                         StatusCode = StatusCodes.Status400BadRequest,
                         Success = false,
-                        Message = "Workspace GUID is required to create a sprint."
+                        Message = "Sprint GUID is required to create a sprint."
                     };
                 }
 
@@ -423,7 +423,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                var sprint = await _omniService.SprintService.GetAssignedTeam(sprintGuid);
+                var sprint = await _omniService.TeamService.GetAssignedTeam(sprintGuid);
                 if (sprint == null)
                 {
                     return new ApiResponseModel<object>
