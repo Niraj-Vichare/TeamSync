@@ -49,16 +49,77 @@ class SprintService {
         }
     }
 
-    async getSprintByProject(workspaceGuid,projectId){
-        try {
-            const response = await axiosInstance.get(`/sprints/project/${projectId}`,{
+    // async getSprintByProject(workspaceGuid,projectId){
+    //     try {
+    //         const response = await axiosInstance.get(`/sprints/project/${projectId}`,{
+    //             params:{workspaceGuid}
+    //         });
+    //         return response.data;
+    //     } catch (error) {
+    //         console.error("Error fetching sprints by project:", error);
+    //         throw error;
+    //     }   
+    // }
+
+    async getSprintByGuid(workspaceGuid,sprintGuid){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}`,{
                 params:{workspaceGuid}
             });
             return response.data;
-        } catch (error) {
-            console.error("Error fetching sprints by project:", error);
+
+        }catch(error){
             throw error;
-        }   
+        }
+    }
+
+    async getSprintTickets(sprintGuid){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}/tickets`);
+            return response.data;
+
+        }catch(error){
+            throw error;
+        }
+    }
+
+    async getSprintBreakdown(sprintGuid){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}/breakdown`);
+            return response.data;
+        }catch(error){
+            throw error;
+        }
+    }
+
+    async getSprintProgress(sprintGuid){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}/progress`);
+            return response.data;
+        }catch(error){
+            throw error;
+        }
+    }
+
+    async getSprintActivities(sprintGuid,pageNumber,pageSize){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}/activities`,{
+                params:{pageNumber,pageSize}
+            })
+            return response.data;
+        }catch(error){
+            throw error;
+        }
+    }
+
+    async getSprintTeam(sprintGuid){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}/assignedTeam`);
+            return response.data;
+
+        }catch(err){
+            throw err;
+        }
     }
 
     async getSprintsByProject(projectId){
