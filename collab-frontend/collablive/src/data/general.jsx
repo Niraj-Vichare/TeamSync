@@ -46,15 +46,15 @@ export const ROLE_MAP = {
 };
 
 export const STATUS_MAP = {
-  active: {
+  1: {
     label: "Active",
     color: "bg-green-100 text-green-800"
   },
-  inactive: {
+  2: {
     label: "Inactive",
     color: "bg-gray-100 text-gray-800"
   },
-  pending: {
+  3: {
     label: "Accept Pending",
     color: "bg-yellow-100 text-yellow-800"
   },

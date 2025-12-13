@@ -6,39 +6,86 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useAuth } from '@/context/AuthContext';
 import {  teamMembers,projectTeam, departments } from '@/data/general';
+import teamService from '@/services/team';
 import { Filter, FilterIcon, Plus, Search } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
 
 function Team() {
   const [activeTab, setActiveTab] = useState('all-teams');
-  const [searchTerm, setSearchTerm] = useState('');
   const [showName, setShowName] = useState(true)
   const [showEmail, setShowEmail] = useState(false)
   const [showRole, setShowRole] = useState(false)
   const [showDepartment, setShowDepartment] = useState(false)
   const [showStatus, setShowStatus] = useState(false)
+  
+  const [customTeam,setCustomTeam] = useState([]);
+  const [departmentTeam,setDepartmentTeam] = useState([]);
+  
+  const [workspaceMembers,setWorkspaceMembers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pageNumber,setPageNumber] = useState(1);
+  const [pageSize,setPageSize] = useState(10);
 
-  const fetchTeamData=async()=>{
+  const {getCurrentWorkspaceId} = useAuth();
+  const workspaceGuid = getCurrentWorkspaceId();
+
+  const fetchWorkspaceMembers=async(workspaceGuid)=>{
     try{
-
+     var response =await teamService.getTeamMembers(workspaceGuid,searchTerm,pageNumber,pageSize);
+     if(response && response.success){
+      setWorkspaceMembers(response.data);
+     }else{
+      setWorkspaceMembers([]);
+     }
     }catch(error){
-      console.error("");
+      console.error("Error while fetching the workspace members");
+    }finally{
+      console.log(workspaceMembers);
     }
   }
 
   const fetchProjectTeam = async()=>{
     try{
-      
+     var response =await teamService.getProjectTeam(workspaceGuid,searchTerm,pageNumber,pageSize);
+     if(response && response.success){
+      setCustomTeam(response.data);
+     }else{
+       setCustomTeam([]);
+     }
     }catch(error){
-      console.error("");
+      console.error("Error while fetching the workspace members");
+    }finally{
+      console.log(customTeam);
     }
+  }
+  const fetchDepartmentTeams=async()=>{
+    try{
+     var response =await teamService.getDepartmentTeams(workspaceGuid);
+     console.log(response);
+     if(response && response.success){
+      setDepartmentTeam(response.data);
+     }else{
+       setDepartmentTeam([]);
+     }
+    }catch(error){
+      console.error("Error while fetching the workspace members");
+    }finally{
+      console.log(departmentTeam);
+    }
+
   }
 
   useEffect(()=>{
-    fetchTeamData();
+    if(activeTab == "all-teams"){
+      fetchWorkspaceMembers(workspaceGuid);
+    }else if(activeTab == "project-team"){
+      fetchProjectTeam(workspaceGuid);
+    }else if(activeTab == "department")
+      fetchDepartmentTeams(workspaceGuid);
 
-  },[])
+  },[activeTab])
 
 
 
@@ -144,23 +191,27 @@ function Team() {
               </div>
 
               {/* Data Table */}
-              <TeamDataTable teamMembers={teamMembers} />
+              <TeamDataTable teamMembers={workspaceMembers} />
             </div>
 
           </TabsContent>
           <TabsContent value='project-team' currentValue={activeTab} className={'mt-5'}>
             <div className="flex flex-wrap gap-2">
-              {projectTeam.map((team) => (
-                <TeamProjectCard key={team.id} team={team} />
-              ))}
+              {customTeam.length === 0 ? (
+                <div className="w-full text-center py-10 text-gray-500 text-sm">
+                  No data available
+                </div>
+              ) : (
+                customTeam.map(team => (
+                  <TeamProjectCard key={team.id} team={team} />
+                ))
+              )}
             </div>
-
-
 
           </TabsContent>
           <TabsContent value='department' currentValue={activeTab} className={'mt-5'}>
             <div className='flex flex-wrap gap-4'>
-              {departments.map((department) => (
+              {departmentTeam.map((department) => (
                 <DepartmentCard key={department.id} department={department} />
               ))}
             </div>

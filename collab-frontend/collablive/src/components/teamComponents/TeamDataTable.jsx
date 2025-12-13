@@ -42,42 +42,42 @@ function TeamDataTable({ teamMembers }) {
                         </TableRow>
                     ) : (
                         teamMembers.map((member) => (
-                            <TableRow key={member.id}>
+                            <TableRow key={member.profileId}>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
                                         <Avatar>
-                                            <AvatarImage src={member.avatar}>
+                                            <AvatarImage src={member.profileImageUrl}>
                                             </AvatarImage>
-                                            <AvatarFallback>{member.name[0]}</AvatarFallback>
+                                            <AvatarFallback>{member.profile.displayName[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="font-medium">{member.name}</div>
-                                            <div className="text-sm text-gray-500">{member.email}</div>
+                                            <div className="font-medium">{member.profile?.displayName}</div>
+                                            <div className="text-sm text-gray-500">{member.profile?.email}</div>
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
                                     <Badge className='bg-gray-500 text-center text-white'>
-                                        {member.department}
+                                        {member.departmentDto?.departmentName}
                                     </Badge>
                                     </TableCell>
                                 <TableCell>
                                     <span
-                                        className={`px-2 py-1 rounded-full text-xs font-medium ${ROLE_MAP[member.role]?.color || "bg-gray-100 text-gray-800"
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${ROLE_MAP[member.departmentDto?.positionId]?.color || "bg-gray-100 text-gray-800"
                                             }`}
                                     >
-                                        {ROLE_MAP[member.role]?.label || "Unknown"}
+                                        {ROLE_MAP[member.departmentDto?.positionId]?.label || "Unknown"}
                                     </span>
                                 </TableCell>
 
                                 {/* Status Badge */}
                                 <TableCell>
                                     <span
-                                        className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_MAP[member.status]?.color
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_MAP[member.statusId]?.color
                                             }`}
                                     >
                                         {}
-                                        {STATUS_MAP[member.status]?.label}
+                                        {STATUS_MAP[member.statusId]?.label}
                                     </span>
                                 </TableCell>
                                 <TableCell>
@@ -85,14 +85,14 @@ function TeamDataTable({ teamMembers }) {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleEdit(member.id)}
+                                            onClick={() => handleEdit(member.profile.id)}
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleDelete(member.id)}
+                                            onClick={() => handleDelete(member.profile.id)}
                                         >
                                             <Trash className="w-4 h-4 text-red-500" />
                                         </Button>

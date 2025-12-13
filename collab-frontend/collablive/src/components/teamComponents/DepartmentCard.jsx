@@ -18,12 +18,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Mail, User } from "lucide-react";
 
 function DepartmentCard({ department }) {
+    console.log(department);
   const [open, setOpen] = useState(false);
 
   return (
-    <Card className={`relative w-80 overflow-hidden rounded-lg shadow-md ${department.backgroundColor}`}>
+    <Card className="relative w-80 overflow-hidden rounded-lg shadow-md bg-[var(--dept-color)]" style={{ '--dept-color': department.departmentColor }}>
           <CardHeader>
-              <CardTitle className="text-xl font-bold">{department.name}</CardTitle>
+              <CardTitle className="text-xl font-bold">{department.departmentName}</CardTitle>
               <p className="text-sm text-muted-foreground">{department.tagline}</p>
           </CardHeader>
 
@@ -40,28 +41,28 @@ function DepartmentCard({ department }) {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
                       <DialogHeader>
-                          <DialogTitle>{department.name} Members</DialogTitle>
+                          <DialogTitle>{department.departmentName} Members</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-3">
                           {department.members?.map((member) => (
                               <div
-                                  key={member.id}
+                                  key={member.profile?.id}
                                   className="flex items-center gap-3 border rounded-md p-2"
                               >
                                   <Avatar className="w-12 h-12">
-                                      <AvatarImage src={member.avatar} alt={member.name} />
-                                      <AvatarFallback>{member.name[0]}</AvatarFallback>
+                                      <AvatarImage src={member.profile?.profileImageUrl} alt={member.profile?.displayName} />
+                                      <AvatarFallback>{member.profile?.displayName[0]}</AvatarFallback>
                                   </Avatar>
                                   <div className="flex-1">
-                                      <h4 className="font-medium mb-1">{member.name}</h4>
+                                      <h4 className="font-medium mb-1">{member.profile?.displayName}</h4>
                                       <div className="flex text-sm gap-3 items-center text-gray-600">
                                           <p className="flex items-center gap-2">
                                               <User className="h-4 w-4" />
-                                              {member.role}
+                                              {member?.position}
                                           </p>
                                           <p className="flex items-center gap-2 align-middle text-center">
                                               <Mail className="h-4 w-4" />
-                                              {member.email}
+                                              {member.profile?.email}
                                           </p>
                                       </div>
                                   </div>

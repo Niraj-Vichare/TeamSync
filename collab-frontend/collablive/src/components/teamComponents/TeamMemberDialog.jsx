@@ -1,15 +1,61 @@
-import { Crown, Eye, Mail, User, Users } from 'lucide-react';
 import React, { useState } from 'react'
-import { Badge } from '../ui/badge';
-import { Avatar } from '@radix-ui/react-avatar';
-import { AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Calendar, Clock, Crown, Eye, Users } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
+
+// const TeamMemberDialog = ({ team }) => {
+//   const [open, setOpen] = useState(false)
+  
+//   return (
+//     <>
+//       <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
+//         View All
+//       </Button>
+//       {open && (
+//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+//           <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-96 overflow-y-auto">
+//             <h3 className="text-lg font-semibold mb-4">Team Members</h3>
+//             <div className="space-y-3">
+//               {team.members.map((member) => (
+//                 <div key={member.profile.id} className="flex items-center gap-3 p-2 border rounded">
+//                   <Avatar className="h-10 w-10">
+//                     <AvatarImage src={member.profile.profileImageUrl} alt={member.profile.displayName} />
+//                     <AvatarFallback>
+//                       {member.profile.displayName.split(' ').map(n => n[0]).join('')}
+//                     </AvatarFallback>
+//                   </Avatar>
+//                   <div className="flex-1">
+//                     <div className="flex items-center gap-2">
+//                       <span className="font-medium">{member.profile.displayName}</span>
+//                       {member.profile.isLeader && (
+//                         <Crown className="h-4 w-4 text-yellow-600" />
+//                       )}
+//                     </div>
+//                     <span className="text-sm text-gray-600">{member.departmentDto.departmentName}</span>
+//                   </div>
+//                 </div>
+//               ))}
+//             </div>
+//             <Button onClick={() => setOpen(false)} className="mt-4 w-full">
+//               Close
+//             </Button>
+//           </div>
+//         </div>
+//       )}
+//     </>
+//   )
+// }
+
+// export default TeamMemberDialog;
+
 
 const TeamMemberDialog = ({ team }) => {
   const [open, setOpen] = useState(false);
-  const teamLeaders = team.people.filter(person => person.isTeamLeader);
-  const teamMembers = team.people.filter(person => !person.isTeamLeader);
+  const teamLeaders = team.members.filter(member => member.profile?.isLeader)
+  const teamMembers = team.members.filter(member => !member.profile?.isLeader)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -29,80 +75,25 @@ const TeamMemberDialog = ({ team }) => {
         
         <div className="space-y-6 mt-4">
 
-          {/* Team Leaders */}
-          {teamLeaders.length > 0 && (
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Crown className="h-4 w-4 text-yellow-500" />
-                Team Leader{teamLeaders.length > 1 ? 's' : ''} ({teamLeaders.length})
-              </h3>
-              <div className="grid gap-3">
-                {teamLeaders.map((person) => (
-                  <div key={person.id} className="flex items-start gap-4 p-4 rounded-lg border">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={person.avatar} alt={person.name} />
-                      <AvatarFallback className="bg-yellow-200 text-yellow-800">
-                        {person.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{person.name}</h4>
-                        <Badge variant="secondary" className="text-xs bg-yellow-200 text-yellow-800">
-                          Leader
-                        </Badge>
-                      </div>
-                      <div className="flex text-sm gap-2 items-center text-gray-600">
-                        <p className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-white" />
-                          {person.role}
-                        </p>
-                        <p className="flex items-center gap-2 align-middle text-center">
-                          <Mail className="h-4 w-4 text-white" />
-                          {person.email}
-                        </p>
-                      </div>
+          {team.members.map((member) => (
+                <div key={member.profile.id} className="flex items-center gap-3 p-2 border rounded">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={member.profile.profileImageUrl} alt={member.profile.displayName} />
+                    <AvatarFallback>
+                      {member.profile.displayName.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{member.profile.displayName}</span>
+                      {member.profile.isLeader && (
+                        <Crown className="h-4 w-4 text-yellow-600" />
+                      )}
                     </div>
+                    <span className="text-sm text-gray-600">{member.departmentDto.departmentName}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Team Members */}
-          {teamMembers.length > 0 && (
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Users className="h-4 w-4 text-gray-600" />
-                Team Member{teamMembers.length > 1 ? 's' : ''} ({teamMembers.length})
-              </h3>
-              <div className="grid gap-3">
-                {teamMembers.map((person) => (
-                  <div key={person.id} className="flex items-start gap-4 p-4 rounded-lg border">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={person.avatar} alt={person.name} />
-                      <AvatarFallback className="bg-gray-200">
-                        {person.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h4 className="font-medium mb-1">{person.name}</h4>
-                      <div className="flex text-sm gap-2 items-center text-gray-600">
-                        <p className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-white" />
-                          {person.role}
-                        </p>
-                        <p className="flex items-center gap-2 align-middle text-center">
-                          <Mail className="h-4 w-4 text-white" />
-                          {person.email}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              ))}
         </div>
       </DialogContent>
     </Dialog>
