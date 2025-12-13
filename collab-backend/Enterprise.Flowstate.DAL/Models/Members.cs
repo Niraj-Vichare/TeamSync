@@ -21,11 +21,13 @@ namespace Enterprise.Flowstate.DAL.Models
         public int DepartmentId { get; set; }
         [Column("status")]
         public int Status { get; set; }
-        [Reference(typeof(Profile))]
+        [Column("position")]
+        public int PositionId { get; set; }
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Profile Profile { get; set; }
-        [Reference(typeof(Workspace))]
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Workspace Workspace { get; set; }
-        [Reference(typeof(Department))]
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Department Department { get; set; }
     }
 }

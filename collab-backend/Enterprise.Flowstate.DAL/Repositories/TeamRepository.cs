@@ -1,6 +1,7 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Supabase.Gotrue;
 
 
 namespace Enterprise.Flowstate.DAL.Repositories
@@ -13,26 +14,27 @@ namespace Enterprise.Flowstate.DAL.Repositories
             _supabaseClient = supabaseClient;
 
         }
-        public async Task<bool> AddMember(string workspaceId, TeamMemberWorkspaceMapping mapping)
+        public async Task<bool> AddMember(string workspaceId, Members mapping)
         {
-            var response = await _supabaseClient.From<TeamMemberWorkspaceMapping>().Insert(mapping);
+            var response = await _supabaseClient.From<Members>().Insert(mapping);
             return response.Models.Count > 0;
         }
 
 
-        public async Task<List<TeamMemberWorkspaceMapping>> GetTeamMembers(string workspaceId)
+        public async Task<List<Members>> GetTeamMembers(string workspaceId)
         {
             var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceId).Single();
             if (workspace == null)
             {
                 return null;
             }
-            var response = await _supabaseClient.From<TeamMemberWorkspaceMapping>().Where(mapping => mapping.WorkspaceId == workspace.Id).Get();
+            var response = await _supabaseClient.From<Members>().Select("*,department:department_id(*),profile:profile_id(*)").Where(mapping => mapping.WorkspaceGuid == workspaceId).Get();
             var teamMembers = response.Models.ToList();
 
             return teamMembers;
 
         }
+
 
         public async Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid)
         {
@@ -82,43 +84,196 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return mappingResult.Models.ToList();
         }
 
-        public async Task<List<TeamMemberMapping>> GetCustomTeams(string workspaceGuid)
+        public async Task<List<TeamDto>> GetCustomTeams(string workspaceGuid)
         {
-            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            var workspaceResponse = await _supabaseClient
+        .From<Workspace>()
+        .Filter("workspace_guid", Supabase.Postgrest.Constants.Operator.Equals, workspaceGuid)
+        .Get();
+
             if (!workspaceResponse.Models.Any())
             {
-                return null;
+                return new List<TeamDto>();
             }
-            var workspace = workspaceResponse.Models.FirstOrDefault();
-            int workspaceId = workspace.Id;
 
-            var teamResponse = await _supabaseClient.From<Team>().Where(team => team.WorkspaceId == workspaceId).Get();
-            if (!teamResponse.Models.Any())
+            var workspaceId = workspaceResponse.Models.First().Id;
+
+            // Get all teams for this workspace
+            var teamsResponse = await _supabaseClient
+                .From<Team>()
+                .Filter("workspace_id", Supabase.Postgrest.Constants.Operator.Equals, workspaceId)
+                .Get();
+
+            if (!teamsResponse.Models.Any())
             {
-                return null;
+                return new List<TeamDto>();
             }
-            var customTeamList = teamResponse.Models.Select(team => team.TeamId).ToList();
-            if (customTeamList.Count == 0)
+
+            var teamIds = teamsResponse.Models.Select(t => t.TeamId).ToList();
+
+            // Get all team member mappings with member, profile, and department info
+            var teamMemberMappingsResponse = await _supabaseClient
+                .From<TeamMemberMapping>()
+                .Select("*, member:member_id(*, profile:profile_id(*), department:department_id(*))")
+                .Filter("team_id", Supabase.Postgrest.Constants.Operator.In, teamIds)
+                .Get();
+
+            // Group mappings by team
+            var teamMemberGroups = teamMemberMappingsResponse.Models
+                .GroupBy(tm => tm.TeamId);
+
+            var result = new List<TeamDto>();
+
+            foreach (var team in teamsResponse.Models)
             {
-                return null;
+                var teamMembers = teamMemberGroups
+                    .FirstOrDefault(g => g.Key == team.TeamId)?
+                    .ToList() ?? new List<TeamMemberMapping>();
+
+                var customTeam = new TeamDto
+                {
+                    TeamId = team.TeamId,
+                    Name = team.TeamName,
+                    Tagline = team.Tagline,
+
+                    Members = teamMembers.Select(tm => new TeamMemberDto
+                    {
+                        StatusId = tm.Member?.Status ?? 0,
+                        PositionId = tm.Member.PositionId,
+                        DepartmentDto = tm.Member?.Department != null ? new DepartmentDto
+                        {
+                            DepartmentId = tm.Member.Department.Id,
+                            DepartmentName = tm.Member.Department.Title,
+                            Tagline = tm.Member.Department.Tagline,
+                            DepartmentColor = tm.Member.Department.DepartmentColor
+                        } : null,
+                        Profile = tm.Member?.Profile != null ? new ProfileDto
+                        {
+                            Id = tm.Member.Profile.Id,
+                            DisplayName = tm.Member.Profile.DisplayName,
+                            Guid = tm.Member.Profile.Guid,
+                            Bio = tm.Member.Profile.Bio,
+                            ProfileImageUrl = tm.Member.Profile.ProfileImageUrl,
+                            CreatedAt = tm.Member.Profile.CreatedAt,
+                            UpdatedAt = tm.Member.Profile.UpdatedAt,
+                            WorkspaceId = tm.Member.Profile.WorkspaceId,
+                            Email = tm.Member.Profile.Email,
+                            IsLeader = tm.IsLeader
+                        } : null
+                    }).ToList()
+                };
+
+                result.Add(customTeam);
             }
-            var teamMemberMapping = await _supabaseClient.From<TeamMemberMapping>().Filter("team_id", Supabase.Postgrest.Constants.Operator.In,customTeamList).Get();
-            return teamMemberMapping.Models.ToList();
+            return result;
         }
 
-        public async Task<List<Members>> GetDepartmentWiseMembers(string workspaceGuid)
+        public async System.Threading.Tasks.Task AddTeamMemberMapping(TeamMemberMapping teamMemberMapping)
         {
-            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
-            if (!workspaceResponse.Models.Any())
+            _supabaseClient.From<TeamMemberMapping>().Insert(teamMemberMapping);
+        }
+        public async Task<int> AddTeam(Team team)
+        {
+            var response = await _supabaseClient.From<Team>().Insert(team);
+            return (int)response.Models.FirstOrDefault().TeamId;
+        }
+        public async Task<List<DepartmentWithMembersDto>> GetDepartmentWiseMembers(string workspaceGuid)
+        {
+            // Get all members with their department and profile information
+            var membersResponse = await _supabaseClient
+                .From<Members>()
+                .Select("*,department:department_id(*),profile:profile_id(*)")
+                .Where(member=>member.WorkspaceGuid == workspaceGuid)
+                .Get();
+
+            if (!membersResponse.Models.Any())
             {
-                return null;
+                return new List<DepartmentWithMembersDto>();
             }
-            var workspace = workspaceResponse.Models.FirstOrDefault();
-            int workspaceId = workspace.Id;
 
-            var members = await _supabaseClient.From<Members>().Where(member => member.WorkspaceGuid == workspaceGuid).Get();
-            return members.Models.ToList();
+            // Group members by department
+            var departmentGroups = membersResponse.Models
+                .Where(m => m.Department != null)
+                .GroupBy(m => m.DepartmentId);
 
+            var result = new List<DepartmentWithMembersDto>();
+
+            foreach (var group in departmentGroups)
+            {
+                var firstMember = group.First();
+                var department = firstMember.Department;
+
+                var departmentWithMembers = new DepartmentWithMembersDto
+                {
+                    DepartmentId = department.Id,
+                    DepartmentName = department.Title,
+                    Tagline = department.Tagline,
+                    DepartmentColor = department.DepartmentColor,
+                    Members = group.Select(m => new TeamMemberDto
+                    {
+                        PositionId = m.PositionId,
+                        StatusId = m.Status,
+                        Profile = m.Profile != null ? new ProfileDto
+                        {
+                            Id = m.Profile.Id,
+                            DisplayName = m.Profile.DisplayName,
+                            Guid = m.Profile.Guid,
+                            Bio = m.Profile.Bio,
+                            ProfileImageUrl = m.Profile.ProfileImageUrl,
+                            CreatedAt = m.Profile.CreatedAt,
+                            UpdatedAt = m.Profile.UpdatedAt,
+                            WorkspaceId = m.Profile.WorkspaceId,
+                            Email = m.Profile.Email,
+                        } : null
+                    }).ToList()
+                };
+
+                result.Add(departmentWithMembers);
+            }
+
+            // Sort by department position
+            return result.OrderBy(d => d.PositionId).ToList();
+        }
+
+        public Task<bool> EditMember(string workspaceId, Members mapping)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<bool> DeleteMember(string workspaceGuid, int member)
+        {
+            var response = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if (!response.Models.Any())
+            {
+                return false;
+            }
+            int workspaceId = response.Models.FirstOrDefault().Id;
+            _supabaseClient.From<WorkspaceUserMapping>().Where(WorkspaceUserMapping => WorkspaceUserMapping.WorkspaceId == workspaceId && WorkspaceUserMapping.UserId == member).Delete();
+            return true;
+        }
+
+        public async Task<bool> RemoveTeamMember(string workspaceId, int teamId, int memberId)
+        {
+            
+            // Execute targeted delete
+            var deleteResponse = _supabaseClient.From<TeamMemberMapping>().Where(m => m.TeamId == teamId && m.MemberId == memberId).Delete();
+            return true;
+        }
+
+        public async Task<bool> RemoveTeam(int teamId)
+        {
+            var deleteResponse = _supabaseClient.From<Team>().Where(t => t.TeamId == teamId).Delete();
+            return true;
+        }
+        public Task<bool> EditTeam(Team team)
+        {
+            return null;
+        }
+
+        public async Task<bool> RemoveTeamMemberMapping(TeamMemberMapping mapping)
+        {
+            var deleteResponse = _supabaseClient.From<TeamMemberMapping>().Where(m=>m.TeamId == mapping.TeamId && m.MemberId == mapping.MemberId).Delete();
+            return true;
         }
     }
 }

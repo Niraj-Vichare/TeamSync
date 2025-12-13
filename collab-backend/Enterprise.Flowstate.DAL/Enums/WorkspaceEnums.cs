@@ -17,7 +17,8 @@ namespace Enterprise.Flowstate.DAL.Enums
             BusinessAnalyst = 9,
             DevOps = 10,
             Support = 11,
-            Guest = 12
+            Guest = 12,
+            SalesManager = 13,
         }
 
         public enum Department

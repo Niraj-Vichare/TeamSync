@@ -70,6 +70,12 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
         }
 
+        public async Task<int> GetWorkspaceId(string workspaceGuid)
+        {
+            var workspace =  await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            return workspace.Models.FirstOrDefault().Id;
+        }
+
         public async Task<Ranking> GetUserRanking(string workspaceId, string userId)
         {
             var workspaceGuid = await _supabaseClient.From<Workspace>().Where(workspace=>workspace.WorkspaceGuid == workspaceId).Get();

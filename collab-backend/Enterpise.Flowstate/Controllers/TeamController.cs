@@ -17,8 +17,11 @@ namespace Enterpise.Flowstate.Controllers
         {
             _omniService = omniService;
         }
-        [HttpPost]
-        public async Task<ApiResponseModel<object>> AddMember(string workspaceGuid, TeamMemberWorkspaceMapping mapping)
+
+        #region Members Methods
+
+        [HttpPost("member/create")]
+        public async Task<ApiResponseModel<object>> AddMember(string workspaceGuid, TeamMemberDto mapping)
         {
             try
             {
@@ -40,7 +43,7 @@ namespace Enterpise.Flowstate.Controllers
                         StatusCodes.Status404NotFound
                     );
                 }
-                
+
 
                 var result = await _omniService.TeamService.AddMember(workspaceGuid, mapping);
 
@@ -71,7 +74,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpGet]
-        [Route("/members")]
+        [Route("members")]
         public async Task<ApiResponseModel<object>> GetMembers([FromQuery] string workspaceGuid, [FromQuery] string? search = null, [FromQuery] string? filter = null, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -125,8 +128,109 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpGet]
-        [Route("/custom")]
+        [HttpPost("member/{memberId}/delete")]
+        public async Task<ApiResponseModel<object>> DeleteMember([FromQuery] string workspaceGuid,int memberId)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status401Unauthorized
+                    );
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.WORKSPACEGUID_NOT_FOUND,
+                        StatusCodes.Status404NotFound
+                    );
+                }
+                await _omniService.TeamService.DeleteMember(workspaceGuid, memberId);
+
+                return ApiResponseHelper.FromErrorStatus<object>(
+                    ErrorStatus.SUCCESS,
+                    StatusCodes.Status200OK
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Status = ErrorStatus.FAILURE.ToString(),
+                    Message = ex.Message,
+                    Data = null
+                };
+            }
+        }
+
+        [HttpGet("department")]
+        public async Task<ApiResponseModel<object>> GetDepartmentWiseTeam([FromQuery] string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status401Unauthorized
+                    );
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.WORKSPACEGUID_NOT_FOUND,
+                        StatusCodes.Status404NotFound
+                    );
+                }
+
+
+                var result = await _omniService.TeamService.GetDepartmentWiseMembers(workspaceGuid);
+
+                if (result == null)
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status400BadRequest
+                    );
+                }
+
+                return ApiResponseHelper.FromErrorStatus<object>(
+                    ErrorStatus.SUCCESS,
+                    StatusCodes.Status200OK,
+                    result
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Status = ErrorStatus.FAILURE.ToString(),
+                    Message = ex.Message,
+                    Data = null
+                };
+            }
+        }
+
+
+        #endregion
+
+        #region Teams Methods
+
+        [HttpGet("custom")]
         public async Task<ApiResponseModel<object>> GetCustomTeam([FromQuery] string workspaceGuid)
         {
             try
@@ -180,9 +284,111 @@ namespace Enterpise.Flowstate.Controllers
             }
 
         }
+        
+        [HttpDelete("{teamId}/remove")]
+        public async Task<ApiResponseModel<object>> RemoveMemberFromTeam([FromQuery]string workspaceGuid,[FromRoute] int teamId)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        [HttpGet("/department")]
-        public async Task<ApiResponseModel<object>> GetDepartmentWiseTeam([FromQuery] string workspaceGuid)
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status401Unauthorized
+                    );
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.WORKSPACEGUID_NOT_FOUND,
+                        StatusCodes.Status404NotFound
+                    );
+                }
+                var result = await _omniService.TeamService.RemoveTeam(teamId);
+
+                if (result)
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status400BadRequest
+                    );
+                }
+
+                return ApiResponseHelper.FromErrorStatus<object>(
+                    ErrorStatus.SUCCESS,
+                    StatusCodes.Status200OK
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Status = ErrorStatus.FAILURE.ToString(),
+                    Message = ex.Message,
+                    Data = null
+                };
+            }
+        }
+
+        [HttpPatch("update")]
+        public async Task<ApiResponseModel<object>> UpdateTeam([FromQuery] string workspaceGuid, TeamDto team)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status401Unauthorized
+                    );
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.WORKSPACEGUID_NOT_FOUND,
+                        StatusCodes.Status404NotFound
+                    );
+                }
+                var result = await _omniService.TeamService.UpdateTeam(workspaceGuid, team);
+
+                if (result)
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status400BadRequest
+                    );
+                }
+
+                return ApiResponseHelper.FromErrorStatus<object>(
+                    ErrorStatus.SUCCESS,
+                    StatusCodes.Status200OK
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Status = ErrorStatus.FAILURE.ToString(),
+                    Message = ex.Message,
+                    Data = null
+                };
+            }
+        }
+
+        [HttpPost("create")]
+        public async Task<ApiResponseModel<object>> CreateTeam([FromQuery] string workspaceGuid, TeamDto teamDto)
         {
             try
             {
@@ -205,10 +411,10 @@ namespace Enterpise.Flowstate.Controllers
                     );
                 }
 
+                teamDto.WorkspaceGuid = workspaceGuid;
+                var result = await _omniService.TeamService.AddCustomTeam(teamDto);
 
-                var result = await _omniService.TeamService.GetDepartmentWiseMembers(workspaceGuid);
-
-                if (result == null)
+                if (result)
                 {
                     return ApiResponseHelper.FromErrorStatus<object>(
                         ErrorStatus.FAILURE,
@@ -218,8 +424,7 @@ namespace Enterpise.Flowstate.Controllers
 
                 return ApiResponseHelper.FromErrorStatus<object>(
                     ErrorStatus.SUCCESS,
-                    StatusCodes.Status200OK,
-                    result
+                    StatusCodes.Status200OK
                 );
             }
             catch (Exception ex)
@@ -234,30 +439,59 @@ namespace Enterpise.Flowstate.Controllers
                 };
             }
         }
-        
-        //public async Task<ApiResponseModel<object>> DeleteMember()
-        //{
 
-        //}
+        [HttpPost("{teamId}/delete")]
+        public async Task<ApiResponseModel<object>> DeleteTeam([FromQuery] string workspaceGuid, int teamId)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        //public async Task<ApiResponseModel<object>> RemoveMemberFromTeam()
-        //{
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status401Unauthorized
+                    );
+                }
 
-        //}
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.WORKSPACEGUID_NOT_FOUND,
+                        StatusCodes.Status404NotFound
+                    );
+                }
+                var result = await _omniService.TeamService.RemoveTeam(teamId);
 
-        //public async Task<ApiResponseModel<object>> EditMember()
-        //{
+                if (result)
+                {
+                    return ApiResponseHelper.FromErrorStatus<object>(
+                        ErrorStatus.FAILURE,
+                        StatusCodes.Status400BadRequest
+                    );
+                }
 
-        //}
+                return ApiResponseHelper.FromErrorStatus<object>(
+                    ErrorStatus.SUCCESS,
+                    StatusCodes.Status200OK
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Status = ErrorStatus.FAILURE.ToString(),
+                    Message = ex.Message,
+                    Data = null
+                };
+            }
+        }
+        #endregion
 
-        //public async Task<ApiResponseModel<object>> UpdateTeam()
-        //{
-
-        //}
-        //public async Task<ApiResponseModel<object>> CreateTeam()
-        //{
-
-        //}
 
         [HttpGet]
         [Route("dropdown")]

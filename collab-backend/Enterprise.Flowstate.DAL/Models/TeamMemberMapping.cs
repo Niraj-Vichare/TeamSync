@@ -17,6 +17,8 @@ namespace Enterprise.Flowstate.DAL.Models
         public long TeamId { get; set; }
         [Column("member_id")]
         public int MemberId { get; set; }
+        [Column("is_leader")]
+        public bool IsLeader { get; set; }
         [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Members? Member { get; set; }
         [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]

@@ -11,11 +11,18 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface ITeamRepository
     {
-        Task<bool> AddMember(string workspaceId, TeamMemberWorkspaceMapping mapping);
-        Task<List<TeamMemberWorkspaceMapping>> GetTeamMembers(string workspaceId);
+        Task<bool> AddMember(string workspaceId, Members mapping);
+        Task<bool> EditMember(string workspaceId, Members mapping);
+        Task<bool> DeleteMember(string workspaceId,int member);
+        Task<List<Members>> GetTeamMembers(string workspaceId);
         Task<List<TeamDropdownModel>> GetTeamDropDown(string workspaceGuid);
         Task<List<TeamMemberMapping>> GetAssignedMember(string sprintGuid);
-        Task<List<TeamMemberMapping>> GetCustomTeams(string workspaceGuid);
-        Task<List<Members>> GetDepartmentWiseMembers(string workspaceGuid);
+        Task<List<TeamDto>> GetCustomTeams(string workspaceGuid);
+        Task<List<DepartmentWithMembersDto>> GetDepartmentWiseMembers(string workspaceGuid);
+        Task<int> AddTeam(Team team);
+        Task<bool> RemoveTeam(int teamId);
+        Task<bool> EditTeam(Team team);
+        System.Threading.Tasks.Task AddTeamMemberMapping(TeamMemberMapping mapping);
+        System.Threading.Tasks.Task<bool> RemoveTeamMemberMapping(TeamMemberMapping mapping);
     }
 }

@@ -13,6 +13,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<WorkspaceUserMapping>> GetWorkspaces(string userGuid);
         Task<bool> HasWorkspace(string email);
         Task<Ranking> GetUserRanking(string workspaceId, string userId);
+        Task<int> GetWorkspaceId(string workspaceGuid);
 
     }
 }

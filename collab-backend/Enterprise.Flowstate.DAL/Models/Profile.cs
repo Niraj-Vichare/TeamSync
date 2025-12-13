@@ -1,4 +1,5 @@
-﻿using Supabase.Postgrest.Attributes;
+﻿using Supabase.Gotrue;
+using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
 namespace Enterprise.Flowstate.DAL.Models
@@ -22,5 +23,7 @@ namespace Enterprise.Flowstate.DAL.Models
         public DateTime? UpdatedAt { get; set; }
         [Column("current_workspace")]
         public string WorkspaceId { get; set; }
+        [Column("email")]
+        public string Email { get; set; }
     }
 }

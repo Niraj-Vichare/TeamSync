@@ -11,6 +11,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
     public interface IProfileRepository
     {
         Task<bool> CreateProfile(User user, string? displayName);
+        Task<int?> CreateProfileAsync(Profile profile);
         Task<string> GetCurrentWorkspaceId(string userGuid);
         Task<Profile> GetProfile(string userGuid);
         Task<int> GetProfileId(string userGuid);

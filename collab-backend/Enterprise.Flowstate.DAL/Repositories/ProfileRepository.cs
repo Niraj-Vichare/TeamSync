@@ -17,6 +17,42 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             // Initialize any required services or repositories here
         }
 
+        public async Task<int?> CreateProfileAsync(Profile profile)
+        {
+            var result = await _supabaseClient
+                .From<Profile>()
+                .Insert(profile);
+
+            var profileId = result.Models.FirstOrDefault()?.Id;
+            if(profileId == null || profileId <= 0)
+            {
+                return 0;
+            }
+            var finalResult = await InsertProfileWorkspaceMapping((int)profileId, profile.WorkspaceId);
+            if(!finalResult)
+            {
+                return 0;
+            }
+            return profileId;
+        }
+
+        public async Task<bool> InsertProfileWorkspaceMapping(int profileId, string workspaceGuid)
+        {
+            var workspaceResponse = _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if(workspaceResponse == null)
+            {
+                return false;
+            }
+            int workspaceId = workspaceResponse.Result.Models.FirstOrDefault().Id;
+            WorkspaceUserMapping mapping = new WorkspaceUserMapping
+            {
+                UserId = profileId,
+                WorkspaceId = workspaceId
+            };
+            var result = await _supabaseClient.From<WorkspaceUserMapping>().Insert(mapping);
+            return result.Models.Count > 0;
+        }
+
         public async Task<bool> CreateProfile(User user,string? displayName)
         {
             Profile profile = new Profile

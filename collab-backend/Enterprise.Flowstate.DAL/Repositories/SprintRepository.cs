@@ -219,59 +219,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         // When task compelete event happen in the week
         public async Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid)
         {
-            // Get sprint info
-            var sprintResult = await _supabaseClient
-                .From<Sprint>()
-                .Where(s => s.SprintGuid == sprintGuid)
-                .Get();
-
-            var sprint = sprintResult.Models.FirstOrDefault();
-            if (sprint == null) return new List<SprintProgressModel>();
-
-            var startDate = sprint.StartDate;
-            var endDate = sprint.EndDate?.Date ?? DateTime.UtcNow.Date;
-
-            // Get total tickets for this sprint
-            var totalTicketsResult = await _supabaseClient
-                .From<Ticket>()
-                .Where(t => t.SprintId == sprint.SprintId)
-                .Get();
-
-            var totalTickets = totalTicketsResult.Models.Count;
-
-            // Get all completed ticket events for this sprint
-            var eventLogsResult = await _supabaseClient
-                .From<EventsLog>()
-                .Where(e => e.SprintId == sprint.SprintId &&
-                            e.EventTypeId == 2 && // completed
-                            e.CreatedAt >= startDate &&
-                            e.CreatedAt <= endDate)
-                .Get();
-
-            var completedByDay = eventLogsResult.Models
-                .GroupBy(e => e.CreatedAt.Date)
-                .Select(g => new { Date = g.Key, Count = g.Count() })
-                .OrderBy(g => g.Date)
-                .ToList();
-
-            var progress = new List<SprintProgressModel>();
-            int cumulativeCompleted = 0;
-
-            for (var day = startDate; day <= endDate; day = day.Value.AddDays(1))
-            {
-                var dayData = completedByDay.FirstOrDefault(d => d.Date == day);
-                if (dayData != null)
-                    cumulativeCompleted += dayData.Count;
-
-                progress.Add(new SprintProgressModel
-                {
-                    Date = (DateTime)day,
-                    Completed = cumulativeCompleted,
-                    Pending = totalTickets - cumulativeCompleted
-                });
-            }
-
-            return progress;
+            return null;
         }
 
         public async Task<SprintMetric> GetSprintBreakdown(string sprintGuid)

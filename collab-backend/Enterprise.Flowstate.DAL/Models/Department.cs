@@ -19,7 +19,7 @@ namespace Enterprise.Flowstate.DAL.Models
         public string Title { get; set; }
         [Column("tagline")]
         public string Tagline { get; set; }
-        [Column("position")]
-        public int Position { get; set; }
+        [Column("department_color")]
+        public string DepartmentColor { get; set; }
     }
 }
