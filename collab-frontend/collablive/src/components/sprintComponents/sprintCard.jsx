@@ -67,11 +67,11 @@ function SprintCard({ sprint,onView }) {
                     {/* Assigned + Tickets */}
                     <div className='flex justify-between align-middle mt-3'>
                         <div className='space-y-2'>
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">No of Tickets</p>
+                            {/* <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">No of Tickets</p>
                             <div className='flex items-center gap-2 align-middle'>
                                 <TicketIcon className='w-4 h-4 text-yellow-300' />
                                 {sprint.tickets == null ?0:sprint.tickets}
-                            </div>
+                            </div> */}
                         </div>
 
                         <div className="space-y-2">

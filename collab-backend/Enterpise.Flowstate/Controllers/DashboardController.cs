@@ -1,7 +1,9 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 
 namespace Enterprise.Flowstate.Controllers
 {
@@ -119,70 +121,6 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("timer/status")]
-        public async Task<ApiResponseModel<object>> GetTimerStatus([FromQuery] string workspaceGuid)
-        {
-            try
-            {
-                var identity = HttpContext.User.Identity as ClaimsIdentity;
-                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                {
-                    return new ApiResponseModel<object>
-                    {
-                        Data = null,
-                        Message = "Authentication failed.",
-                        Success = false,
-                    };
-                }
-
-                if (string.IsNullOrEmpty(workspaceGuid))
-                {
-                    return new ApiResponseModel<object>
-                    {
-                        Data = null,
-                        Message = "Workspace GUID is required.",
-                        Success = false
-                    };
-                }
-
-                // Check if the user has an active timer
-                var activeTimer = await _omniService.DashboardService.GetTodayLogging(workspaceGuid, userIdClaim);
-
-                if (activeTimer == null)
-                {
-                    return new ApiResponseModel<object>
-                    {
-                        Data = new { IsRunning = false },
-                        Success = true,
-                        StatusCode = StatusCodes.Status200OK
-                    };
-                }
-
-                return new ApiResponseModel<object>
-                {
-                    Data = new
-                    {
-                        IsRunning = true,
-                        ClockInTime = activeTimer.CheckIn,
-                        TimerId = activeTimer.Id
-                    },
-                    Success = true,
-                    StatusCode = StatusCodes.Status200OK
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponseModel<object>
-                {
-                    Data = null,
-                    Success = false,
-                    Message = ex.Message,
-                    StatusCode = StatusCodes.Status500InternalServerError
-                };
-            }
-        }
-
 
         [HttpPost("timer/clockin")]
         public async Task<ApiResponseModel<object>> ClockIn([FromQuery] string workspaceGuid)
@@ -211,12 +149,27 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                // Check if the user has an active timer
-                var activeTimer = await _omniService.DashboardService.ClockIn(workspaceGuid, userIdClaim);
+                // Call repository
+                var result = await _omniService.DashboardService.ClockIn(workspaceGuid, userIdClaim);
+
+                // Get current status for frontend
+                var status = await _omniService.DashboardService.GetCurrentStatus(workspaceGuid, userIdClaim);
+
+                // Map enum to user-friendly message
+                string message = result switch
+                {
+                    ClockActionResult.Success => "Clocked in successfully.",
+                    ClockActionResult.AlreadyClockedIn => "Already clocked in.",
+                    ClockActionResult.AlreadyClockedOut => "Already clocked out for today.",
+                    ClockActionResult.InvalidWorkspaceOrUser => "Invalid workspace or user.",
+                    _ => "Unknown error."
+                };
 
                 return new ApiResponseModel<object>
                 {
-                    Success = activeTimer,
+                    Success = result == ClockActionResult.Success,
+                    Data = status,
+                    Message = message,
                     StatusCode = StatusCodes.Status200OK
                 };
             }
@@ -233,7 +186,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost("timer/clockout")]
-        public async Task<ApiResponseModel<object>> ClockOut([FromQuery] string workspaceGuid)
+        public async Task<ApiResponseModel<object>> ClockOut([FromQuery] string workspaceGuid, [FromQuery] bool isAutomatic = false)
         {
             try
             {
@@ -259,12 +212,23 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                // Check if the user has an active timer
-                var activeTimer = await _omniService.DashboardService.ClockOut(workspaceGuid, userIdClaim);
+                var result = await _omniService.DashboardService.ClockOut(workspaceGuid, userIdClaim, isAutomatic);
+                var status = await _omniService.DashboardService.GetCurrentStatus(workspaceGuid, userIdClaim);
+
+                string message = result switch
+                {
+                    ClockActionResult.Success => "Clocked in successfully.",
+                    ClockActionResult.AlreadyClockedIn => "Already clocked in.",
+                    ClockActionResult.AlreadyClockedOut => "Already clocked out for today.",
+                    ClockActionResult.InvalidWorkspaceOrUser => "Invalid workspace or user.",
+                    _ => "Unknown error."
+                };
 
                 return new ApiResponseModel<object>
                 {
-                    Success = activeTimer,
+                    Success = result == ClockActionResult.Success,
+                    Data = status,
+                    Message = message,
                     StatusCode = StatusCodes.Status200OK
                 };
             }
@@ -279,6 +243,56 @@ namespace Enterprise.Flowstate.Controllers
                 };
             }
         }
+
+        [HttpGet("timer/status")]
+        public async Task<ApiResponseModel<ClockStatusDto>> GetTimerStatus([FromQuery] string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return new ApiResponseModel<ClockStatusDto>
+                    {
+                        Data = null,
+                        Message = "Authentication failed.",
+                        Success = false,
+                    };
+                }
+
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return new ApiResponseModel<ClockStatusDto>
+                    {
+                        Data = null,
+                        Message = "Workspace GUID is required.",
+                        Success = false
+                    };
+                }
+
+                var status = await _omniService.DashboardService.GetCurrentStatus(workspaceGuid, userIdClaim);
+
+                return new ApiResponseModel<ClockStatusDto>
+                {
+                    Success = true,
+                    Data = status,
+                    StatusCode = StatusCodes.Status200OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<ClockStatusDto>
+                {
+                    Data = null,
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
 
         [HttpGet("user-contribution")]
         public async Task<ApiResponseModel<object>> GetUserContribution(string workspaceGuid, string userGuid)

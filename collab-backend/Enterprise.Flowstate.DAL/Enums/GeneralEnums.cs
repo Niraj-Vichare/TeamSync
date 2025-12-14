@@ -82,5 +82,14 @@ namespace Enterprise.Flowstate.DAL.Enums
             
 
         }
+        public enum ClockActionResult
+        {
+            Success,
+            AlreadyClockedIn,
+            AlreadyClockedOut,
+            NotClockedIn,
+            InvalidWorkspaceOrUser
+        }
+
     }
 }

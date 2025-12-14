@@ -1,13 +1,16 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.DAL.Constants;
 using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Supabase.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -74,7 +77,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
 
         public async Task<Dictionary<string, double>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid)
-        {
+            {
             var dailyLogging = await _omniRepository.DashboardRepository
                 .GetWeeklyDailyLoggingMetrics(workspaceGuid, userGuid);
 
@@ -84,8 +87,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             foreach (var dailyLog in dailyLogging)
             {
-                string dayOfWeek = dailyLog.CheckingDate.DayOfWeek.ToString();
+                // Skip if checkout is missing
+                if (!dailyLog.CheckOut.HasValue) continue;
 
+                string dayOfWeek = dailyLog.CheckingDate.DayOfWeek.ToString();
                 TimeSpan workedTime = dailyLog.CheckOut.Value - dailyLog.CheckIn.Value;
 
                 // Cross-midnight handling
@@ -101,18 +106,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return pairs;
         }
 
-
+        public async Task<ClockStatusDto> GetCurrentStatus(string workspaceGuid, string userGuid)
+        {
+            return await _omniRepository.DashboardRepository.GetCurrentStatus(workspaceGuid, userGuid);
+        }
         public async Task<DailyLogging> GetTodayLogging(string workspaceId, string userId)
         {
             var result = await _omniRepository.DashboardRepository.GetTodayLogging(workspaceId, userId);
             return result;
         }
-        public async Task<bool> ClockOut(string workspaceId, string userId)
+        public async Task<ClockActionResult> ClockOut(string workspaceId, string userId,bool isAutomatic)
         {
-            var result = await _omniRepository.DashboardRepository.ClockOut(workspaceId, userId);
+            var result = await _omniRepository.DashboardRepository.ClockOut(workspaceId, userId, isAutomatic);
             return result;
         }
-        public async Task<bool> ClockIn(string workspaceGuid, string userId)
+        public async Task<ClockActionResult> ClockIn(string workspaceGuid, string userId)
         {
             var result = await _omniRepository.DashboardRepository.ClockIn(workspaceGuid, userId);
             return result;

@@ -1,7 +1,7 @@
 import axiosInstance from "./axiosInstance";
 
 class TeamService{
-  async getTeamMembers({workspaceGuid,search,filter,pageNumber,pageSize})
+  async getTeamMembers(workspaceGuid,search,filter,pageNumber,pageSize)
   {
     try{
         const response = await axiosInstance.get("/teams/members",{
@@ -46,6 +46,24 @@ class TeamService{
     }catch(error){
         console.error("Error while adding the team member",error);
         throw handleTeamError(error);
+    }
+  }
+
+  async getProjectTeam(workspaceGuid){
+    try{
+        const response = await axiosInstance.get(`/teams/custom?workspaceGuid=${workspaceGuid}`);
+        return response.data;
+    }catch(error){
+        throw handleTeamError(error);
+    }
+  }
+
+  async getDepartmentTeams(workspaceGuid){
+    try{
+        const response = await axiosInstance.get(`/teams/department?workspaceGuid=${workspaceGuid}`);
+        return response.data;
+    }catch(eror){
+        throw handleTeamError(eror);
     }
   }
 

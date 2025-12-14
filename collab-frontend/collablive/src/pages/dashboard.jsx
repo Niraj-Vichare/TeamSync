@@ -23,7 +23,10 @@ import {
   AlertCircle,
   PlayCircle,
   LogIn,
-  LogOut
+  LogOut,
+  SquareKanban,
+  Footprints,
+  UsersRound
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar, Pie, LabelList } from 'recharts';
@@ -175,6 +178,14 @@ const velocityData = [
   { sprint: 'Sprint 2.3', planned: 50, completed: 32, velocity: 32 }
 ];
 
+const actions = [
+  { key: "team", label: "Teams", icon: UsersRound },
+  { key: "tasks", label: "Task", icon: Bug },
+  { key: "projects", label: "Projects", icon: SquareKanban },
+  { key: "sprints", label: "Sprints", icon: Footprints },
+];
+
+
 
 
 const timeTrackingData = [
@@ -212,6 +223,8 @@ const lineChartData = [
 ]
 
 function Dashboard() {
+  
+  const WORK_DAY_SECONDS = 8 * 60 * 60; // 8 hours
   const [greeting, setGreeting] = useState("");
 
   const [loadingTickets, setLoadingTicket] = useState(false);
@@ -231,13 +244,48 @@ function Dashboard() {
   const [weeklyLogging, setWeeklyLogging] = useState(null);
   const [userongoingTasks, setOngoingTasks] = useState([]);
   const [userProjectWork, setUserProjectWork] = useState([]);
-
-  const [clockInTime, setClockInTime] = useState(null);
+  
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const WORK_DAY_SECONDS = 8 * 3600; // 8 hours
+  const [clockInTime, setClockInTime] = useState(null);
+  const [isValidDay, setIsValidDay] = useState(true);
+  const [overtime, setOvertime] = useState(0);
+  
+  const progressValue = Math.min((elapsed / WORK_DAY_SECONDS) * 100, 100);
   const { getCurrentWorkspaceId } = useAuth();
   const workspaceGuid = getCurrentWorkspaceId();
+
+  // Helper: format seconds to HH:MM:SS
+  const formatTime = (seconds) => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  };
+
+  // Sync clock-in status on load
+  const checkClockInStatus = async () => {
+    try {
+      const result = await dashboardService.isUserClockIn(workspaceGuid);
+      if (result?.data?.isClockedIn) {
+        setClockInTime(new Date(result.data.checkInTime));
+        setElapsed(result.data.elapsedSeconds ?? 0);
+        setIsClockedIn(true);
+        setIsValidDay(result.data.isValidDay);
+        setOvertime(
+          Math.max((result.data.elapsedSeconds ?? 0) - WORK_DAY_SECONDS, 0)
+        );
+      } else {
+        setClockInTime(null);
+        setElapsed(0);
+        setIsClockedIn(false);
+        setOvertime(0);
+      }
+
+    } catch (error) {
+      console.error("Failed to check clock-in status:", error);
+    }
+  };
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -246,61 +294,7 @@ function Dashboard() {
     else setGreeting("Good Evening");
   }, []);
 
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
-  const currentTime = new Date().toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'destructive';
-      case 'medium': return 'secondary';
-      case 'low': return 'outline';
-      default: return 'outline';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'on-track': return 'bg-green-500';
-      case 'at-risk': return 'bg-yellow-500';
-      case 'behind': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  // Timer interval
-  useEffect(() => {
-    let interval;
-    if (isClockedIn && clockInTime) {
-      interval = setInterval(() => {
-        const now = new Date();
-        const diff = Math.floor((now - new Date(clockInTime)) / 1000);
-        setElapsed(diff);
-      }, 1000);
-    } else {
-      setElapsed(0);
-    }
-
-    return () => clearInterval(interval);
-  }, [isClockedIn, clockInTime]);
-
-  // Format seconds to hh:mm:ss
-  const formatTime = (seconds) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h.toString().padStart(2, "0")}:${m
-      .toString()
-      .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
+  
   const fetchDashboardCards = async () => {
     try {
       const result = await dashboardService.getDashboardCard(workspaceGuid);
@@ -377,21 +371,35 @@ function Dashboard() {
     }
   }
 
+const currentDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
-  const checkClockInStatus = async () => {
-    try {
-      const result = await dashboardService.isUserClockIn(workspaceGuid);
-      if (result?.IsRunning) {
-        setClockInTime(new Date(result.ClockInTime));
-        setIsClockedIn(true);
-      } else {
-        setClockInTime(null);
-        setIsClockedIn(false);
-      }
-    } catch (error) {
-      console.error("Failed to check clock-in status:", error);
+  const currentTime = new Date().toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      case 'low': return 'outline';
+      default: return 'outline';
     }
   };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'on-track': return 'bg-green-500';
+      case 'at-risk': return 'bg-yellow-500';
+      case 'behind': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
 
   const getUserWork = async () => {
     if (!workspaceGuid) return;
@@ -406,18 +414,50 @@ function Dashboard() {
   }
 
   const navigate = useNavigate();
+  const handleRedirect=(map)=>{
+    console.log("Redirecting to:",map); 
+    if(map == "task"){
+      navigate("/tasks");
 
-  const handleRedirect = async (redirect) => {
-    navigate(redirect);
+    }else if(map == "team"){
+      navigate("/team");
+
+    }else if(map == "ticket"){
+      navigate("/tickets");
+
+    }else if(map == "project"){
+      navigate("/projects");
+
+    }else if(map == "sprint"){
+      navigate("/sprints");
+    }
   }
 
 
+
+  // Auto increment elapsed when clocked in
+  useEffect(() => {
+    if (!isClockedIn) return;
+
+    const interval = setInterval(() => {
+      setElapsed((prev) => {
+        const newElapsed = prev + 1;
+        setOvertime(Math.max(newElapsed - WORK_DAY_SECONDS, 0));
+        return newElapsed;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isClockedIn]);
+
   const handleClockIn = async () => {
     try {
-      console.log("Clock in",workspaceGuid);
       const data = await dashboardService.clockIn(workspaceGuid);
-      setClockInTime(new Date(data.ClockInTime));
+      console.log("Clocked in:", data); 
+      setClockInTime(new Date(data?.data.checkInTime));
+      setElapsed(data?.data.ElapsedSeconds || 0);
       setIsClockedIn(true);
+      setIsValidDay(data?.data.IsValidDay);
     } catch (error) {
       console.error("Failed to clock in:", error);
     }
@@ -425,15 +465,17 @@ function Dashboard() {
 
   const handleClockOut = async () => {
     try {
-      await dashboardService.clockOut(workspaceGuid);
+      const data = await dashboardService.clockOut(workspaceGuid);
       setIsClockedIn(false);
       setElapsed(0);
       setClockInTime(null);
+      setOvertime(0);
       checkClockInStatus();
     } catch (error) {
       console.error("Failed to clock out:", error);
     }
   };
+
 
   // Fetch initial data on load
   useEffect(() => {
@@ -446,9 +488,7 @@ function Dashboard() {
     getUserWork();
   }, []);
 
-  // Progress value (capped at 100%)
-  const progressValue = Math.min((elapsed / WORK_DAY_SECONDS) * 100, 100);
-  const overtime = elapsed > WORK_DAY_SECONDS ? elapsed - WORK_DAY_SECONDS : 0;
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -1117,52 +1157,77 @@ function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <Card>
+                 <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center">
                         <Target className="w-5 h-5 mr-2" />
-                        Today's Focus
+                        Today’s Focus
                       </CardTitle>
                     </CardHeader>
+
                     <CardContent>
                       <div className="space-y-4">
-                        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                          <p className="font-medium text-sm">High Priority</p>
-                          <p className="text-sm text-muted-foreground">Complete authentication module</p>
-                          <div className="flex items-center justify-between mt-2">
-                            <Badge variant="destructive" className="text-xs">urgent</Badge>
-                            <span className="text-xs text-muted-foreground">Due: Today</span>
+                        {/* High Priority Task */}
+                        {userongoingTasks.length>0 && userongoingTasks?.filter(task => task.priority === 'urgent') && (
+                          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            {userongoingTasks
+                              .filter(task => task.priority === 'urgent')
+                              .slice(0, 1)
+                              .map((task, index) => (
+                                <div key={index}>
+                                  <p className="font-medium text-sm">High Priority</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {task.title}
+                                  </p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <Badge variant="destructive" className="text-xs">
+                                      urgent
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      Due: {task.due}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
                           </div>
-                        </div>
+                        )}
 
+                        {/* Ongoing Tasks */}
                         <div className="space-y-3">
-                          {tasks.slice(0, 3).map((task, index) => (
-                            <div key={index} className="flex items-center space-x-3 p-2 rounded border-l-2 border-l-blue-200">
-                              <div className="w-4 h-4 rounded border-2 border-muted-foreground/20"></div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium">{task.title}</p>
-                                <p className="text-xs text-muted-foreground">{task.due}</p>
+                          {userongoingTasks?.length > 0 ? (
+                            userongoingTasks.slice(0, 3).map((task, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center space-x-3 p-2 rounded border-l-2 border-l-blue-200"
+                              >
+                                <div className="w-4 h-4 rounded border-2 border-muted-foreground/20" />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium">{task.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {task.due}
+                                  </p>
+                                </div>
                               </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-sm text-muted-foreground text-center border rounded bg-muted/30">
+                              No tasks found. Bandwidth is wide open.
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
+
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
                   <Card className="w-full max-w-md mx-auto shadow-lg border">
                     <CardHeader className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                         <Clock className="w-5 h-5 text-blue-500" />
                         Work Timer
                       </CardTitle>
-
                       {isClockedIn ? (
                         <Button variant="destructive" size="sm" onClick={handleClockOut}>
                           <LogOut className="w-4 h-4 mr-1" /> Clock Out
@@ -1176,20 +1241,14 @@ function Dashboard() {
 
                     <CardContent className="text-center space-y-4">
                       <div>
-                        <p className="text-4xl font-bold tracking-tight text-gray-800">
-                          {formatTime(elapsed)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {isClockedIn ? "Currently Clocked In" : "Not Clocked In"}
-                        </p>
+                        <p className="text-4xl font-bold tracking-tight text-gray-800">{formatTime(elapsed)}</p>
+                        <p className="text-sm text-gray-500">{isClockedIn ? "Currently Clocked In" : "Not Clocked In"}</p>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm text-gray-500">
                           <span>Daily Goal Progress</span>
-                          <span>
-                            {Math.min((elapsed / WORK_DAY_SECONDS) * 100, 100).toFixed(0)}%
-                          </span>
+                          <span>{progressValue.toFixed(0)}%</span>
                         </div>
                         <Progress value={progressValue} className="h-2 bg-gray-200" />
                       </div>
@@ -1202,9 +1261,7 @@ function Dashboard() {
                         <div>
                           {overtime > 0 ? (
                             <>
-                              <p className="font-bold text-green-600">
-                                +{formatTime(overtime)}
-                              </p>
+                              <p className="font-bold text-green-600">+{formatTime(overtime)}</p>
                               <p className="text-gray-500">Overtime</p>
                             </>
                           ) : (
@@ -1232,22 +1289,17 @@ function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-3">
-                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
-                          <Plus className="w-5 h-5" />
-                          <span className="text-xs">Log Time</span>
-                        </Button>
-                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
-                          <Bug className="w-5 h-5" />
-                          <span className="text-xs">Report Issue</span>
-                        </Button>
-                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
-                          <Calendar className="w-5 h-5" />
-                          <span className="text-xs">My Schedule</span>
-                        </Button>
-                        <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5">
-                          <Users className="w-5 h-5" />
-                          <span className="text-xs">Team Chat</span>
-                        </Button>
+                        {actions.map(({ key, label, icon: Icon }) => (
+                          <Button
+                            key={key}
+                            variant="outline"
+                            onClick={() => handleRedirect(key)}
+                            className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-primary/5"
+                          >
+                            <Icon className="w-5 h-5" />
+                            <span className="text-xs">{label}</span>
+                          </Button>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>

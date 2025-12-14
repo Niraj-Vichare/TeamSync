@@ -188,13 +188,7 @@ function AccountTab({ profile }) {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-sm">Two-Factor Authentication</p>
-              <p className="text-xs text-muted-foreground">Add an extra layer of security</p>
-            </div>
-            <Button variant="outline" size="sm">Enable</Button>
-          </div>
+          
         </div>
       </div>
 

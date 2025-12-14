@@ -39,5 +39,9 @@ namespace Enterprise.Flowstate.DAL.Constants
         public const string PROJECT_SPRINTS_KEY = "workspace_project_sprints:{0}:{1}";
         public const string SPRINT_TICKETS_KEY = "sprint_tickets:{0}";
 
+        public const int WORK_DAY_SECONDS = 9 * 60 * 60;
+        public const int MAX_AUTO_CLOCKOUTS = 3;
+        public const int SCORE_PENALTY = 1;
+
     }
 }

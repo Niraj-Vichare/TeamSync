@@ -15,7 +15,9 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public DateTime CheckingDate { get; set; }
         public int UserId { get; set; }
         public int CompletedTask { get; set; }
+        public int AutoCheckout { get; set; }
         public float TotalSpentHours { get; set; }
+        public bool IsValidDay { get; set; }
         public UserDto? User { get; set; }
     }
 }

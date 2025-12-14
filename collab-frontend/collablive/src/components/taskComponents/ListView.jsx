@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {motion} from 'framer-motion'
 import ListRows from './ListRows';
 import TaskRow from './TaskRow';
@@ -12,6 +12,9 @@ function ListView({taskData,onTaskUpdate,onEditTask,onDeleteTask}) {
     InProgress: true,
     Complete: true
   });
+  useEffect(() => {
+    setTasks(taskData);
+  }, [taskData]);
 
   const sections = [  
     { title: 'To-do', status: "NoStarted" },

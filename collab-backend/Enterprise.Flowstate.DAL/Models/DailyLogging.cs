@@ -21,6 +21,10 @@ namespace Enterprise.Flowstate.DAL.Models
         public DateTime CheckingDate { get; set; }
         [Column("user_id")]
         public int UserId { get; set; }
+        [Column("auto_checkout")]
+        public int AutoCheckout { get; set; }
+        [Column("is_valid_day")]
+        public bool IsValidDay { get; set; }
 
         [Column("workspace_id")]
         public int? WorkspaceId { get; set; }

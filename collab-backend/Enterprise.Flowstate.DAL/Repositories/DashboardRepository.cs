@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.DTO;
+﻿using Enterprise.Flowstate.DAL.Constants;
+using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
@@ -8,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 using static Supabase.Postgrest.Constants;
 using Task = Enterprise.Flowstate.DAL.Models.Task;
 
@@ -89,10 +91,73 @@ namespace Enterprise.Flowstate.DAL.Repositories
                                 .Get();
 
             return logging.Models.FirstOrDefault();
-            
+
         }
 
-        public async Task<bool> ClockIn(string workspaceGuid, string userGuid)
+        public async Task<ClockStatusDto> GetCurrentStatus(string workspaceGuid, string userGuid)
+        {
+            var userResponse = await _supabaseClient
+                .From<Profile>()
+                .Where(u => u.Guid == userGuid)
+                .Get();
+
+            if (userResponse?.Models.FirstOrDefault() == null)
+            {
+                return new ClockStatusDto
+                {
+                    IsClockedIn = false,
+                    ElapsedSeconds = 0,
+                    AutoCheckoutCount = 0,
+                    IsValidDay = true,
+                    RemainingWarnings = FlowStateConstants.MAX_AUTO_CLOCKOUTS,
+                };
+            }
+
+            int userId = userResponse.Models.First().Id;
+            var todayRecord = await GetTodayLogging(workspaceGuid, userGuid);
+
+            if (todayRecord == null || todayRecord.CheckIn == null)
+            {
+                return new ClockStatusDto
+                {
+                    IsClockedIn = false,
+                    ElapsedSeconds = 0,
+                    AutoCheckoutCount = 0,
+                    IsValidDay = true,
+                    RemainingWarnings = FlowStateConstants.MAX_AUTO_CLOCKOUTS
+                };
+            }
+
+            if (todayRecord.CheckOut != null)
+            {
+                // Already clocked out
+                var totalSeconds = (int)(todayRecord.CheckOut.Value - todayRecord.CheckIn.Value).TotalSeconds;
+                return new ClockStatusDto
+                {
+                    IsClockedIn = false,
+                    ElapsedSeconds = totalSeconds,
+                    CheckInTime = todayRecord.CheckIn,
+                    CheckOutTime = todayRecord.CheckOut,
+                    AutoCheckoutCount = todayRecord.AutoCheckout,
+                    IsValidDay = todayRecord.IsValidDay,
+                    RemainingWarnings = Math.Max(0, FlowStateConstants.MAX_AUTO_CLOCKOUTS - todayRecord.AutoCheckout),
+                };
+            }
+
+            // Currently clocked in
+            var elapsed = (int)(DateTime.UtcNow - todayRecord.CheckIn.Value).TotalSeconds;
+            return new ClockStatusDto
+            {
+                IsClockedIn = true,
+                ElapsedSeconds = elapsed,
+                CheckInTime = todayRecord.CheckIn,
+                AutoCheckoutCount = todayRecord.AutoCheckout,
+                IsValidDay = todayRecord.IsValidDay,
+                RemainingWarnings = Math.Max(0, FlowStateConstants.MAX_AUTO_CLOCKOUTS - todayRecord.AutoCheckout),
+            };
+        }
+
+        public async Task<ClockActionResult> ClockIn(string workspaceGuid, string userGuid)
         {
             var workspaceResponse = await _supabaseClient
                 .From<Workspace>()
@@ -104,37 +169,49 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Where(u => u.Guid == userGuid)
                 .Get();
 
-            if (workspaceResponse?.Models.FirstOrDefault() == null || userResponse?.Models.FirstOrDefault() == null)
-                return false;
+            if (workspaceResponse?.Models.FirstOrDefault() == null ||
+                userResponse?.Models.FirstOrDefault() == null)
+                return ClockActionResult.InvalidWorkspaceOrUser;
 
             var today = DateTime.UtcNow.Date;
             var todayRecord = await GetTodayLogging(workspaceGuid, userGuid);
             int workspaceId = workspaceResponse.Models.First().Id;
             int userId = userResponse.Models.First().Id;
-            if (todayRecord != null)
-            {
-                if (todayRecord.CheckIn != default)
-                    throw new Exception("Already clocked in");
 
-                todayRecord.CheckIn = DateTime.UtcNow;
-                await _supabaseClient.From<DailyLogging>().Update(todayRecord);
-                return true;
+            if (todayRecord == null)
+            {
+                todayRecord = new DailyLogging
+                {
+                    WorkspaceId = workspaceId,
+                    UserId = userId,
+                    CheckingDate = today,
+                    CheckIn = DateTime.UtcNow,
+                    AutoCheckout = 0,
+                    IsValidDay = true
+                };
+                await _supabaseClient.From<DailyLogging>().Insert(todayRecord);
+                return ClockActionResult.Success;
             }
 
-            var record = new DailyLogging
-            {
-                WorkspaceId = workspaceId,
-                UserId = userId,
-                CheckingDate = today,
-                CheckIn = DateTime.Now
-            };
+            // Already clocked in
+            if (todayRecord.CheckIn != null && todayRecord.CheckOut == null)
+                return ClockActionResult.AlreadyClockedIn;
 
-            var result = await _supabaseClient.From<DailyLogging>().Insert(record);
-            return result.Models.Any();
+            // Already clocked out
+            if (todayRecord.CheckOut != null)
+                return ClockActionResult.AlreadyClockedOut;
+
+            // Update existing record
+            todayRecord.CheckIn = DateTime.UtcNow;
+            await _supabaseClient.From<DailyLogging>().Update(todayRecord);
+
+            return ClockActionResult.Success;
         }
 
 
-        public async Task<bool> ClockOut(string workspaceGuid, string userGuid)
+
+
+        public async Task<ClockActionResult> ClockOut(string workspaceGuid, string userGuid, bool isAutomatic)
         {
             var workspaceResponse = await _supabaseClient
                 .From<Workspace>()
@@ -146,20 +223,27 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Where(u => u.Guid == userGuid)
                 .Get();
 
-            if (workspaceResponse?.Models.FirstOrDefault() == null || userResponse?.Models.FirstOrDefault() == null)
-                return false;
-
-            int workspaceId = workspaceResponse.Models.First().Id;
-            int userId = userResponse.Models.First().Id;
+            if (workspaceResponse?.Models.FirstOrDefault() == null ||
+                userResponse?.Models.FirstOrDefault() == null)
+                return ClockActionResult.InvalidWorkspaceOrUser;
 
             var todayRecord = await GetTodayLogging(workspaceGuid, userGuid);
+
             if (todayRecord == null || todayRecord.CheckIn == null)
-                throw new Exception("Cannot clock out before clocking in");
+                return ClockActionResult.NotClockedIn;
+
+            if (todayRecord.CheckOut != null)
+                return ClockActionResult.AlreadyClockedOut;
 
             todayRecord.CheckOut = DateTime.UtcNow;
-            var result = await _supabaseClient.From<DailyLogging>().Update(todayRecord);
-            return result.Models.Any();
+            if (isAutomatic)
+                todayRecord.AutoCheckout++;
+
+            await _supabaseClient.From<DailyLogging>().Update(todayRecord);
+            return ClockActionResult.Success;
         }
+
+
 
         // Need to optmized...
         public async Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid)
@@ -291,20 +375,22 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             var workspace = workspaceResponse?.Models?.FirstOrDefault();
             var user = userResponse?.Models?.FirstOrDefault();
+
             if (workspace == null || user == null) return new List<DailyLogging>();
 
             int workspaceId = workspace.Id;
             int userId = user.Id;
 
-            DateTime sevenDaysAgo = DateTime.UtcNow.Date.AddDays(-6);
+            // Get data for the current week (Sunday to Saturday)
+            DateTime today = DateTime.UtcNow.Date;
+            int daysFromSunday = (int)today.DayOfWeek;
+            DateTime startOfWeek = today.AddDays(-daysFromSunday); // This Sunday (or last Sunday)
 
-            // Use explicit column names and string values to avoid expression translation issues.
-            // NOTE: use the exact column names in the DB (likely snake_case)
             var dailyLoggingMetric = await _supabaseClient
                 .From<DailyLogging>()
-                .Filter("workspace_id",Supabase.Postgrest.Constants.Operator.Equals, workspaceId.ToString())
+                .Filter("workspace_id", Supabase.Postgrest.Constants.Operator.Equals, workspaceId.ToString())
                 .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId.ToString())
-                .Filter("checking_date", Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, sevenDaysAgo.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")) // ISO UTC
+                .Filter("checking_date", Operator.GreaterThanOrEqual, startOfWeek.ToString("yyyy-MM-dd"))
                 .Order("checking_date", Supabase.Postgrest.Constants.Ordering.Ascending)
                 .Get();
 

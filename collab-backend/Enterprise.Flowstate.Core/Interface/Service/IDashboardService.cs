@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 
 namespace Enterprise.Flowstate.BAL.Interface.Service
 {
@@ -15,9 +16,10 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<OrganizationMetricDto> GetOrganizationMetric(string workspaceGuid);
         Task<Dictionary<string, double>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid);
         Task<DailyLogging> GetTodayLogging(string workspaceId, string userId);
-        Task<bool> ClockOut(string workspaceId, string userId);
-        Task<bool> ClockIn(string workspaceGuid, string userId);
+        Task<ClockActionResult> ClockIn(string workspaceGuid, string userGuid);
+        Task<ClockActionResult> ClockOut(string workspaceGuid, string userGuid, bool isAutomatic);
         Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid);
         Task<List<UserContributionMetric>> GetUserContribution(string workspaceGuid, string userGuid);
+        Task<ClockStatusDto> GetCurrentStatus(string workspaceGuid, string userGuid);   
     }
 }

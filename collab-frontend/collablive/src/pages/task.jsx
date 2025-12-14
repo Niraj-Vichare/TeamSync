@@ -276,6 +276,7 @@ function Task() {
     try {
       setTaskLoading(true);
       const response = await taskService.getTasksAssignedToUser(workspaceGuid);
+      console.log(response);
       if (response.success && response.data) {
         setTasks(response.data);
       } else {
@@ -325,7 +326,7 @@ function Task() {
       fetchProjects();
       fetchWorkspaceUsers();
     }
-  }, [activeTab]);
+  }, [workspaceGuid,activeTab]);
 
   useEffect(() => {
     fetchSprintsByProject();
