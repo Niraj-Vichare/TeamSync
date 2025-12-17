@@ -4,7 +4,7 @@ namespace Enterprise.Flowstate.DAL.Enums
 {
     public class WorkspaceEnums
     {
-        public enum WorkspaceRole
+        public enum WorkspacePosition
         {
             Admin = 1,
             CEO = 2,

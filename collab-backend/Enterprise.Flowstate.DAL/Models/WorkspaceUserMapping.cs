@@ -15,6 +15,8 @@ namespace Enterprise.Flowstate.DAL.Models
         public int WorkspaceId { get; set; }
         [PrimaryKey("profile_id")]
         public int UserId { get; set; }
+        [Column("role_id")]
+        public int RoleId { get; set; } 
 
         [Reference(typeof(Workspace))]
         public Workspace? Workspace { get; set; }

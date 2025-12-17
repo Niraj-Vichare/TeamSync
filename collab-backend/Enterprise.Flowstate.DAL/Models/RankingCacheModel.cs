@@ -8,6 +8,9 @@ namespace Enterprise.Flowstate.DAL.Models
 {
     public class RankingCacheModel
     {
+        public int UserId { get; set; }
+        public string UserName { get; set; }
+        public string UserProfilePic { get; set; }
         public int Point { get; set; }
         public int TotalTaskCompleted { get;set; }
         public int TotalHours { get; set; }
