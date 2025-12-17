@@ -14,7 +14,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public string DepartmentName { get; set; }
         public string Tagline { get; set; }
         public int PositionId { get; set; }
-        public string Position => ((WorkspaceRole)PositionId).ToString();
+        public string Position => ((WorkspacePosition)PositionId).ToString();
         public string DepartmentColor { get; set; }
         public List<TeamMemberDto> Members { get; set; } = new List<TeamMemberDto>();
     }
