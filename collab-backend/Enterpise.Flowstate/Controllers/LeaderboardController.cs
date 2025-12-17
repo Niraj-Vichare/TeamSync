@@ -20,6 +20,12 @@ namespace Enterprise.Flowstate.Controllers
         {  
             try
             {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;    
+                if(string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId) || string.IsNullOrEmpty(workspaceId))
+                {
+                    return null;
+                }
                 var leaderboardResponse = await _omniService.LeaderboardComparisonService.GetLeaderboardWithComparisonAsync(workspaceId, pageNumber, pageSize);
                 return leaderboardResponse;
             }
