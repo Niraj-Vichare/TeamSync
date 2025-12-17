@@ -77,6 +77,19 @@ class TeamService{
         throw handleTeamError(error);
     }
   }
+
+  async addTeamMember(workspaceGuid, member){
+    try{
+        const response = await axiosInstance.post('/teams',{
+            workspaceGuid: workspaceGuid,
+            mapping: member
+        });
+        return response.data;
+    }catch(error){
+        console.error("Error while adding the team member", error);
+        throw handleTeamError(error);
+    }
+  }
 }
 
 

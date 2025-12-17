@@ -3,14 +3,18 @@ import TeamDataTable from '@/components/teamComponents/TeamDataTable';
 import TeamProjectCard from '@/components/teamComponents/TeamProjectCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/context/AuthContext';
-import {  teamMembers,projectTeam, departments } from '@/data/general';
+import {  teamMembers,projectTeam, departments, Department, RoleEnum, UserStatus, WorkspacePosition } from '@/data/general';
 import teamService from '@/services/team';
-import { Filter, FilterIcon, Plus, Search } from 'lucide-react';
+import { Filter, FilterIcon, Plus, Search, Tag } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
+import { toast } from 'sonner';
 
 function Team() {
   const [activeTab, setActiveTab] = useState('all-teams');
@@ -28,9 +32,95 @@ function Team() {
   const [pageNumber,setPageNumber] = useState(1);
   const [pageSize,setPageSize] = useState(10);
 
+  const [memberDialogOpen,setMemberDialogOpen] = useState(false);
+  const [memberLoading,setMemberLoading] = useState(false);
+  const [formData,setFormData] = useState({
+    memberName:'',
+    memberRole:'',
+    memberEmail:'',
+    memberDepartment:'',
+    memberPosition:'',
+    memberStatus:''
+  });
+  const [errors,setErrors] = useState({});
+
+  const [customTeamDialogOpen,setCustomTeamDialogOpen] = useState(false);
+  const [customTeamLoading,setCustomTeamLoading] = useState(false);
+  const [customTeamFormData,setCustomTeamFormData] = useState({
+    teamName:'',
+    teamDescription:'',
+    teamMembers:[],
+    tagline:'',
+  });
+  const [customTeamErrors,setCustomTeamErrors] = useState({});
+
+
   const {getCurrentWorkspaceId} = useAuth();
   const workspaceGuid = getCurrentWorkspaceId();
 
+  const handleAddMember=async()=>{
+    // Validate form data
+    const newErrors = {};
+    if (!formData.memberName) newErrors.memberName = 'Member name is required';
+    if (!formData.memberEmail) newErrors.memberEmail = 'Member email is required';
+    if (!formData.memberRole) newErrors.memberRole = 'Member role is required';
+    if (!formData.memberDepartment) newErrors.memberDepartment = 'Member department is required';
+    if (!formData.memberStatus) newErrors.memberStatus = 'Member status is required';
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      return; // Stop if there are validation errors
+    }
+    setMemberLoading(true);
+    try{
+      const member = {
+        name:formData.memberName,
+        email:formData.memberEmail,
+        role:formData.memberRole,
+        position:formData.memberPosition,
+        department:formData.memberDepartment,
+        status:formData.memberStatus,
+      };
+      var response = await teamService.addTeamMember(workspaceGuid,member);
+      if(response && response.success){
+        setMemberDialogOpen(false);
+        fetchWorkspaceMembers(workspaceGuid);
+        toast.success("Team member added successfully");
+      }
+    }catch(error){
+      console.error("Error while adding the team member",error);
+      toast.error("Error while adding the team member");
+    }
+  }
+
+  const handleAddCustomTeam=async()=>{
+    // Validate form data
+    const newErrors = {};
+    if (!customTeamFormData.teamName) newErrors.teamName = 'Team name is required';
+    if (!customTeamFormData.tagline) newErrors.tagline = 'Tagline is required';
+    setCustomTeamErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      return; // Stop if there are validation errors
+    }
+    setCustomTeamLoading(true);
+    try{
+      const team = {
+        name:customTeamFormData.teamName,
+        description:customTeamFormData.teamDescription,
+        tagline:customTeamFormData.tagline,
+        members:customTeamFormData.teamMembers,
+      };
+      var response = await teamService.createProjectTeam(workspaceGuid,team);
+      if(response && response.success){
+        setCustomTeamDialogOpen(false);
+        fetchProjectTeam(workspaceGuid);
+        toast.success("Custom team added successfully");
+      }
+    }catch(error){
+      console.error("Error while adding the custom team",error);
+      toast.error("Error while adding the custom team");
+    }
+  }
   const fetchWorkspaceMembers=async(workspaceGuid)=>{
     try{
      var response =await teamService.getTeamMembers(workspaceGuid,searchTerm,pageNumber,pageSize);
@@ -183,10 +273,161 @@ function Team() {
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button className='text-white'>
-                    <Plus className="w-4 h-4" />
-                    <span>Add Member</span>
-                  </Button>
+                  <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="text-white">
+                        <Plus className="w-4 h-4" />
+                        <span>Add Member</span>
+                      </Button>
+                    </DialogTrigger>
+
+                    <DialogContent className="sm:max-w-[700px]">
+                      <DialogHeader className="mb-4">
+                        <DialogTitle>Add New Team Member</DialogTitle>
+                        <DialogDescription>
+                          Capture core identity, access level, and org alignment.
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      {/* Name */}
+                      <div className="space-y-2">
+                        <Label htmlFor="memberName">Member Name *</Label>
+                        <Input
+                          id="memberName"
+                          value={formData.memberName}
+                          onChange={(e) => handleInputChange("memberName", e.target.value)}
+                          placeholder="Enter member name"
+                          className={errors.memberName ? "border-red-500" : ""}
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div className="space-y-2">
+                        <Label htmlFor="memberEmail">Member Email *</Label>
+                        <Input
+                          id="memberEmail"
+                          type="email"
+                          value={formData.memberEmail}
+                          onChange={(e) => handleInputChange("memberEmail", e.target.value)}
+                          placeholder="Enter member email"
+                          className={errors.memberEmail ? "border-red-500" : ""}
+                        />
+                      </div>
+
+                      <div className='grid grid-cols-2 gap-4'>
+                        {/* Status */}
+                        <div className="space-y-2">
+                          <Label>Member Status *</Label>
+                          <Select
+                            value={formData.memberStatus}
+                            onValueChange={(v) => handleInputChange("memberStatus", v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={UserStatus.Active}>Active</SelectItem>
+                              <SelectItem value={UserStatus.InActive}>Inactive</SelectItem>
+                              <SelectItem value={UserStatus.Pending}>Pending</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {/* Role */}
+                        <div className="space-y-2">
+                          <Label>Member Role *</Label>
+                          <Select
+                            value={formData.memberRole}
+                            onValueChange={(v) => handleInputChange("memberRole", v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={RoleEnum.Owner}>Owner</SelectItem>
+                              <SelectItem value={RoleEnum.Admin}>Admin</SelectItem>
+                              <SelectItem value={RoleEnum.Manager}>Manager</SelectItem>
+                              <SelectItem value={RoleEnum.Member}>Member</SelectItem>
+                              <SelectItem value={RoleEnum.Viewer}>Viewer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                      </div>
+                      <div className='grid grid-cols-2 gap-2'>
+                        {/* Department */}
+                        <div className="space-y-2">
+                          <Label>Member Department *</Label>
+                          <Select
+                            value={formData.memberDepartment}
+                            onValueChange={(v) => handleInputChange("memberDepartment", v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={Department.Technical}>Technical</SelectItem>
+                              <SelectItem value={Department.Sales}>Sales</SelectItem>
+                              <SelectItem value={Department.Marketing}>Marketing</SelectItem>
+                              <SelectItem value={Department.HumanResources}>Human Resources</SelectItem>
+                              <SelectItem value={Department.Finance}>Finance</SelectItem>
+                              <SelectItem value={Department.Operations}>Operations</SelectItem>
+                              <SelectItem value={Department.CustomerSupport}>Customer Support</SelectItem>
+                              <SelectItem value={Department.Legal}>Legal</SelectItem>
+                              <SelectItem value={Department.ResearchAndDevelopment}>R&D</SelectItem>
+                              <SelectItem value={Department.IT}>IT</SelectItem>
+                              <SelectItem value={Department.Administration}>Administration</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className='space-y-2'>
+                          <Label>Member Position *</Label>
+                          <Select
+                            value={formData.memberPosition}
+                            onValueChange={(v) => handleInputChange("memberPosition", v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={WorkspacePosition.Admin}>Admin</SelectItem>
+                              <SelectItem value={WorkspacePosition.CEO}>CEO</SelectItem>
+                              <SelectItem value={WorkspacePosition.CTO}>CTO</SelectItem>
+                              <SelectItem value={WorkspacePosition.ProductManager}>Product Manager</SelectItem>
+                              <SelectItem value={WorkspacePosition.ProjectManager}>Project Manager</SelectItem>
+                              <SelectItem value={WorkspacePosition.Developer}>Developer</SelectItem>
+                              <SelectItem value={WorkspacePosition.Tester}>Tester</SelectItem>
+                              <SelectItem value={WorkspacePosition.Designer}>Designer</SelectItem>
+                              <SelectItem value={WorkspacePosition.BusinessAnalyst}>Business Analyst</SelectItem>
+                              <SelectItem value={WorkspacePosition.DevOps}>DevOps</SelectItem>
+                              <SelectItem value={WorkspacePosition.Support}>Support</SelectItem>
+                              <SelectItem value={WorkspacePosition.Guest}>Guest</SelectItem>
+                              <SelectItem value={WorkspacePosition.SalesManager}>Sales Manager</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                        </div>
+
+                      </div>
+
+                      <DialogFooter className="px-6 py-4 border-t">
+                        <Button
+                          variant="outline"
+                          onClick={() => setMemberDialogOpen(false)}
+                          disabled={memberLoading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          className="text-white"
+                          onClick={handleAddMember}
+                          disabled={memberLoading}
+                        >
+                          {memberLoading ? "Saving..." : "Add Member"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
                 </div>
               </div>
 
@@ -197,6 +438,94 @@ function Team() {
           </TabsContent>
           <TabsContent value='project-team' currentValue={activeTab} className={'mt-5'}>
             <div className="flex flex-wrap gap-2">
+              <Dialog open={customTeamDialogOpen} onOpenChange={setCustomTeamDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="text-white">
+                    <Plus className="w-4 h-4" />
+                    <span>Add Custom Team</span>
+                  </Button>
+                </DialogTrigger>
+
+                <DialogContent className="sm:max-w-[700px]">
+                  <DialogHeader className="mb-4">
+                    <DialogTitle>Add New Custom Team</DialogTitle>
+                    <DialogDescription>
+                      Create a custom team to manage project-specific collaborations.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {/* Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="teamName">Team Name *</Label>
+                    <Input
+                      id="teamName"
+                      value={formData.teamName}
+                      onChange={(e) => handleInputChange("teamName", e.target.value)}
+                      placeholder="Enter team name"
+                      className={errors.teamName ? "border-red-500" : ""}
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="teamDescription">Team Description *</Label>
+                    <Input
+                      id="teamDescription"
+                      type="text"
+                      value={formData.teamDescription}
+                      onChange={(e) => handleInputChange("teamDescription", e.target.value)}
+                      placeholder="Enter team description"
+                      className={errors.teamDescription ? "border-red-500" : ""}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="teamTagline">Team Tagline *</Label>
+                    <Input
+                      id="teamTagline"
+                      type="text"
+                      value={formData.teamTagline}
+                      onChange={(e) => handleInputChange("teamTagline", e.target.value)}
+                      placeholder="Enter team tagline"
+                      className={errors.teamTagline ? "border-red-500" : ""}
+                    />
+                  </div>
+                  <div className='space-y-2'>
+                    <Label htmlFor="teamMembers">Team Members</Label>
+                    <Select
+                      multiple
+                      value={customTeamFormData.teamMembers}
+                      onValueChange={(v) => handleCustomTeamInputChange("teamMembers", v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select team members" />
+                      </SelectTrigger>
+                      {workspaceMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name} ({member.email})
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <DialogFooter className="px-6 py-4 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCustomTeamDialogOpen(false)}
+                      disabled={customTeamLoading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="text-white"
+                      onClick={handleAddCustomTeam}
+                      disabled={customTeamLoading}
+                    >
+                      {customTeamLoading ? "Saving..." : "Add Custom Team"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               {customTeam.length === 0 ? (
                 <div className="w-full text-center py-10 text-gray-500 text-sm">
                   No data available

@@ -252,7 +252,7 @@ function Dashboard() {
   const [overtime, setOvertime] = useState(0);
   
   const progressValue = Math.min((elapsed / WORK_DAY_SECONDS) * 100, 100);
-  const { getCurrentWorkspaceId } = useAuth();
+  const { getCurrentWorkspaceId,currentUser } = useAuth();
   const workspaceGuid = getCurrentWorkspaceId();
 
   // Helper: format seconds to HH:MM:SS
@@ -505,7 +505,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
             <span>{currentTime}</span>
           </div>
           <h1 className="text-4xl font-bold tracking-tight">
-            {greeting}, Blake
+            {greeting}, {currentUser?.displayName}
           </h1>
           <p className="text-muted-foreground">
             {userRole === 'admin' ? "Admin Dashboard - Manage your organization" : "Your personal workspace overview"}
