@@ -21,7 +21,7 @@ namespace Enterpise.Flowstate.Controllers
         #region Members Methods
 
         [HttpPost("member/create")]
-        public async Task<ApiResponseModel<object>> AddMember(string workspaceGuid, TeamMemberDto mapping)
+        public async Task<ApiResponseModel<object>> AddMember([FromQuery] string workspaceGuid, [FromBody] TeamMemberDto mapping)
         {
             try
             {
