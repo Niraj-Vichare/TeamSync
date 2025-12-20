@@ -12,7 +12,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IDashboardService
     {
-        Task<UserMetricDto> GetUserMetric(string workspaceGuid, string userGuid);
+        Task<List<WeeklyUserStatsDto>> GetUserMetric(string workspaceGuid, string userGuid);
         Task<OrganizationMetricDto> GetOrganizationMetric(string workspaceGuid);
         Task<Dictionary<string, double>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid);
         Task<DailyLogging> GetTodayLogging(string workspaceId, string userId);
