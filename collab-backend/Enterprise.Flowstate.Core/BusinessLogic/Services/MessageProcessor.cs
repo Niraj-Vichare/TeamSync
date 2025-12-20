@@ -85,9 +85,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 metric = new RankingCacheModel
                 {
-                    ContributionScore = 0,
+                    Score = 0,
                     Efficiency = 0,
-                    Point = 0,
+                    ContributionPoint = 0,
                     Ranking = 0,
                     TotalHours = 0,
                     TotalTaskCompleted = 0
@@ -128,8 +128,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private static double ComputeScore(RankingCacheModel m)
         {
             double eff = m.Efficiency;
-            double pts = m.Point;
-            double cs = m.ContributionScore;
+            double pts = m.ContributionPoint;
+            double cs = (double)m.Score;
             double hrs = m.TotalHours;
 
             var score =
@@ -148,14 +148,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             switch (eventLog.EventTypeId)
             {
                 case (int)GeneralEnums.EventType.TicketCompleted:
-                    rankingCacheModel.Point += 10;
+                    rankingCacheModel.ContributionPoint += 10;
                     rankingCacheModel.TotalTaskCompleted += 1;
                     break;
                 case (int)GeneralEnums.EventType.SprintCompleted:
-                    rankingCacheModel.Point += 50;
+                    rankingCacheModel.ContributionPoint += 50;
                     break;
                 case (int)GeneralEnums.EventType.CheckIn:
-                    rankingCacheModel.Point += 1;
+                    rankingCacheModel.ContributionPoint += 1;
                     break;
                 case (int)GeneralEnums.EventType.TaskCompleted:
                     rankingCacheModel.TotalTaskCompleted += 1;

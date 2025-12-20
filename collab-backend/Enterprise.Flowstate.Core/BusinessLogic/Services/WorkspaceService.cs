@@ -18,8 +18,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 return false;
             }
-            var response = await _omniRepository.WorkspaceRepository.CreateWorkspace(userClaimsId, name, description);
-            return response;
+            string workspaceGuid = await _omniRepository.WorkspaceRepository.CreateWorkspace(userClaimsId, name, description);
+            if (!string.IsNullOrEmpty(workspaceGuid))
+            {
+                int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
+                _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid,memberCount);
+                return true;
+            }
+            return false;
+
         }
 
         public Task<bool> UpdateWorkspace(int workspaceId, string name, string description)
@@ -34,24 +41,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             throw new NotImplementedException();
         }
 
-        public async Task<RankingDto> GetUserRanking(string workspaceId, string userId)
-        {
-
-            var result = await _omniRepository.WorkspaceRepository.GetUserRanking(workspaceId, userId);
-            if (result != null)
-            {
-                return new RankingDto
-                {
-                    Id = result.Id,
-                    UserId = result.UserId,
-                    OrganizationId = result.OrganizationId,
-                    RankPosition = result.RankPosition,
-                    Score = result.Score,
-                    CalculatedLastAt = result.CalculatedLastAt
-                };
-            }
-            return null;
-        }
         public Task<List<WorkspaceDto>> GetAllWorkspaces(int workspaceId)
         {
             throw new NotImplementedException();

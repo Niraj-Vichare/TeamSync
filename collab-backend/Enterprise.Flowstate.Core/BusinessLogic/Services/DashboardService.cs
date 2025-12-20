@@ -36,7 +36,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         }
 
-        public async Task<UserMetricDto> GetUserMetric(string workspaceGuid, string userGuid)
+        public async Task<List<WeeklyUserStatsDto>> GetUserMetric(string workspaceGuid, string userGuid)
         {
             // Get all metrics for current + previous week from repository
             var userMetrics = await _omniRepository.DashboardRepository.GetUserMetric(workspaceGuid, userGuid);
@@ -47,32 +47,25 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             // Sort by CreatedAt descending
             var orderedMetrics = userMetrics.OrderByDescending(m => m.CreatedAt).ToList();
 
-            // Current week = latest record
-            var currentWeekMetric = orderedMetrics.FirstOrDefault();
-
-            // Previous week = second latest record (if it exists)
-            var lastWeekMetric = orderedMetrics.Skip(1).FirstOrDefault();
-
-            // Build DTO
-            var dto = new UserMetricDto
+            List<WeeklyUserStatsDto> weeklyDto = new List<WeeklyUserStatsDto>();
+            foreach(var stat in orderedMetrics)
             {
-                Id = currentWeekMetric.Id,
-                CreatedAt = currentWeekMetric.CreatedAt,
-                TotalHours = currentWeekMetric.TotalHours,
-                TasksCompleted = currentWeekMetric.TasksCompleted,
-                Points = currentWeekMetric.Points,
-                ContributionScore = currentWeekMetric.ContributionScore,
-                UserId = currentWeekMetric.UserId,
-                WorkspaceId = currentWeekMetric.WorkspaceId,
-                Efficiency = currentWeekMetric.Efficiency,
+                var dto = new WeeklyUserStatsDto
+                {
+                    Id = stat.Id,
+                    CreatedAt = stat.CreatedAt,
+                    TotalHours = stat.TotalHours,
+                    TasksCompleted = stat.TasksCompleted,
+                    ContributionPoint = stat.ContributionPoints,
+                    Score = stat.Score,
+                    UserId = stat.UserId,
+                    WorkspaceId = stat.WorkspaceId,
+                    Efficiency = stat.Efficiency,
+                };
+                weeklyDto.Add(dto);
+            }
 
-                // Previous week data (if exists)
-                LastWeekPoints = lastWeekMetric?.Points,
-                LastWeekEffiency = lastWeekMetric?.Efficiency,
-                LastWeekTaskCompeleted = lastWeekMetric?.TasksCompleted
-            };
-
-            return dto;
+            return weeklyDto;
         }
 
 

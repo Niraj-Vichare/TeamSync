@@ -41,7 +41,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             ProfileService = new ProfileService(_omniRepository);
             WorkspaceService = new WorkspaceService(_omniRepository);
             ProjectService = new ProjectService(_omniRepository);
-            TeamService = new TeamService(_omniRepository);
+            TeamService = new TeamService(_omniRepository,_client);
             SprintService = new SprintService(_omniRepository);
             TicketService = new TicketService(_omniRepository);
             DashboardService = new DashboardService(_omniRepository);

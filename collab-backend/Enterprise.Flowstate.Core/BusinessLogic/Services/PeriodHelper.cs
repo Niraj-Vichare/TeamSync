@@ -12,9 +12,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             var today = DateTime.UtcNow.Date;
 
-            // Week starts on Monday (adjust if you want Sunday)
-            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
-            var startOfWeek = today.AddDays(-daysUntilMonday);
+            int diff = (7 + (today.DayOfWeek - DayOfWeek.Monday)) % 7;
+            var startOfWeek = today.AddDays(-diff);
             var endOfWeek = startOfWeek.AddDays(6);
 
             return (startOfWeek, endOfWeek);
@@ -26,18 +25,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return false;
 
             var (currentStart, currentEnd) = GetCurrentWeekPeriod();
-            return startPeriod.Value.Date == currentStart.Date &&
-                   endPeriod.Value.Date == currentEnd.Date;
+
+            return startPeriod.Value.Date == currentStart &&
+                   endPeriod.Value.Date == currentEnd;
         }
 
         public static (DateTime startPeriod, DateTime endPeriod) GetPreviousWeekPeriod()
         {
             var (currentStart, _) = GetCurrentWeekPeriod();
+            var prevWeekStart = currentStart.AddDays(-7);
             var prevWeekEnd = currentStart.AddDays(-1);
-            var prevWeekStart = prevWeekEnd.AddDays(-6);
+
             return (prevWeekStart, prevWeekEnd);
         }
-
-
     }
+
 }

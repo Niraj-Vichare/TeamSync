@@ -8,19 +8,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Supabase.Interfaces;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
     public class TeamService:ITeamService
     {
         public IOmniRepository _omniRepository;
-        public TeamService(IOmniRepository omniRepository)
+        private readonly Supabase.Client _supabaseClient;
+        public TeamService(IOmniRepository omniRepository, Supabase.Client supabaseClient)
         {
             _omniRepository = omniRepository;
+            _supabaseClient = supabaseClient;   
         }
         public async Task<bool> AddMember(string workspaceGuid,TeamMemberDto teamMemberDto)
         {
-            // Create a new profile...
+            var encryptedPassword = EncryptionService.EncryptData(teamMemberDto.Profile.Password);
+            
+            var user = await _supabaseClient.Auth.SignUp(teamMemberDto.Profile.Email, encryptedPassword);
+            if(user.User == null)
+            {
+                return false;
+            }
+
             Profile profile = new Profile
             {
                 Bio = "",
@@ -30,6 +40,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Email = teamMemberDto.Profile.Email,
                 ProfileImageUrl = teamMemberDto.Profile.ProfileImageUrl,
                 UpdatedAt = DateTime.UtcNow,
+                Guid = user.User.Id,
             };
             var profileId = await _omniRepository.ProfileRepository.CreateProfileAsync(profile);
             if(profileId <= 0)

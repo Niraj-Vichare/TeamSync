@@ -20,7 +20,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
         public async Task<bool> CreateProfile(User user,string displayName)
         {
-            return await _omniRepository.ProfileRepository.CreateProfile(user,displayName);
+
+            int profileId = await _omniRepository.ProfileRepository.CreateProfile(user,displayName);
+            if (profileId > 0)
+            {
+                (DateTime startDate,DateTime endDate) = PeriodHelper.GetCurrentWeekPeriod();
+                _omniRepository.ProfileRepository.InializeUserConfiguration(profileId,startDate,endDate);
+            }
+            return profileId > 0;
         }
 
         public async Task<string> GetCurrentWorkspaceId(string userGuid)

@@ -36,6 +36,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 // Get current week rankings from Redis
                 var currentRankings = await _cache.GetWorkspaceRankingsAsync(workspaceId,pageNumber,pageSize);
 
+                if(currentRankings.Count <= 0)
+                {
+                    return null;
+                }
+
+                var ranking = await _omniRepository.LeaderBoardRepository.GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
+                if (ranking == null || ranking.Count == 0)
+                {
+                    return null;
+                }
+
                 var userRankings = new List<UserRankingWithComparison>();
 
                 foreach (var entry in currentRankings)
@@ -104,8 +115,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         {
                             TotalHours = dbMetric.TotalHours ?? 0,
                             TotalTaskCompleted = dbMetric.TasksCompleted ?? 0,
-                            Point = dbMetric.Points ?? 0,
-                            ContributionScore = dbMetric.ContributionScore ?? 0,
+                            ContributionPoint = dbMetric.ContributionPoints,
+                            Score = dbMetric.Score,
                             Efficiency = dbMetric.Efficiency,
                             Ranking = dbRanking.RankPosition
                         };
@@ -133,22 +144,22 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     UserAvatar = null,
                     CurrentRank = currentRank ?? 0,
                     CurrentScore = currentScore,
-                    CurrentMetrics = new UserMetricDto
+                    CurrentMetrics = new WeeklyUserStatsDto
                     {
                         TotalHours = currentMetric.TotalHours,
                         TasksCompleted = currentMetric.TotalTaskCompleted,
-                        Points = currentMetric.Point,
-                        ContributionScore = currentMetric.ContributionScore,
+                        Score = currentMetric.Score,
+                        ContributionPoint = currentMetric.ContributionPoint,
                         Efficiency = currentMetric.Efficiency
                     },
                     PreviousRank = prevRank,
                     PreviousScore = prevScore,
-                    PreviousMetrics = prevMetric != null ? new UserMetricDto
+                    PreviousMetrics = prevMetric != null ? new WeeklyUserStatsDto
                     {
                         TotalHours = prevMetric.TotalHours,
                         TasksCompleted = prevMetric.TotalTaskCompleted,
-                        Points = prevMetric.Point,
-                        ContributionScore = prevMetric.ContributionScore,
+                        Score = prevMetric.Score,
+                        ContributionPoint = prevMetric.ContributionPoint,
                         Efficiency = prevMetric.Efficiency
                     } : null,
                     Comparison = comparison
@@ -182,7 +193,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 var month = monthStart.Month;
 
                 var recordsForMonth = rankings?
-                    .Where(r => r.EndPeriod.Year == year && r.EndPeriod.Month == month)
+                    .Where(r => r.EndPeriod.Value.Year == year && r.EndPeriod.Value.Month == month)
                     .OrderBy(r => r.EndPeriod)
                     .ToList();
 
@@ -193,7 +204,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     result.Add(new RankingHistoryDto
                     {
                         Month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
-                        Score = Math.Round(last.Score, 2),
+                        Score = Math.Round((float)last.Score, 2),
                         Rank = last.RankPosition
                     });
                 }
@@ -261,19 +272,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             // Calculate metric changes
             if (prevMetric != null)
             {
-                comparison.PointsChange = currentMetric.Point - prevMetric.Point;
+                comparison.PointsChange = currentMetric.ContributionPoint - prevMetric.ContributionPoint;
                 comparison.TasksCompletedChange = currentMetric.TotalTaskCompleted - prevMetric.TotalTaskCompleted;
                 comparison.HoursChange = currentMetric.TotalHours - prevMetric.TotalHours;
                 comparison.EfficiencyChange = currentMetric.Efficiency - prevMetric.Efficiency;
-                comparison.ContributionChange = currentMetric.ContributionScore - prevMetric.ContributionScore;
             }
             else
             {
-                comparison.PointsChange = currentMetric.Point;
+                comparison.PointsChange = currentMetric.ContributionPoint;
                 comparison.TasksCompletedChange = currentMetric.TotalTaskCompleted;
                 comparison.HoursChange = currentMetric.TotalHours;
                 comparison.EfficiencyChange = currentMetric.Efficiency;
-                comparison.ContributionChange = currentMetric.ContributionScore;
             }
 
             return comparison;
