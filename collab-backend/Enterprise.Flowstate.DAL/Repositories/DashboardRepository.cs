@@ -3,7 +3,7 @@ using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
-using Newtonsoft.Json;
+    using Newtonsoft.Json;
 using Supabase.Gotrue;
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             _supabaseClient = supabaseClient;
         }
-        public async Task<List<UserMetric>> GetUserMetric(string workspaceGuid, string userGuid)
+        public async Task<List<WeeklyUserStats>> GetUserMetric(string workspaceGuid, string userGuid)
         {
             var workspaceResponse = await _supabaseClient
                 .From<Workspace>()
@@ -48,7 +48,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             // Query both current and previous week
             var userMetricsResponse = await _supabaseClient
-                .From<UserMetric>()
+                .From<WeeklyUserStats>()
                 .Where(m => m.WorkspaceId == workspaceId && m.UserId == userId)
                 .Where(m => m.CreatedAt >= previousWeekStart && m.CreatedAt <= today)
                 .Order(x => x.CreatedAt, Supabase.Postgrest.Constants.Ordering.Descending)
@@ -63,7 +63,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                     .ToList();
             }
 
-            return new List<UserMetric>();
+            return new List<WeeklyUserStats>();
         }
 
         public async Task<DailyLogging> GetTodayLogging(string workspaceGuid, string userGuid)

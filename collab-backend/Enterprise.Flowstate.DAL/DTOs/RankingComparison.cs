@@ -22,7 +22,6 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public int TasksCompletedChange { get; set; }
         public int HoursChange { get; set; }
         public double EfficiencyChange { get; set; }
-        public double ContributionChange { get; set; }
 
         // UI Helpers
         public string RankChangeDisplay { get; set; } // "↑ 5", "↓ 2", "−", "NEW"

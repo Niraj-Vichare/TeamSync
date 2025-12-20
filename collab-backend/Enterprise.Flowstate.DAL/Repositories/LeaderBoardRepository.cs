@@ -15,7 +15,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             _supabaseClient = supabaseClient;
         }
-        public async Task<Ranking> GetUserRankingAsync(string workspaceGuid, string userGuid, DateTime startPeriod, DateTime endPeriod)
+        public async Task<WeeklyUserStats> GetUserRankingAsync(string workspaceGuid, string userGuid, DateTime startPeriod, DateTime endPeriod)
         {
             var workspaceResponse =await _supabaseClient.From<Workspace>().Where(workspace=>workspace.WorkspaceGuid == workspaceGuid).Get();
             var userResponse =await _supabaseClient.From<Profile>().Where(workspace=>workspace.Guid == userGuid).Get();
@@ -25,14 +25,14 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             var organizationId = workspaceResponse.Models.FirstOrDefault().Id;
             var userIdInt = userResponse.Models.FirstOrDefault().Id;
-            var rankingResponse = await _supabaseClient.From<Ranking>()
-                .Where(ranking => ranking.OrganizationId == organizationId && ranking.UserId == userIdInt && ranking.StartPeriod == startPeriod && ranking.EndPeriod == endPeriod)
+            var rankingResponse = await _supabaseClient.From<WeeklyUserStats>()
+                .Where(ranking => ranking.WorkspaceId == organizationId && ranking.UserId == userIdInt && ranking.StartPeriod == startPeriod && ranking.EndPeriod == endPeriod)
                 .Get();
 
             return rankingResponse.Models.Any() ? rankingResponse.Models.FirstOrDefault() :null;
         }
 
-        public async Task<List<Ranking>> GetUserRankingHistory(string workspaceGuid, string userGuid)
+        public async Task<List<WeeklyUserStats>> GetUserRankingHistory(string workspaceGuid, string userGuid)
         {
             var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
             var userResponse = await _supabaseClient.From<Profile>().Where(workspace => workspace.Guid == userGuid).Get();
@@ -43,14 +43,13 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var organizationId = workspaceResponse.Models.FirstOrDefault().Id;
             var userId = userResponse.Models.FirstOrDefault().Id;
             var cutoff = DateTime.UtcNow.AddMonths(-6);
-            var rankingResponse = await _supabaseClient.From<Ranking>()
-                .Where(ranking => ranking.OrganizationId == organizationId && ranking.UserId == userId).
+            var rankingResponse = await _supabaseClient.From<WeeklyUserStats>()
+                .Where(weeklyUserStats=>weeklyUserStats.WorkspaceId == organizationId && weeklyUserStats.UserId == userId).
                 Filter(ranking=>ranking.EndPeriod,Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual,cutoff.ToString()).Get();
             return rankingResponse.Models.ToList();
         }
 
-
-        public async Task<UserMetric> GetUserMetricAsync(string workspaceGuid, string userId, DateTime startPeriod, DateTime endPeriod)
+        public async Task<WeeklyUserStats> GetUserMetricAsync(string workspaceGuid, string userId, DateTime startPeriod, DateTime endPeriod)
         {
             var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
             var userResponse = await _supabaseClient.From<Profile>().Where(user => user.Guid == userId).Get();
@@ -60,7 +59,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             var organizationId = workspaceResponse.Models.FirstOrDefault().Id;
             var userIdInt = userResponse.Models.FirstOrDefault().Id;
-            var metricResponse = await _supabaseClient.From<UserMetric>()
+            var metricResponse = await _supabaseClient.From<WeeklyUserStats>()
                 .Where(um => um.WorkspaceId == organizationId
                              && um.UserId == userIdInt
                              && um.StartPeriod == startPeriod.Date
@@ -68,62 +67,67 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Get();
             return metricResponse.Models.Any() ? metricResponse.Models.FirstOrDefault() : null;
         }
-        public async Task<List<RankingCacheModel>> GetWorkspaceWeekRankings(string workspaceGuid, DateTime startPeriod, DateTime endPeriod)
+        public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceWeekRankings(string workspaceGuid,DateTime startPeriod,DateTime endPeriod)
         {
-            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
-            if (!workspaceResponse.Models.Any())
-            {
-                return null;
-            }
+            // 1️. Resolve workspace → workspaceId
+            var workspaceResponse = await _supabaseClient
+                .From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
 
-            var organizationId = workspaceResponse.Models.FirstOrDefault().Id;
-            var rankingResponse = await _supabaseClient.From<Ranking>()
-                .Where(ranking => ranking.OrganizationId == organizationId
-                && ranking.StartPeriod >= startPeriod
-                && ranking.EndPeriod <= endPeriod)
+            if (!workspaceResponse.Models.Any())
+                return new Dictionary<string, RankingCacheModel>();
+
+            var workspaceId = workspaceResponse.Models.First().Id;
+
+            // 2️. Pull weekly user stats (ranking + metrics)
+            var statsResponse = await _supabaseClient
+                .From<WeeklyUserStats>()
+                .Where(s =>
+                    s.WorkspaceId == workspaceId &&
+                    s.StartPeriod == startPeriod.Date &&
+                    s.EndPeriod == endPeriod.Date)
                 .Order("rank_position", Supabase.Postgrest.Constants.Ordering.Ascending)
                 .Get();
-            var rankingRows = rankingResponse.Models;
 
-            if (!rankingRows.Any())
-                return new List<RankingCacheModel>();
+            var stats = statsResponse.Models;
+            if (!stats.Any())
+                return new Dictionary<string, RankingCacheModel>();
 
-            // 3️⃣ Extract all userIds from ranking (for join)
-            var userIds = rankingRows.Select(r => r.UserId).ToList();
+            // 3️. Resolve profile.guid
+            var userIds = stats
+                .Select(s => s.UserId)
+                .Distinct()
+                .ToList();
 
-            // 4️⃣ Fetch user_metric rows for the same users + period
-            var metricResponse = await _supabaseClient
-                .From<UserMetric>()
-                .Filter("user_id", Supabase.Postgrest.Constants.Operator.In, userIds)
-                .Where(um => um.WorkspaceId == organizationId
-                             && um.StartPeriod == startPeriod.Date
-                             && um.EndPeriod == endPeriod.Date)
+            var profileResponse = await _supabaseClient
+                .From<Profile>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, userIds)
                 .Get();
 
-            var metricMap = metricResponse.Models.ToDictionary(x => x.UserId, x => x);
+            var result = new Dictionary<string, RankingCacheModel>();
 
-            // 5️⃣ Build your RankingCacheModel list
-            var result = new List<RankingCacheModel>();
-
-            foreach (var ranking in rankingRows)
+            foreach(var stat in stats)
             {
-                if (!metricMap.ContainsKey(ranking.UserId))
-                    continue;
-
-                var m = metricMap[ranking.UserId];
-
-                result.Add(new RankingCacheModel
+                var profile = profileResponse.Models.FirstOrDefault(p => p.Id == stat.UserId);
+                var rankingCacheModel = new RankingCacheModel
                 {
-                    Point = m.Points ?? 0,
-                    TotalTaskCompleted = m.TasksCompleted ?? 0,
-                    TotalHours = m.TotalHours ?? 0,
-                    Efficiency = m.Efficiency,
-                    ContributionScore = m.ContributionScore ?? 0,
-                    Ranking = ranking.RankPosition
-                });
+                    Score = stat.Score.HasValue ? stat.Score.Value : 0,
+                    Efficiency = stat.Efficiency,
+                    ContributionPoint = stat.ContributionPoints,
+                    Ranking = stat.RankPosition,
+                    TotalHours = stat.TotalHours.HasValue ? stat.TotalHours.Value : 0,
+                    TotalTaskCompleted = stat.TasksCompleted.HasValue ? stat.TasksCompleted.Value : 0,
+                    UserId = profile.Id,
+                    UserName = profile.DisplayName,
+                    UserProfilePic = profile.ProfileImageUrl
+                };
+                result.Add(profile.Guid,rankingCacheModel);
             }
 
             return result;
         }
+
+
     }
 }

@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.Models
 {
-    [Table("user_metric")]
-    public class UserMetric : BaseModel
+    [Table("weekly_user_stats")]
+    public class WeeklyUserStats : BaseModel
     {
         [PrimaryKey("id")]
         public long Id { get; set; }
@@ -23,11 +23,11 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("tasks_completed")]
         public int? TasksCompleted { get; set; }
 
-        [Column("points")]
-        public int? Points { get; set; }
+        [Column("score")]
+        public float? Score { get; set; }
 
-        [Column("contribution_score")]
-        public float? ContributionScore { get; set; }
+        [Column("contribution_points")]
+        public int ContributionPoints { get; set; }
         [Column("start_period")]
         public DateTime? StartPeriod { get; set; }
         [Column("end_period")]
@@ -41,6 +41,8 @@ namespace Enterprise.Flowstate.DAL.Models
 
         [Column("efficiency")]
         public float Efficiency { get; set; }
+        [Column("rank")]
+        public int RankPosition { get; set; }
 
         [Reference(typeof(Profile))]
         public Profile? User { get; set; }

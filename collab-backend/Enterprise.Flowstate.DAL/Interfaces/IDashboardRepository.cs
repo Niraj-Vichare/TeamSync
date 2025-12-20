@@ -11,7 +11,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface IDashboardRepository
     {
-        Task<List<UserMetric>> GetUserMetric(string workspaceGuid, string userGuid);
+        Task<List<WeeklyUserStats>> GetUserMetric(string workspaceGuid, string userGuid);
         Task<OrganizationMetric> GetOrganizationMetric(string workspaceGuid);
         Task<List<DailyLogging>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid);
         Task<DailyLogging> GetTodayLogging(string workspaceId, string userId);

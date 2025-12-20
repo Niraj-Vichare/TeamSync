@@ -17,12 +17,12 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             _supabaseClient = supabaseClient;
         }
-        public async Task<bool> CreateWorkspace(string ownerId, string name,string description)
+        public async Task<string> CreateWorkspace(string ownerId, string name,string description)
         {
             var profile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == ownerId).Get();
             if(profile.Models.Count == 0)
             {
-                return false; // Profile not found
+                return string.Empty; // Profile not found
             }
             int siteuserId = profile.Models.FirstOrDefault().Id;
 
@@ -42,7 +42,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 };
                 await _supabaseClient.From<WorkspaceUserMapping>().Insert(mapping);
             }
-            return result.Models.Count > 0;
+            return result.Models.FirstOrDefault().WorkspaceGuid;
         }
 
         public async Task<List<WorkspaceUserMapping>> GetWorkspaces(string userGuid)
@@ -76,19 +76,17 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return workspace.Models.FirstOrDefault().Id;
         }
 
-        public async Task<Ranking> GetUserRanking(string workspaceId, string userId)
+        
+        public async Task<int> GetWorkspaceMemberCount(string workspaceId)
         {
-            var workspaceGuid = await _supabaseClient.From<Workspace>().Where(workspace=>workspace.WorkspaceGuid == workspaceId).Get();
+            var workspaceGuid = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceId).Get();
             int workspaceDbId = workspaceGuid.Models.FirstOrDefault().Id;
-            var userProfile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userId).Get();
-            int userDbId = userProfile.Models.FirstOrDefault().Id;
-            if(userDbId == 0 || workspaceDbId == 0)
+            if (workspaceDbId == 0)
             {
-                return null;
+                return -1;
             }
-
-            var userRanking = await _supabaseClient.From<Ranking>().Where(ranking => ranking.OrganizationId == workspaceDbId && ranking.UserId == userDbId).Get();
-            return userRanking.Models.FirstOrDefault();
+            var workspaceMappingResponse = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping=>mapping.WorkspaceId == workspaceDbId).Get();
+            return workspaceMappingResponse.Models.Count;
         }
     }
 }

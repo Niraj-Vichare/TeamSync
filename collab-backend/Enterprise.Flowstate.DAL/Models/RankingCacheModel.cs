@@ -11,11 +11,11 @@ namespace Enterprise.Flowstate.DAL.Models
         public int UserId { get; set; }
         public string UserName { get; set; }
         public string UserProfilePic { get; set; }
-        public int Point { get; set; }
+        public float? Score { get; set; }
         public int TotalTaskCompleted { get;set; }
         public int TotalHours { get; set; }
         public float Efficiency { get; set; }
-        public float ContributionScore { get; set; }
+        public int ContributionPoint { get; set; }
         public long Ranking { get; set; }
 
     }

@@ -19,6 +19,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 
         public async Task<int?> CreateProfileAsync(Profile profile)
         {
+            // First need to create the supabase profile
             var result = await _supabaseClient
                 .From<Profile>()
                 .Insert(profile);
@@ -53,7 +54,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             return result.Models.Count > 0;
         }
 
-        public async Task<bool> CreateProfile(User user,string? displayName)
+        public async Task<int> CreateProfile(User user,string? displayName)
         {
             Profile profile = new Profile
             {
@@ -62,7 +63,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
                 DisplayName = displayName
             };
             var result = await _supabaseClient.From<Profile>().Insert(profile);
-            return result.Models.Count > 0;
+            return result.Models.FirstOrDefault().Id;
         }
 
         public async Task<string> GetCurrentWorkspaceId(string userGuid)
@@ -101,6 +102,52 @@ namespace Enterprise.Flowstate.DAL.Interfaces
                 return result2.Models.ToList();
             }
             return new List<WorkspaceUserMapping>();
+        }
+
+        public async Task<bool> InializeUserConfiguration(int userId,DateTime startDate,DateTime endDate)
+        {
+
+            
+            WeeklyUserStats userMetric = new WeeklyUserStats
+            {
+                UserId = userId,
+                EndPeriod = endDate,
+                StartPeriod = startDate,
+                ContributionPoints = 0,
+                Score = 0,
+                RankPosition = -1,
+                Efficiency = 0,
+                TotalHours = 0,
+                CreatedAt = DateTime.Now,
+            };
+
+            await _supabaseClient.From<WeeklyUserStats>().Insert(userMetric);  
+            return true;
+        }
+
+
+
+        public async Task<bool> UpdateUserConfiguration(string userGuid, string workspaceGuid, int memberCount)
+        {
+            var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            var profile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            if(workspace == null && profile == null)
+            {
+                return false;
+            }
+            int profileId = profile.Models.FirstOrDefault().Id;
+            int workspaceId = workspace.Models.FirstOrDefault().Id;
+            var userMetricResponse = await _supabaseClient.From<WeeklyUserStats>().Where(userMetric => userMetric.Id == profileId).Get();
+            if (userMetricResponse == null)
+            {
+                return false;
+            }
+            WeeklyUserStats userMetric = userMetricResponse.Models.FirstOrDefault();
+
+            userMetric.WorkspaceId = workspaceId;
+            
+            _supabaseClient.From<WeeklyUserStats>().Update(userMetric);
+            return true;
         }
     }
 }

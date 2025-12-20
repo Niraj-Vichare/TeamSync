@@ -9,11 +9,10 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface IWorkspaceRepository
     {
-        Task<bool> CreateWorkspace(string userIdClaims, string name, string description);
+        Task<string> CreateWorkspace(string userIdClaims, string name, string description);
         Task<List<WorkspaceUserMapping>> GetWorkspaces(string userGuid);
         Task<bool> HasWorkspace(string email);
-        Task<Ranking> GetUserRanking(string workspaceId, string userId);
         Task<int> GetWorkspaceId(string workspaceGuid);
-
+        Task<int> GetWorkspaceMemberCount(string workspaceId);
     }
 }
