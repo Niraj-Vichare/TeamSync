@@ -46,7 +46,6 @@ function TicketDialog({
    
     const today = new Date().toISOString().split('T')[0];
     const [steps, setSteps] = useState([]);
-    console.log("Form Data in TicketDialog Props:", formData,steps);
     const [attachments, setAttachments] = useState([])
     const selectedUser = workspaceUsers.find(u => String(u.id) === String(formData.reportedBy))
 

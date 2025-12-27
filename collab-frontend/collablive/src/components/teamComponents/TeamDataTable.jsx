@@ -8,6 +8,7 @@ import { ROLE_MAP, STATUS_MAP } from '@/data/general';
 import { Badge } from '../ui/badge';
 
 function TeamDataTable({ teamMembers }) {
+    console.log("TeamProjectCard", teamMembers); 
     const [data, setData] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -21,7 +22,7 @@ function TeamDataTable({ teamMembers }) {
                     <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Department</TableHead>
-                        <TableHead>Role</TableHead>
+                        <TableHead>Position</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
 
@@ -63,10 +64,10 @@ function TeamDataTable({ teamMembers }) {
                                     </TableCell>
                                 <TableCell>
                                     <span
-                                        className={`px-2 py-1 rounded-full text-xs font-medium ${ROLE_MAP[member.departmentDto?.positionId]?.color || "bg-gray-100 text-gray-800"
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${ROLE_MAP[member?.positionId]?.color || "bg-gray-100 text-gray-800"
                                             }`}
                                     >
-                                        {ROLE_MAP[member.departmentDto?.positionId]?.label || "Unknown"}
+                                        {ROLE_MAP[member?.positionId]?.label || "Unknown"}
                                     </span>
                                 </TableCell>
 

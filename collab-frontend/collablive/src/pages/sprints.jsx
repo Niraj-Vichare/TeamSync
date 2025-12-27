@@ -90,6 +90,10 @@ function Sprints() {
   const [sprintDialogLoading,setSprintDialogLoading] = useState(false);
   const [selectedSprintId,setSelectedSprintId] = useState(null);
   const [includeTicketGuid,setIncludeTicketGuid] = useState(null);
+  const [includeProjectId,setIncludeProjectId] = useState(null);
+
+  const [sprintMembers,setSprintMembers] = useState([]);
+  const [sprintSelectedMember,setSprintSelectedMember] = useState(null);
 
 
   // Sprint's States
@@ -172,14 +176,14 @@ function Sprints() {
     if(!ticketsFormData.status){
       newErrors.points = "Status is required";
     }
-    if(!ticketsFormData.reportedBy){
-      newErrors.reportedBy = "Who reported is required";
-    }
+    // if(!ticketsFormData.reportedBy){
+    //   newErrors.reportedBy = "Who reported is required";
+    // }
     if(ticketsFormData.endDate<ticketsFormData.startDate){
       newErrors.endDate = "End date should be greater than start date";
       newErrors.startDate = "End date should be greater than start date";
     }
-    
+    console.log("Ticket Form Errors",newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -349,7 +353,7 @@ function Sprints() {
           "points": parseInt(ticketsFormData.points),
           "typeId": type === "bug" ? 1 : 2, // small fix here
         }
-
+        console.log("Ticket Data to be created",ticketData);
         const response = await ticketService.createTickets(workspaceGuid,type,ticketData);
         setTicketOpen(false);
         resetTicketForm();
@@ -493,11 +497,21 @@ function Sprints() {
 
   }
 
+  const fetchTeamMembers=async(sprintGuid)=>{
+    try{
+      const response = await sprintService.getSprintMembers(sprintGuid);
+      setSprintMembers(response.data);
+      console.log("Sprint Members",response);
+    }catch(error){
+      console.error("Error fetching sprint members",error);
+    } 
+  }
+
   const handleIncludeInSprint =async () => {
     try{
       setSprintDialogLoading(true);
-      console.log("Include in Sprint",includeTicketGuid,selectedSprintId);
-      var response = await sprintService.AddTicketToSprint(workspaceGuid,selectedSprintId,includeTicketGuid);
+      console.log("Include in Sprint",includeTicketGuid,selectedSprintId,sprintSelectedMember);
+      var response = await sprintService.AddTicketToSprint(workspaceGuid,selectedSprintId,includeTicketGuid,sprintSelectedMember);
       if(response.success){
         toast.success("Ticket added to sprint successfully");
         setSprintDialogOpen(false);
@@ -516,7 +530,7 @@ function Sprints() {
 
   }
   const handleEditClick = (type,ticket) => {
-
+    console.log("Edit Clicked", type, ticket);
     if (!ticket) return;
     setSelectedTicketGuid(ticket.ticketGuid);
     setActionType("update");
@@ -529,7 +543,6 @@ function Sprints() {
       priority: ticket.priority?.toString() || "",
       status: ticket.status?.toString() || "",
       projectId: ticket.projectId?.toString() || "",
-      reportedBy: ticket.reportedBy?.toString() || "",
       steps: ticket.steps?.split(",") || [],
       points: ticket.points?.toString() || "",
     });
@@ -590,6 +603,13 @@ function Sprints() {
       setStepSaving(false);
     }
   };
+
+  const handleOnIncludeSprint=async(ticketGuid,projectId)=>{
+    console.log("Include in Sprint Clicked",ticketGuid,projectId);
+    setSprintDialogOpen(true);
+    setIncludeProjectId(projectId);
+    setIncludeTicketGuid(ticketGuid);
+  }
 
   const fetchWorkspaceUsers=async()=>{
     const response = await workspaceService.getWorkspaceProfiles(workspaceGuid);
@@ -1133,8 +1153,8 @@ function Sprints() {
                       onEditClick={(ticket) =>
                         handleEditClick("bug",ticket)
                       }
-                      onIncludeInSprint={(ticketGuid) => setSprintDialogOpen(true) & setIncludeTicketGuid(ticketGuid)
-                      }
+                      onIncludeInSprint={(ticketGuid,projectId) => handleOnIncludeSprint(ticketGuid,projectId)}
+                      
                     />
                   </motion.div>
                 ))
@@ -1255,13 +1275,13 @@ function Sprints() {
                     <Label>Select Sprint</Label>
                     <Select
                       value={selectedSprintId ? selectedSprintId.toString() : null}
-                      onValueChange={(value) => setSelectedSprintId(value)}
+                      onValueChange={(value) => fetchTeamMembers(value) & setSelectedSprintId(value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select Sprint" />
                       </SelectTrigger>
                       <SelectContent>
-                        {sprints?.map((sprint) => (
+                        {sprints?.filter(sprint => sprint.projectId === includeProjectId).map((sprint) => (
                           <SelectItem
                             key={sprint.sprintId}
                             value={sprint.sprintGuid.toString()}
@@ -1274,6 +1294,27 @@ function Sprints() {
                     {errors.selectedSprint && (
                       <p className="text-sm text-red-500">{errors.selectedSprint}</p>
                     )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Select Team Member</Label>
+                    <Select
+                      value={sprintSelectedMember}
+                      onValueChange={(value) => setSprintSelectedMember(value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Team Member" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sprintMembers?.map((member) => (
+                          <SelectItem
+                            key={member.memberId}
+                            value={member.memberId}
+                          >
+                            {member.memberName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}

@@ -27,7 +27,6 @@ const BugCard = ({
       default: return "bg-gray-400 text-white";
     }
   };
-  console.log("BugCard", bug);
 
   return (
     <Card className="w-full shadow-md border rounded-xl hover:shadow-xl transition-all">
@@ -73,7 +72,7 @@ const BugCard = ({
         {!bug.sprintId && (
           <Button
             variant="outline"
-            onClick={() => onIncludeInSprint(bug.ticketGuid)}
+            onClick={() => onIncludeInSprint(bug.ticketGuid,bug.projectId)}
             className="flex items-center gap-1"
           >
             <CalendarPlus className="w-4 h-4" />

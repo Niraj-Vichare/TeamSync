@@ -1,5 +1,5 @@
-// constants/workspaceErrorCodes.js
-const WorkspaceErrorCodes = {
+// constants/teamErrorCode.js
+const TeamErrorCodes = {
   NOT_FOUND: 'teams/not-found',
   ALREADY_EXISTS: 'teams/already-exists',
   INVALID_NAME: 'teams/invalid-name',
@@ -7,4 +7,4 @@ const WorkspaceErrorCodes = {
   UNKNOWN_ERROR: 'teams/unknown-error',
 };
 
-export default WorkspaceErrorCodes;
+export default TeamErrorCodes;

@@ -38,10 +38,13 @@ class SprintService {
         }
     }
 
-    async AddTicketToSprint(workspaceGuid,sprintId,ticketGuid){
+    async AddTicketToSprint(workspaceGuid, sprintId, ticketGuid, selectedMember) {
         try {
-            console.log("AddTicketToSprint",workspaceGuid,sprintId,ticketGuid);
-            const response = await axiosInstance.post(`/sprints/${sprintId}/tickets/${ticketGuid}`);
+            console.log("AddTicketToSprint", workspaceGuid, sprintId, ticketGuid, selectedMember);
+            const response = await axiosInstance.post(
+                `/sprints/${sprintId}/tickets/${ticketGuid}`,
+                selectedMember  // Send the number directly, not wrapped in an object
+            );
             return response.data;
         } catch (error) {
             console.error("Error adding ticket to sprint:", error);
@@ -132,6 +135,14 @@ class SprintService {
         }
     }
 
+    async getSprintMembers(sprintGuid){
+        try{
+            const response = await axiosInstance.get(`/sprints/${sprintGuid}/members`);
+            return response.data;
+        }catch(error){
+            throw error;
+        }
+    }
 
 }
 

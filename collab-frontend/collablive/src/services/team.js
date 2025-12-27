@@ -1,3 +1,4 @@
+import { handleTeamError } from "@/lib/handleTeamError";
 import axiosInstance from "./axiosInstance";
 
 class TeamService{
@@ -37,11 +38,11 @@ class TeamService{
 
   async addTeamMember(workspaceGuid,member)
   {
+    console.log("Adding member:",member);
     try{
-        const response = await axiosInstance.post('/teams',{
-            workspaceGuid:workspaceGuid,
-            mapping:member
-        });
+        const response = await axiosInstance.post(`/teams/member/create?workspaceGuid=${workspaceGuid}`,
+            member
+        );
         return response.data;
     }catch(error){
         console.error("Error while adding the team member",error);
@@ -62,8 +63,8 @@ class TeamService{
     try{
         const response = await axiosInstance.get(`/teams/department?workspaceGuid=${workspaceGuid}`);
         return response.data;
-    }catch(eror){
-        throw handleTeamError(eror);
+    }catch(error){
+        throw handleTeamError(error);
     }
   }
 
@@ -74,19 +75,6 @@ class TeamService{
 
     }catch(error){
         console.error('Error while get team dropdown',error);
-        throw handleTeamError(error);
-    }
-  }
-
-  async addTeamMember(workspaceGuid, member){
-    try{
-        const response = await axiosInstance.post('/teams',{
-            workspaceGuid: workspaceGuid,
-            mapping: member
-        });
-        return response.data;
-    }catch(error){
-        console.error("Error while adding the team member", error);
         throw handleTeamError(error);
     }
   }

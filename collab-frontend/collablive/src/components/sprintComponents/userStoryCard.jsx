@@ -25,12 +25,12 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
   };
 
   return (
-    <Card className="w-full max-w-md hover:shadow-lg transition-shadow duration-200 border-l-4">
+    <Card className="w-full max-w-md min-h-[360px] hover:shadow-lg transition-shadow duration-200 border-l-4">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h3 className="font-semibold text-lg">{story.title}</h3>
-            <p className="text-sm text-gray-500 line-clamp-2 break-words">{story.description}</p>
+            <p className="text-sm text-gray-500 line-clamp-1 break-words">{story.description}</p>
           </div>
         </div>
       </CardHeader>

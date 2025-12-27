@@ -130,7 +130,7 @@ function AccountTab({ profile }) {
 
           <Separator />
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="language">Language</Label>
               <Select
@@ -166,38 +166,18 @@ function AccountTab({ profile }) {
                 </SelectContent>
               </Select>
             </div>
+          </div> */}
+
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={loading}>
+              <Save className="w-4 h-4 mr-2" />
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="border border-border rounded-lg bg-card p-6">
-        <h3 className="text-lg font-semibold mb-4">Security</h3>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
-            <Input id="currentPassword" type="password" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input id="newPassword" type="password" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <Input id="confirmPassword" type="password" />
-          </div>
-
-          <Separator />
-
-          
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={loading}>
-          <Save className="w-4 h-4 mr-2" />
-          {loading ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
+      
     </div>
   );
 }

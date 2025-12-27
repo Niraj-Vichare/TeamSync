@@ -42,60 +42,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 const userRole = "employee"; // or "admin"
 //const userRole = "admin"; // or "admin"
 
-const tasks = [
-  {
-    id: 1,
-    title: "Update design components",
-    due: "Tomorrow",
-    priority: "high",
-    status: "in-progress",
-    assignee: "JD",
-    project: "Design System",
-    labels: ["UI/UX", "Components"],
-    storyPoints: 5,
-    timeSpent: 8,
-    timeEstimate: 12
-  },
-  {
-    id: 2,
-    title: "Review presentation deck",
-    due: "Friday",
-    priority: "medium",
-    status: "pending",
-    assignee: "SM",
-    project: "Marketing Launch",
-    labels: ["Review", "Presentation"],
-    storyPoints: 3,
-    timeSpent: 0,
-    timeEstimate: 6
-  },
-  {
-    id: 3,
-    title: "Implement authentication",
-    due: "Tuesday",
-    priority: "high",
-    status: "completed",
-    assignee: "AB",
-    project: "Web Platform",
-    labels: ["Backend", "Security"],
-    storyPoints: 8,
-    timeSpent: 16,
-    timeEstimate: 15
-  },
-  {
-    id: 4,
-    title: "Write unit tests",
-    due: "Wednesday",
-    priority: "medium",
-    status: "in-progress",
-    assignee: "MK",
-    project: "Web Platform",
-    labels: ["Testing", "QA"],
-    storyPoints: 2,
-    timeSpent: 4,
-    timeEstimate: 8
-  },
-];
 
 const projects = [
   {
@@ -188,14 +134,6 @@ const actions = [
 
 
 
-const timeTrackingData = [
-  { name: 'Mon', logged: 32, estimated: 40 },
-  { name: 'Tue', logged: 28, estimated: 35 },
-  { name: 'Wed', logged: 45, estimated: 42 },
-  { name: 'Thu', logged: 38, estimated: 40 },
-  { name: 'Fri', logged: 25, estimated: 30 }
-];
-
 const teamPerformance = [
   { member: 'John Doe', tasksCompleted: 12, velocity: 42, efficiency: 95 },
   { member: 'Sarah Miller', tasksCompleted: 15, velocity: 38, efficiency: 88 },
@@ -213,14 +151,6 @@ const riskMetrics = [
 
 
 
-const lineChartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
-]
 
 function Dashboard() {
   
@@ -234,7 +164,7 @@ function Dashboard() {
 
   const [dashboardCards, setDashboardCards] = useState({
     totalTasks: 0,
-    myPoint: 0,
+    myPoints: 0,
     totalHours: 0,
     efficiency: 0
   });
@@ -244,6 +174,7 @@ function Dashboard() {
   const [weeklyLogging, setWeeklyLogging] = useState(null);
   const [userongoingTasks, setOngoingTasks] = useState([]);
   const [userProjectWork, setUserProjectWork] = useState([]);
+  const [isLoadingUserWork, setIsLoadingUserWork] = useState(false);
   
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -308,9 +239,7 @@ function Dashboard() {
   const fetchUserOngoingTask = async () => {
     try {
       const result = await taskService.getOnGoingTasks(workspaceGuid);
-      setOngoingTasks(result);
-      console.log("Ongoing Tasks", result);
-      console.log(result);
+      setOngoingTasks(result.data);
 
     } catch (error) {
       console.error("Failed to fetch user ongoing tasks:", error);
@@ -403,15 +332,20 @@ const currentDate = new Date().toLocaleDateString("en-US", {
 
   const getUserWork = async () => {
     if (!workspaceGuid) return;
-    try {
-      var result = await dashboardService.getUserWork(workspaceGuid);
-      console.log("User Work:", result);
-      setUserProjectWork(result);
 
+    setIsLoadingUserWork(true);
+
+    try {
+      const result = await dashboardService.getUserWork(workspaceGuid);
+      console.log("User Work:", result);
+      setUserProjectWork(result?.data || []);
+      console.log("User Project Work Set:",userProjectWork);
     } catch (error) {
       console.error("Error while getting user work", error);
+    } finally {
+      setIsLoadingUserWork(false);
     }
-  }
+  };
 
   const navigate = useNavigate();
   const handleRedirect=(map)=>{
@@ -628,7 +562,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">8</div>
+                  <div className="text-2xl font-bold">{dashboardCards.myPoints}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
                     3 completed today
@@ -644,7 +578,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <Timer className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">6.5h</div>
+                  <div className="text-2xl font-bold">{dashboardCards.totalHours}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <Clock className="w-3 h-3 mr-1 text-blue-500" />
                     1.5h remaining
@@ -655,12 +589,12 @@ const currentDate = new Date().toLocaleDateString("en-US", {
               <Card className="relative overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Task Completed
+                    Ticket Completed
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">24</div>
+                  <div className="text-2xl font-bold">{dashboardCards.ticketCompleted}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
                     Tasks completed
@@ -676,7 +610,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <Gauge className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">92%</div>
+                  <div className="text-2xl font-bold text-green-500">{dashboardCards.efficiency}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
                     Above average
@@ -771,7 +705,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.08 * index }}
-                          onClick={() => navigate(`/ticket/${ticket.ticketGuid}`)}
+                          onClick={() => navigate(`/sprints`)}
                           className="
                     flex items-center justify-between 
                     p-3 rounded-lg border cursor-pointer 
@@ -1167,53 +1101,75 @@ const currentDate = new Date().toLocaleDateString("en-US", {
 
                     <CardContent>
                       <div className="space-y-4">
-                        {/* High Priority Task */}
-                        {userongoingTasks.length>0 && userongoingTasks?.filter(task => task.priority === 'urgent') && (
-                          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                            {userongoingTasks
-                              .filter(task => task.priority === 'urgent')
-                              .slice(0, 1)
-                              .map((task, index) => (
-                                <div key={index}>
-                                  <p className="font-medium text-sm">High Priority</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {task.title}
-                                  </p>
-                                  <div className="flex items-center justify-between mt-2">
-                                    <Badge variant="destructive" className="text-xs">
-                                      urgent
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                      Due: {task.due}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-
+                        
                         {/* Ongoing Tasks */}
                         <div className="space-y-3">
                           {userongoingTasks?.length > 0 ? (
-                            userongoingTasks.slice(0, 3).map((task, index) => (
+                            userongoingTasks.slice(0, 3).map((task) => (
                               <div
-                                key={index}
-                                className="flex items-center space-x-3 p-2 rounded border-l-2 border-l-blue-200"
+                                key={task.taskGuid}
+                                className="flex gap-3 p-3 rounded-md border bg-white hover:shadow-sm transition border-l-4 border-l-blue-500"
                               >
-                                <div className="w-4 h-4 rounded border-2 border-muted-foreground/20" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{task.title}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {task.due}
+                                {/* Left: Core Info */}
+                                <div className="flex-1 space-y-1">
+                                  {/* Title + Priority */}
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-sm font-semibold truncate">
+                                      {task.title}
+                                    </p>
+                                    <span
+                                      className={`text-xs px-2 py-0.5 rounded border
+              ${task.priorityInString === 'High' && 'bg-red-50 text-red-700 border-red-200'}
+              ${task.priorityInString === 'Medium' && 'bg-yellow-50 text-yellow-700 border-yellow-200'}
+              ${task.priorityInString === 'Low' && 'bg-green-50 text-green-700 border-green-200'}
+            `}
+                                    >
+                                      {task.priorityInString}
+                                    </span>
+                                  </div>
+
+                                  {/* Description */}
+                                  <p className="text-xs text-gray-600 line-clamp-1">
+                                    {task.description}
                                   </p>
+
+                                  {/* Metadata Row */}
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                    <span className="px-2 py-0.5 rounded bg-muted">
+                                      {task.project?.projectTitle}
+                                    </span>
+
+                                    {task.sprint && (
+                                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                                        Sprint: {task.sprint.title}
+                                      </span>
+                                    )}
+
+                                    <span
+                                      className={`px-2 py-0.5 rounded
+              ${task.statusInString === 'Complete'
+                                          ? 'bg-green-50 text-green-700'
+                                          : 'bg-gray-100 text-gray-700'}
+            `}
+                                    >
+                                      {task.statusInString}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Right: Timeline */}
+                                <div className="text-right text-xs text-gray-500 whitespace-nowrap">
+                                  <p className="font-medium">End Date</p>
+                                  <p>{task.endDateInString}</p>
                                 </div>
                               </div>
                             ))
                           ) : (
                             <div className="p-4 text-sm text-muted-foreground text-center border rounded bg-muted/30">
-                              No tasks found. Bandwidth is wide open.
+                              No tasks found. Capacity is underutilized.
                             </div>
                           )}
+
                         </div>
                       </div>
                     </CardContent>
@@ -1222,7 +1178,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-                  <Card className="w-full max-w-md mx-auto shadow-lg border">
+                  <Card>
                     <CardHeader className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                         <Clock className="w-5 h-5 text-blue-500" />
@@ -1315,31 +1271,86 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                     <CardHeader>
                       <CardTitle className="text-xl">My Projects</CardTitle>
                     </CardHeader>
+
                     <CardContent>
                       <div className="space-y-4">
-                        {projects.slice(0, 3).map((project, index) => (
-                          <div key={project.id} className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-3 h-3 rounded-full ${getStatusColor(project.status)}`} />
-                                <h3 className="font-semibold">{project.name}</h3>
+                        {isLoadingUserWork ? (
+                          // Loading Skeleton
+                          <>
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="p-4 rounded-lg border">
+                                <div className="flex items-center justify-between mb-2">
+                                  <Skeleton className="h-5 w-32" />
+                                  <Skeleton className="h-5 w-12" />
+                                </div>
+                                <Skeleton className="h-2 w-full mb-3" />
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div>
+                                    <Skeleton className="h-4 w-12 mb-1" />
+                                    <Skeleton className="h-3 w-16" />
+                                  </div>
+                                  <div>
+                                    <Skeleton className="h-4 w-12 mb-1" />
+                                    <Skeleton className="h-3 w-16" />
+                                  </div>
+                                  <div>
+                                    <Skeleton className="h-4 w-12 mb-1" />
+                                    <Skeleton className="h-3 w-16" />
+                                  </div>
+                                </div>
                               </div>
-                              <span className="text-sm text-muted-foreground">Due {project.dueDate}</span>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>My contribution: {Math.floor(project.progress * 0.3)}%</span>
-                                <span className="text-muted-foreground">{project.tasksCompleted}/{project.tasksTotal} tasks</span>
+                            ))}
+                          </>
+                        ) : userProjectWork?.length > 0 ? (
+                          userProjectWork.slice(0, 3).map((project) => (
+                            console.log("Project Contribution", project),
+                            <div
+                              key={project.projectId}
+                              className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-semibold text-base">
+                                  {project.projectName}
+                                </h3>
+                                <span className="text-sm font-medium text-primary">
+                                  {project.contribution.toFixed(1)}%
+                                </span>
                               </div>
-                              <Progress value={project.progress} className="h-2" />
+
+                              <Progress value={project.contribution} className="h-2 mb-3" />
+
+                              <div className="grid grid-cols-3 gap-3 text-sm text-muted-foreground">
+                                <div>
+                                  <div className="font-medium text-foreground">
+                                    {project.numberOfSprintIncluded}/{project.totalNumberSprints}
+                                  </div>
+                                  <div>Sprints</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-foreground">
+                                    {project.numberOfTicketsCompleted}/{project.numberOfTickets}
+                                  </div>
+                                  <div>Tickets</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-foreground">
+                                    {project.totalTicketPoints}/{project.totalProjectPoints}
+                                  </div>
+                                  <div>Points</div>
+                                </div>
+                              </div>
                             </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <p>No projects found</p>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </CardContent>
                   </Card>
-
                 </motion.div>
+
               </>
             ) : (
               // Admin Right Sidebar

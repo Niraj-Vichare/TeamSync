@@ -165,9 +165,6 @@ export default function Projects() {
 
   const handleEditProject = async (projectGuid, updatedProject) => {
     try {
-      // Handling the index..
-      updatedProject.status += 1;
-      updatedProject.category += 1;
       setLoading(true);
       const response = await projectService.updateProject(projectGuid, updatedProject);
       const { statusCode, success, message } = response.data;
@@ -236,8 +233,8 @@ export default function Projects() {
         projectDescription: formData.projectDescription.trim(),
         projectTagline: formData.projectTagline.trim() || null,
         projectLogo: formData.projectLogo.trim() || null,
-        status: parseInt(formData.status)+1,
-        category: parseInt(formData.category)+1,
+        status: parseInt(formData.status),
+        category: parseInt(formData.category),
         startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
         endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,

@@ -81,12 +81,6 @@ function AppearanceTab() {
           </div>
         </div>
       </div>
-
-      <div className="flex justify-end">
-        <Button onClick={() => handleUserPerference()}>
-          Update preferences
-        </Button>
-      </div>
     </div>
   );
 }

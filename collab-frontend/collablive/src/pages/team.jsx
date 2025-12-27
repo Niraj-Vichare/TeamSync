@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/context/AuthContext';
 import {  teamMembers,projectTeam, departments, Department, RoleEnum, UserStatus, WorkspacePosition } from '@/data/general';
 import teamService from '@/services/team';
+import { set } from 'date-fns';
 import { Filter, FilterIcon, Plus, Search, Tag } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ function Team() {
   const [formData,setFormData] = useState({
     memberName:'',
     memberRole:'',
+    memberPassword:'',  
     memberEmail:'',
     memberDepartment:'',
     memberPosition:'',
@@ -59,9 +61,11 @@ function Team() {
   const workspaceGuid = getCurrentWorkspaceId();
 
   const handleAddMember=async()=>{
+    
     // Validate form data
     const newErrors = {};
     if (!formData.memberName) newErrors.memberName = 'Member name is required';
+    if(!formData.Password) newErrors.Password = 'Password is required';
     if (!formData.memberEmail) newErrors.memberEmail = 'Member email is required';
     if (!formData.memberRole) newErrors.memberRole = 'Member role is required';
     if (!formData.memberDepartment) newErrors.memberDepartment = 'Member department is required';
@@ -74,12 +78,18 @@ function Team() {
     setMemberLoading(true);
     try{
       const member = {
-        name:formData.memberName,
-        email:formData.memberEmail,
-        role:formData.memberRole,
-        position:formData.memberPosition,
-        department:formData.memberDepartment,
-        status:formData.memberStatus,
+        profile:{
+          displayName:formData.memberName,
+          email:formData.memberEmail,
+          password:formData.Password,
+          guid:'',
+          bio:'',
+          workspaceId:workspaceGuid,
+        },
+        roleId:parseInt(formData.memberRole),
+        positionId:parseInt(formData.memberPosition),
+        departmentId:parseInt(formData.memberDepartment),
+        statusId:parseInt(formData.memberStatus),
       };
       var response = await teamService.addTeamMember(workspaceGuid,member);
       if(response && response.success){
@@ -166,6 +176,28 @@ function Team() {
     }
 
   }
+
+  const handleMemberDialogOpen=(open)=>{
+    console.log("handleMemberDialogOpen",open);
+    setMemberDialogOpen(open);
+    if(!open){
+      setFormData({
+        memberName:'',
+        memberRole:'',
+        memberEmail:'',
+        memberDepartment:'',
+        memberPosition:'',
+        memberStatus:''
+      });
+      setErrors({});
+      setMemberLoading(false);
+    }
+  }
+
+  const handleInputChange = (key, value) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: "" })); // clear error on change
+  };
 
   useEffect(()=>{
     if(activeTab == "all-teams"){
@@ -273,7 +305,7 @@ function Team() {
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
+                  <Dialog open={memberDialogOpen} onOpenChange={handleMemberDialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="text-white">
                         <Plus className="w-4 h-4" />
@@ -311,6 +343,18 @@ function Team() {
                           onChange={(e) => handleInputChange("memberEmail", e.target.value)}
                           placeholder="Enter member email"
                           className={errors.memberEmail ? "border-red-500" : ""}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="memberPassword">Member Password *</Label>
+                        <Input
+                          id="memberPassword"
+                          type="password"
+                          value={formData.memberPassword}
+                          onChange={(e) => handleInputChange("memberPassword", e.target.value)}
+                          placeholder="Enter member password"
+                          className={errors.memberPassword ? "border-red-500" : ""}
                         />
                       </div>
 
@@ -412,7 +456,7 @@ function Team() {
                       <DialogFooter className="px-6 py-4 border-t">
                         <Button
                           variant="outline"
-                          onClick={() => setMemberDialogOpen(false)}
+                          onClick={() => handleMemberDialogOpen(false)}
                           disabled={memberLoading}
                         >
                           Cancel
@@ -492,20 +536,21 @@ function Team() {
                   </div>
                   <div className='space-y-2'>
                     <Label htmlFor="teamMembers">Team Members</Label>
-                    <Select
-                      multiple
-                      value={customTeamFormData.teamMembers}
-                      onValueChange={(v) => handleCustomTeamInputChange("teamMembers", v)}
-                    >
+                    <Select>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select team members" />
                       </SelectTrigger>
-                      {workspaceMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {member.name} ({member.email})
-                        </SelectItem>
-                      ))}
+
+                      <SelectContent>
+                        {workspaceMembers.map((member) => (
+                          <SelectItem key={member.profile?.id} value={member.profile?.id}>
+                            {member.profile?.displayName}<br/>
+                            <small className="text-gray-500 ml-2">({member.profile?.email})</small>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
+
                   </div>
 
                   <DialogFooter className="px-6 py-4 border-t">
@@ -526,15 +571,11 @@ function Team() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              {customTeam.length === 0 ? (
-                <div className="w-full text-center py-10 text-gray-500 text-sm">
-                  No data available
-                </div>
-              ) : (
-                customTeam.map(team => (
-                  <TeamProjectCard key={team.id} team={team} />
-                ))
-              )}
+            </div>
+            <div className='flex flex-wrap gap-4 mt-4'>
+              {customTeam.map((team) => (
+                <TeamProjectCard key={team.id} team={team} />
+              ))}
             </div>
 
           </TabsContent>

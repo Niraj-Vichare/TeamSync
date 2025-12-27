@@ -1,31 +1,31 @@
 export const ProjectStatus = {
-  Ongoing: 0,
-  Completed: 1,
-  Archived: 2,
-  Cancelled: 3,
-  Paused: 4,
-  NotStarted: 5,
-  InReview: 6
+  Ongoing: 1,
+  Completed: 2,
+  Archived: 3,
+  Cancelled: 4,
+  Paused: 5,
+  NotStarted: 6,
+  InReview: 7
 };
 export const ProjectCategory = {
-  INFORMATION_TECHNOLOGY: 0,
-  HEALTHCARE: 1,
-  EDUCATION: 2,
-  FINANCE: 3,
-  MANUFACTURING: 4,
-  CONSTRUCTION: 5,
-  RETAIL: 6,
-  TRANSPORTATION: 7,
-  ENERGY: 8,
-  TELECOMMUNICATIONS: 9,
-  AGRICULTURE: 10,
-  GOVERNMENT: 11,
-  ENTERTAINMENT: 12,
-  HOSPITALITY: 13,
-  REAL_ESTATE: 14,
-  LEGAL: 15,
-  NON_PROFIT: 16,
-  OTHER: 17
+  INFORMATION_TECHNOLOGY: 1,
+  HEALTHCARE: 2,
+  EDUCATION: 3,
+  FINANCE: 4,
+  MANUFACTURING: 5,
+  CONSTRUCTION: 6,
+  RETAIL: 7,
+  TRANSPORTATION: 8,
+  ENERGY: 9,
+  TELECOMMUNICATIONS: 10,
+  AGRICULTURE: 11,
+  GOVERNMENT: 12,
+  ENTERTAINMENT: 13,
+  HOSPITALITY: 14,
+  REAL_ESTATE: 15,
+  LEGAL: 16,
+  NON_PROFIT: 17,
+  OTHER: 18
 };
 
 
@@ -43,6 +43,7 @@ export const ROLE_MAP = {
   10: { label: "DevOps", color: "bg-gray-500 text-gray-800" },
   11: { label: "Support", color: "bg-teal-500 text-teal-800" },
   12: { label: "Guest", color: "bg-slate-500 text-slate-800" },
+  13: { label: "Sales Manager", color: "bg-green-500 text-green-800" },
 };
 
 export const STATUS_MAP = {
