@@ -38,13 +38,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
                 if(currentRankings.Count <= 0)
                 {
-                    return null;
-                }
-
-                var ranking = await _omniRepository.LeaderBoardRepository.GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
-                if (ranking == null || ranking.Count == 0)
-                {
-                    return null;
+                    var ranking = await _omniRepository.LeaderBoardRepository.GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
+                    if (ranking == null || ranking.Count == 0)
+                    {
+                        return null;
+                    }
                 }
 
                 var userRankings = new List<UserRankingWithComparison>();
@@ -147,7 +145,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     CurrentMetrics = new WeeklyUserStatsDto
                     {
                         TotalHours = currentMetric.TotalHours,
-                        TasksCompleted = currentMetric.TotalTaskCompleted,
+                        TicketsCompleted = currentMetric.TotalTaskCompleted,
                         Score = currentMetric.Score,
                         ContributionPoint = currentMetric.ContributionPoint,
                         Efficiency = currentMetric.Efficiency
@@ -157,7 +155,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     PreviousMetrics = prevMetric != null ? new WeeklyUserStatsDto
                     {
                         TotalHours = prevMetric.TotalHours,
-                        TasksCompleted = prevMetric.TotalTaskCompleted,
+                        TicketsCompleted = prevMetric.TotalTaskCompleted,
                         Score = prevMetric.Score,
                         ContributionPoint = prevMetric.ContributionPoint,
                         Efficiency = prevMetric.Efficiency

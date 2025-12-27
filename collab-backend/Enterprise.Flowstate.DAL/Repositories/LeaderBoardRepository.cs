@@ -81,14 +81,9 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var workspaceId = workspaceResponse.Models.First().Id;
 
             // 2️. Pull weekly user stats (ranking + metrics)
-            var statsResponse = await _supabaseClient
-                .From<WeeklyUserStats>()
-                .Where(s =>
-                    s.WorkspaceId == workspaceId &&
-                    s.StartPeriod == startPeriod.Date &&
-                    s.EndPeriod == endPeriod.Date)
-                .Order("rank_position", Supabase.Postgrest.Constants.Ordering.Ascending)
-                .Get();
+            var statsResponse = await _supabaseClient.From<WeeklyUserStats>().Where(s => s.WorkspaceId == workspaceId)
+                .Filter(s => s.StartPeriod, Supabase.Postgrest.Constants.Operator.Equals, startPeriod.Date.ToString("MM-dd-yyyy"))
+                .Filter(s => s.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, endPeriod.Date.ToString("MM-dd-yyyy")).Order("rank", Supabase.Postgrest.Constants.Ordering.Ascending).Get();
 
             var stats = statsResponse.Models;
             if (!stats.Any())

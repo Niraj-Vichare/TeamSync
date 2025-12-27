@@ -1,9 +1,10 @@
-﻿using Enterprise.Flowstate.DAL.Constants;
+﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
+using Enterprise.Flowstate.DAL.Constants;
 using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
-    using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Supabase.Gotrue;
 using System;
 using System.Collections.Generic;
@@ -35,31 +36,29 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Where(u => u.Guid == userGuid)
                 .Get();
 
-            if (workspaceResponse?.Models.FirstOrDefault() == null || userResponse?.Models.FirstOrDefault() == null)
-                return null;
+            if (workspaceResponse?.Models.FirstOrDefault() == null ||
+                userResponse?.Models.FirstOrDefault() == null)
+                return new List<WeeklyUserStats>(); // Return empty list, not null
 
             int workspaceId = workspaceResponse.Models.First().Id;
             int userId = userResponse.Models.First().Id;
 
-            var today = DateTime.UtcNow;
-            var currentWeekStart = today.AddDays(-(int)today.DayOfWeek);
-            var previousWeekStart = currentWeekStart.AddDays(-7);
-            var previousWeekEnd = currentWeekStart.AddTicks(-1); // up to before this week's start
+            var (previousStartDate, previousEndDate) = PeriodHelper.GetPreviousWeekPeriod();
+            var (currentStartDate, currentEndDate) = PeriodHelper.GetCurrentWeekPeriod();
 
-            // Query both current and previous week
+            // Query both current and previous week - FIXED FILTER SYNTAX
             var userMetricsResponse = await _supabaseClient
                 .From<WeeklyUserStats>()
                 .Where(m => m.WorkspaceId == workspaceId && m.UserId == userId)
-                .Where(m => m.CreatedAt >= previousWeekStart && m.CreatedAt <= today)
-                .Order(x => x.CreatedAt, Supabase.Postgrest.Constants.Ordering.Descending)
+                .Filter("start_period", Operator.GreaterThanOrEqual, previousStartDate.ToString("yyyy-MM-dd"))
+                .Filter("start_period", Operator.LessThanOrEqual, currentStartDate.ToString("yyyy-MM-dd"))
                 .Get();
 
-            if (userMetricsResponse?.Models?.Any() == true)
+            if (userMetricsResponse?.Models.Count > 0)
             {
-                // Optionally, just return the last 2 records (prev + current week)
+                // Return sorted by start_period to ensure correct order
                 return userMetricsResponse.Models
-                    .OrderByDescending(m => m.CreatedAt)
-                    .Take(2)
+                    .OrderBy(m => m.StartPeriod) // Order by period, not CreatedAt
                     .ToList();
             }
 
@@ -248,16 +247,19 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
         public async Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid)
         {
-            var userResponse = _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid);
-            if(userResponse == null || !userResponse.Get().Result.Models.Any())
+            var userResponse = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if (userResponse == null || !userResponse.Models.Any())
             {
                 return new List<UserWorkMetric>();
             }
-            int userId = userResponse.Get().Result.Models.FirstOrDefault().Id;  
-            var result = await _supabaseClient.Rpc("get_user_contribution_metrics", new Dictionary<string, object?>
+            int workspaceId = workspaceResponse.Models.FirstOrDefault().Id;
+            int userId = userResponse.Models.FirstOrDefault().Id;
+            var result = await _supabaseClient.Rpc("get_user_work_metrics", new Dictionary<string, object?>
                     {
-                        { "user_id", userId }
-                    });
+                { "p_user_id", userId },
+                { "p_workspace_id", workspaceId }
+            });
             var metrics = JsonConvert.DeserializeObject<List<UserWorkMetric>>(result.Content);
             return metrics;
         }

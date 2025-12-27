@@ -71,8 +71,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var workspace = await client.From<Workspace>().Filter("workspace_guid", Supabase.Postgrest.Constants.Operator.Equals, workspaceGuid).Single();
             if(workspace != null)
             {
-                var mapping = await client.From<ProjectWorkspaceMapping>().Filter("id", Supabase.Postgrest.Constants.Operator.Equals, workspace.Id).Get();
-                var projects = mapping.Models.Select(m => m.Project).ToList();
+                var mapping = await client.From<ProjectWorkspaceMapping>().Filter("workspace_id", Supabase.Postgrest.Constants.Operator.Equals, workspace.Id).Get();
+                var projects = mapping.Models.Where(m=>m.Project.ProjectStatus == (int)ProjectEnums.ProjectStatus.Ongoing).Select(m => m.Project).ToList();
                 return projects;
             }
             return new List<Project>();

@@ -168,7 +168,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return sprintDropdowns;
         }
 
-        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid)
+        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid,int memberId)
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
                 return false; // invalid ticketGuid
@@ -187,6 +187,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             var sprintId = sprintResponse.Models.First().SprintId;
             ticket.SprintId = sprintId;
+            ticket.AssignedTo = memberId;
             var response = await _supabaseClient.From<Ticket>().Update(ticket);
             return response.Models.Any();
         }
@@ -233,5 +234,24 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var sprintMetric =await _supabaseClient.From<SprintMetric>().Where(sprint => sprint.SprintId == sprintId).Get();
             return sprintMetric.Models.FirstOrDefault();
         }
+
+        public async Task<List<TeamMemberDropdownDto>> GetTeamMembers(string sprintGuid)
+        {
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            if (!sprint.Models.Any())
+            {
+                return null;
+            }
+            var sprintId = sprint.Models.FirstOrDefault().SprintId;
+            var workingTeam = sprint.Models.FirstOrDefault().WorkingTeamId;
+
+            var teamMembersResponse = await _supabaseClient.From<TeamMemberMapping>().Select("*, member:member_id(profile:profile_id(*))").Where(tm => tm.TeamId == workingTeam).Get();
+            var teamMembers = teamMembersResponse.Models.Select(tm => new TeamMemberDropdownDto
+            {
+                MemberId = tm.Member.Profile.Id,
+                MemberName = tm.Member.Profile.DisplayName
+            }).ToList();
+            return teamMembers; 
+        } 
     }
 }

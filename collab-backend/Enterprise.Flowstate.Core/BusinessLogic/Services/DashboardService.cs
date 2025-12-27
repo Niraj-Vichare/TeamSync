@@ -38,24 +38,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<List<WeeklyUserStatsDto>> GetUserMetric(string workspaceGuid, string userGuid)
         {
-            // Get all metrics for current + previous week from repository
+
             var userMetrics = await _omniRepository.DashboardRepository.GetUserMetric(workspaceGuid, userGuid);
 
             if (userMetrics == null || userMetrics.Count == 0)
                 return null;
 
-            // Sort by CreatedAt descending
-            var orderedMetrics = userMetrics.OrderByDescending(m => m.CreatedAt).ToList();
-
             List<WeeklyUserStatsDto> weeklyDto = new List<WeeklyUserStatsDto>();
-            foreach(var stat in orderedMetrics)
+            foreach(var stat in userMetrics)
             {
                 var dto = new WeeklyUserStatsDto
                 {
                     Id = stat.Id,
                     CreatedAt = stat.CreatedAt,
                     TotalHours = stat.TotalHours,
-                    TasksCompleted = stat.TasksCompleted,
+                    TicketsCompleted = stat.TasksCompleted,
                     ContributionPoint = stat.ContributionPoints,
                     Score = stat.Score,
                     UserId = stat.UserId,

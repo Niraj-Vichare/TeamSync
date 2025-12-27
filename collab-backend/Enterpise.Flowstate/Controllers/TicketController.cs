@@ -72,7 +72,7 @@ namespace Enterprise.Flowstate.Controllers
                     Message = ex.Message,
                 };
             }
-        }
+            }
 
         [HttpGet]
         [Route("users")]
