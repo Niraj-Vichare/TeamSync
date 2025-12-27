@@ -263,7 +263,10 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 return null;
             }
             var profileId = userResult.Models.FirstOrDefault().Id;
-            var result = await _supabaseClient.From<Task>().Select("*, project:project_id(*), sprint:sprint_id(*), assignedByUser:profile!assigned_by(*),assignedToUser:profile!assigned_to(*), ticket:ticket_id(*)").Where(tasks => tasks.AssignedTo == profileId && tasks.EndDate>=DateTime.Now && tasks.Status != (int)TaskEnums.TaskStatus.Complete).Get();
+            var result = await _supabaseClient.From<Task>().Select("*, project:project_id(*), sprint:sprint_id(*), assignedByUser:profile!assigned_by(*),assignedToUser:profile!assigned_to(*), ticket:ticket_id(*)").
+                Where(tasks => tasks.AssignedTo == profileId && tasks.Status != 1)
+                .Filter(t=>t.EndDate, Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, DateTime.Now.ToString("yyyy-MM-dd"))
+                .Get();
             return result.Models.ToList();
         }
     }
