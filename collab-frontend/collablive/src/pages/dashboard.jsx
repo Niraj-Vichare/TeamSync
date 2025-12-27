@@ -562,7 +562,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{dashboardCards.myPoints}</div>
+                  <div className="text-2xl font-bold">{dashboardCards.myPoints??0}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
                     3 completed today
@@ -578,7 +578,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <Timer className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{dashboardCards.totalHours}</div>
+                  <div className="text-2xl font-bold">{dashboardCards.totalHours??0}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <Clock className="w-3 h-3 mr-1 text-blue-500" />
                     1.5h remaining
@@ -594,7 +594,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{dashboardCards.ticketCompleted}</div>
+                  <div className="text-2xl font-bold">{dashboardCards.ticketCompleted??0}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
                     Tasks completed
@@ -610,7 +610,7 @@ const currentDate = new Date().toLocaleDateString("en-US", {
                   <Gauge className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">{dashboardCards.efficiency}</div>
+                  <div className="text-2xl font-bold text-green-500">{dashboardCards.efficiency??0}</div>
                   {/* <div className="flex items-center text-xs text-muted-foreground">
                     <ArrowUpRight className="w-3 h-3 mr-1 text-green-500" />
                     Above average
