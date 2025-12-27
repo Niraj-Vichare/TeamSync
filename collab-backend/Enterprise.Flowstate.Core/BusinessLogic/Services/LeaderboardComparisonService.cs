@@ -112,7 +112,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         prevMetric = new RankingCacheModel
                         {
                             TotalHours = dbMetric.TotalHours ?? 0,
-                            TotalTaskCompleted = dbMetric.TasksCompleted ?? 0,
+                            TotalTicketCompleted = dbMetric.TicketCompleted ?? 0,
                             ContributionPoint = dbMetric.ContributionPoints,
                             Score = dbMetric.Score,
                             Efficiency = dbMetric.Efficiency,
@@ -145,7 +145,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     CurrentMetrics = new WeeklyUserStatsDto
                     {
                         TotalHours = currentMetric.TotalHours,
-                        TicketsCompleted = currentMetric.TotalTaskCompleted,
+                        TicketsCompleted = currentMetric.TotalTicketCompleted,
                         Score = currentMetric.Score,
                         ContributionPoint = currentMetric.ContributionPoint,
                         Efficiency = currentMetric.Efficiency
@@ -155,7 +155,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     PreviousMetrics = prevMetric != null ? new WeeklyUserStatsDto
                     {
                         TotalHours = prevMetric.TotalHours,
-                        TicketsCompleted = prevMetric.TotalTaskCompleted,
+                        TicketsCompleted = prevMetric.TotalTicketCompleted,
                         Score = prevMetric.Score,
                         ContributionPoint = prevMetric.ContributionPoint,
                         Efficiency = prevMetric.Efficiency
@@ -271,14 +271,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (prevMetric != null)
             {
                 comparison.PointsChange = currentMetric.ContributionPoint - prevMetric.ContributionPoint;
-                comparison.TasksCompletedChange = currentMetric.TotalTaskCompleted - prevMetric.TotalTaskCompleted;
+                comparison.TasksCompletedChange = currentMetric.TotalTicketCompleted - prevMetric.TotalTicketCompleted;
                 comparison.HoursChange = currentMetric.TotalHours - prevMetric.TotalHours;
                 comparison.EfficiencyChange = currentMetric.Efficiency - prevMetric.Efficiency;
             }
             else
             {
                 comparison.PointsChange = currentMetric.ContributionPoint;
-                comparison.TasksCompletedChange = currentMetric.TotalTaskCompleted;
+                comparison.TasksCompletedChange = currentMetric.TotalTicketCompleted;
                 comparison.HoursChange = currentMetric.TotalHours;
                 comparison.EfficiencyChange = currentMetric.Efficiency;
             }

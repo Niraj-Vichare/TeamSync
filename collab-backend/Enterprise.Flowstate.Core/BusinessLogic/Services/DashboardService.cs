@@ -52,7 +52,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Id = stat.Id,
                     CreatedAt = stat.CreatedAt,
                     TotalHours = stat.TotalHours,
-                    TicketsCompleted = stat.TasksCompleted,
+                    TicketsCompleted = stat.TicketCompleted,
                     ContributionPoint = stat.ContributionPoints,
                     Score = stat.Score,
                     UserId = stat.UserId,

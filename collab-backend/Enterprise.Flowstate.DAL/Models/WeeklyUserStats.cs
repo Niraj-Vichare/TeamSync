@@ -20,8 +20,8 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("total_hours")]
         public int? TotalHours { get; set; }
 
-        [Column("tasks_completed")]
-        public int? TasksCompleted { get; set; }
+        [Column("ticket_completed")]
+        public int? TicketCompleted { get; set; }
 
         [Column("score")]
         public float? Score { get; set; }

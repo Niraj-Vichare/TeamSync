@@ -12,7 +12,7 @@ namespace Enterprise.Flowstate.DAL.Models
         public string UserName { get; set; }
         public string UserProfilePic { get; set; }
         public float? Score { get; set; }
-        public int TotalTaskCompleted { get;set; }
+        public int TotalTicketCompleted { get;set; }
         public int TotalHours { get; set; }
         public float Efficiency { get; set; }
         public int ContributionPoint { get; set; }

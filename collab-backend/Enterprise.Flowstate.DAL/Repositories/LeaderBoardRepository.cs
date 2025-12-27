@@ -112,7 +112,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                     ContributionPoint = stat.ContributionPoints,
                     Ranking = stat.RankPosition,
                     TotalHours = stat.TotalHours.HasValue ? stat.TotalHours.Value : 0,
-                    TotalTaskCompleted = stat.TasksCompleted.HasValue ? stat.TasksCompleted.Value : 0,
+                    TotalTicketCompleted = stat.TicketCompleted.HasValue ? stat.TicketCompleted.Value : 0,
                     UserId = profile.Id,
                     UserName = profile.DisplayName,
                     UserProfilePic = profile.ProfileImageUrl

@@ -269,8 +269,6 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-
-
         [HttpGet("{sprintGuid}")]
         public async Task<ApiResponseModel<object>> GetSprint([FromRoute] string sprintGuid,[FromQuery]string workspaceGuid)
         {

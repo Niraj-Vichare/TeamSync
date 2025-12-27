@@ -90,7 +90,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     ContributionPoint = 0,
                     Ranking = 0,
                     TotalHours = 0,
-                    TotalTaskCompleted = 0
+                    TotalTicketCompleted = 0
                 };
             }
 
@@ -149,16 +149,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 case (int)GeneralEnums.EventType.TicketCompleted:
                     rankingCacheModel.ContributionPoint += 10;
-                    rankingCacheModel.TotalTaskCompleted += 1;
+                    rankingCacheModel.TotalTicketCompleted += 1;
                     break;
                 case (int)GeneralEnums.EventType.SprintCompleted:
                     rankingCacheModel.ContributionPoint += 50;
                     break;
                 case (int)GeneralEnums.EventType.CheckIn:
                     rankingCacheModel.ContributionPoint += 1;
-                    break;
-                case (int)GeneralEnums.EventType.TaskCompleted:
-                    rankingCacheModel.TotalTaskCompleted += 1;
                     break;
                 default:
                     break;
