@@ -15,8 +15,8 @@ namespace Enterprise.Flowstate.DAL.DTOs
         [JsonProperty("project_id")]
         public int ProjectId { get; set; }
 
-        [JsonProperty("number_of_tasks")]
-        public int NumberOfTasks { get; set; }
+        [JsonProperty("number_of_tickets")]
+        public int NumberOfTickets { get; set; }
 
         [JsonProperty("number_of_sprints_included")]
         public int NumberOfSprintIncluded { get; set; }
@@ -24,8 +24,8 @@ namespace Enterprise.Flowstate.DAL.DTOs
         [JsonProperty("total_number_sprints")]
         public int TotalNumberSprints { get; set; }
 
-        [JsonProperty("number_of_tickets_assigned")]
-        public int NumberOfTicketsAssigned { get; set; }
+        [JsonProperty("number_of_tickets_completed")]
+        public int NumberOfTicketsCompleted { get; set; }
 
         [JsonProperty("total_ticket_points")]
         public int TotalTicketPoints { get; set; }

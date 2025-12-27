@@ -11,7 +11,7 @@ namespace Enterprise.Flowstate.DAL.DTO
         public long Id { get; set; }
         public DateTime CreatedAt { get; set; }
         public int? TotalHours { get; set; }
-        public int? TasksCompleted { get; set; }
+        public int? TicketsCompleted { get; set; }
         public float? Score { get; set; }
         public int ContributionPoint { get; set; }
         public int? UserId { get; set; }

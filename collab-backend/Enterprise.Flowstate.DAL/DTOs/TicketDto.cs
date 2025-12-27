@@ -20,7 +20,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public int? AssignedTo { get; set; }
         public string? AssignedToName { get; set; }
         public string? AssignedByName { get; set; }
-        public TicketStatus Status { get; set; }
+        public TicketStatus? Status { get; set; }
         public string? StatusInString => ((TicketStatus)Status).ToString();
         public string? ProjectName { get; set; }
         public int? ProjectId { get; set; }
@@ -34,7 +34,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public Guid? TicketGuid { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
-        public string StartDateInString => StartDate?.ToString("dd MM yyyy");
-        public string EndDateInString => EndDate?.ToString("dd MM yyyy");
+        public string? StartDateInString => StartDate?.ToString("dd MM yyyy");
+        public string? EndDateInString => EndDate?.ToString("dd MM yyyy");
     }
 }

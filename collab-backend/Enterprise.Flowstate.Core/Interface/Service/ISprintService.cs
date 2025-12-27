@@ -12,11 +12,12 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
     {
         Task<bool> CreateSprint(string userId, SprintDto sprintDto);
         Task<PaginationResponse<SprintDto>> GetSprints(string workspaceGuid, string searchTerm, string statusFilter, string projectFilter, int pageNumber, int pageSize);
-        Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid);
+        Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid, int teamId);
         Task<List<SprintDropdownModel>> GetSprintsByProjectId(string projectGuid);
         Task<SprintDto> GetSprint(string workspaceGuid, string sprintGuid);
         Task<List<EventsLog>> GetSprintActivities(string sprintGuid,int pagNumber,int pageSize);
         Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
         Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid);
+        Task<List<TeamMemberDropdownDto>> GetSprintTeamMembers(string sprintGuid);
     }
 }

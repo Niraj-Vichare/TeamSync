@@ -14,12 +14,13 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<Sprint>> GetSprintsAsync(string workspaceId,string searchTerm,string status,string project,int pageNumber,int pageSize);
 
         Task<int> GetSprintsCountAsync(string workspaceId, string searchTerm, string status, string project);
-        Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid);
+        Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid,int teamId);
         Task<List<SprintDropdownModel>> GetSprintsByProjectId(int projectId);
         Task<Sprint> GetSprint(string sprintGuid);
         Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize);
         Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
         Task<SprintMetric> GetSprintBreakdown(string sprintGuid);
+        Task<List<TeamMemberDropdownDto>> GetTeamMembers(string sprintGuid);
 
     }
 }
