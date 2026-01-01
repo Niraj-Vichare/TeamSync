@@ -39,6 +39,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
 
             var result = await _omniRepository.SprintRepository.CreateSprint(userId, sprint);
+
+            if (result)
+            {
+                EventsLog eventLog = new EventsLog
+                {
+                    SprintGuid = sprint.SprintGuid,
+                    ProjectGuid = sprint.Project.ProjectGuid,
+                    EventDescription = "Sprint.Created",
+                    CreatedAt = DateTime.UtcNow,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    UserGuid = userId,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+            }
             return result;
         }
         public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid,int teamId)
@@ -148,10 +162,63 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return _omniRepository.SprintRepository.GetSprintActivities(sprintGuid, pagNumber, pageSize);
         }
 
-        public Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid)
+        public async Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid)
         {
-            return _omniRepository.SprintRepository.GetSprintProgress(sprintGuid);
+            var tickets = await _omniRepository.TicketRepository.GetSprintTickets(sprintGuid);
+            var sprint = await _omniRepository.SprintRepository.GetSprint(sprintGuid);
+
+            if (tickets == null || sprint == null || !tickets.Any())
+            {
+                return new List<SprintProgressModel>();
+            }
+
+            var totalTickets = tickets.Count;
+            var progressList = new List<SprintProgressModel>();
+
+            // Add sprint start date with 0 completed
+            progressList.Add(new SprintProgressModel
+            {
+                Date = sprint.StartDate.Value.Date,
+                Completed = 0,
+                Pending = totalTickets
+            });
+
+            // Group tickets by completion date and order them
+            var ticketsByDate = tickets
+                .Where(t => t.EndDate.HasValue && t.EndDate.Value >= sprint.StartDate)
+                .GroupBy(t => t.EndDate.Value.Date)
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            int cumulativeCompleted = 0;
+
+            foreach (var group in ticketsByDate)
+            {
+                cumulativeCompleted += group.Count();
+
+                progressList.Add(new SprintProgressModel
+                {
+                    Date = group.Key,
+                    Completed = cumulativeCompleted,
+                    Pending = totalTickets - cumulativeCompleted
+                });
+            }
+
+            // Add sprint end date if it's not already the last entry
+            var lastEntry = progressList.Last();
+            if (lastEntry.Date.Date != sprint.EndDate)
+            {
+                progressList.Add(new SprintProgressModel
+                {
+                    Date = sprint.EndDate.Value,
+                    Completed = cumulativeCompleted,
+                    Pending = totalTickets - cumulativeCompleted
+                });
+            }
+
+            return progressList;
         }
+
 
         public async Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid)
         {

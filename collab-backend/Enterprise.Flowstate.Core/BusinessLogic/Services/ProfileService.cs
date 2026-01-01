@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Enterprise.Flowstate.DAL.Models;
+using Enterprise.Flowstate.DAL.DTO;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -87,5 +88,23 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
 
+        public async System.Threading.Tasks.Task UpertWeeklyUserMetric(WeeklyUserStatsDto weeklyUserStatsDto)
+        {
+            WeeklyUserStats weeklyUserStats = new WeeklyUserStats
+            {
+                StartPeriod = weeklyUserStatsDto.StartPeriod,
+                EndPeriod = weeklyUserStatsDto.EndPeriod,
+                ContributionPoints = weeklyUserStatsDto.ContributionPoint,
+                CreatedAt = weeklyUserStatsDto.CreatedAt,
+                Efficiency = weeklyUserStatsDto.Efficiency,
+                RankPosition = weeklyUserStatsDto.RankPosition,
+                Score = weeklyUserStatsDto.Score,
+                TicketCompleted = weeklyUserStatsDto.TicketsCompleted,
+                UserId = weeklyUserStatsDto.UserId,
+                TotalHours = weeklyUserStatsDto.TotalHours,
+                WorkspaceId = weeklyUserStatsDto.WorkspaceId
+            };
+            var result = _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
+        }
     }
 }

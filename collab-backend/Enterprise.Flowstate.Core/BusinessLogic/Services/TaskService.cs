@@ -226,16 +226,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 if(taskModel.Status == TaskEnums.TaskStatus.Complete)
                 {
-                    EventsLogDto eventDto = new EventsLogDto
+                    EventsLog eventDto = new EventsLog
                     {
                         EventTypeId = (int)GeneralEnums.EventType.TaskCompleted,
                         EventDescription = userId,
-                        WorkspaceId = workspaceGuid,
-                        UserId = userId,
-                        SprintId = taskModel.SprintId,
-                        TicketId = task.TicketId,
+                        WorkspaceGuid = workspaceGuid,
+                        UserGuid = userId,
+                        TaskGuid = taskGuid,
                         CreatedAt = DateTime.UtcNow,
-                        TaskId = taskModel.Id   
+  
                     };
                     _eventPublisher.PublishAsync(eventDto,0);
                 }

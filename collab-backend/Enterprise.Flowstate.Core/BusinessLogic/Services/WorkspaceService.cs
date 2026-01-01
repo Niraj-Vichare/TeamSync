@@ -1,6 +1,7 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Interfaces;
+using Enterprise.Flowstate.DAL.Models;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -64,6 +65,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             var response = await _omniRepository.WorkspaceRepository.HasWorkspace(email);
             return response;
+        }
+
+        public async Task<List<int>> GetAllActiveWorkspaceIds()
+        {
+            var response = await _omniRepository.WorkspaceRepository.GetAllActiveWorkspaceIds();
+            return response;
+        }
+
+        public async Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId)
+        {
+            return await _omniRepository.WorkspaceRepository.GetAllActiveWorkspaceUser(workspaceId);
         }
     }
 }

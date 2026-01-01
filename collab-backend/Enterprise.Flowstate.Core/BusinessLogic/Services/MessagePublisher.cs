@@ -1,6 +1,7 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Constants;
 using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
@@ -41,7 +42,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             _channelSemaphore = new SemaphoreSlim(_channelPoolSize, _channelPoolSize);
         }
 
-        private async Task EnsureInitializedAsync()
+        private async System.Threading.Tasks.Task EnsureInitializedAsync()
         {
             if (_isInitialized) return;
 
@@ -85,7 +86,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        public async Task<bool> PublishAsync(EventsLogDto eventLogs,int initalizeRetryCount)
+        public async Task<bool> PublishAsync(EventsLog eventLogs,int initalizeRetryCount)
         {
             await EnsureInitializedAsync();
 
@@ -127,7 +128,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 //    return false;
                 //}
 
-                _logger.LogDebug("Message published for UserId={UserId}", eventLogs?.UserId);
+                _logger.LogDebug("Message published for UserId={UserId}", eventLogs?.UserGuid);
                 return true;
             }
             catch (Exception ex)

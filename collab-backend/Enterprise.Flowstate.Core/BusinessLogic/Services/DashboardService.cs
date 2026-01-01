@@ -7,6 +7,7 @@ using Enterprise.Flowstate.DAL.Models;
 using Supabase.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,9 +18,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     public class DashboardService : IDashboardService
     {
         private IOmniRepository _omniRepository;
-        public DashboardService(IOmniRepository omniRepository)
+        private IEventPublisher _eventPublisher;
+        public DashboardService(IOmniRepository omniRepository,IEventPublisher eventPublisher)
         {
             _omniRepository = omniRepository;
+            _eventPublisher = eventPublisher;
         }
         public async Task<OrganizationMetricDto> GetOrganizationMetric(string workspaceGuid)
         {
@@ -65,7 +68,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return weeklyDto;
         }
 
-
         public async Task<Dictionary<string, double>> GetWeeklyDailyLoggingMetrics(string workspaceGuid, string userGuid)
             {
             var dailyLogging = await _omniRepository.DashboardRepository
@@ -105,17 +107,58 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             var result = await _omniRepository.DashboardRepository.GetTodayLogging(workspaceId, userId);
             return result;
         }
+
+        #region Clock In/Out    
         public async Task<ClockActionResult> ClockOut(string workspaceId, string userId,bool isAutomatic)
         {
             var result = await _omniRepository.DashboardRepository.ClockOut(workspaceId, userId, isAutomatic);
-            return result;
-        }
-        public async Task<ClockActionResult> ClockIn(string workspaceGuid, string userId)
-        {
-            var result = await _omniRepository.DashboardRepository.ClockIn(workspaceGuid, userId);
-            return result;
-        }
+            if (result == ClockActionResult.Success)
+            {
 
+                EventsLog eventLog = new EventsLog
+                {
+                    EventTypeId = (int)EventType.CheckOut,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "User Clock out",
+                    UserGuid = userId,
+                    WorkspaceGuid = workspaceId,
+                    EventGuid = Guid.NewGuid().ToString(),
+                };
+
+                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+
+                string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
+                byte[] body = Encoding.UTF8.GetBytes(json);
+                await _eventPublisher.PublishAsync(eventLog, 0);
+            }
+            return result;
+        }
+        public async Task<ClockActionResult> ClockIn(string workspaceGuid, string userGuid)
+        {
+            ClockActionResult result = await _omniRepository.DashboardRepository.ClockIn(workspaceGuid, userGuid);
+            if (result == ClockActionResult.Success)
+            {
+
+                EventsLog eventLog = new EventsLog
+                {
+                    EventTypeId = (int)EventType.CheckIn,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "User Clock in",
+                    UserGuid = userGuid,
+                    WorkspaceGuid = workspaceGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                };
+                
+                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+
+                string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
+                byte[] body = Encoding.UTF8.GetBytes(json);
+                await _eventPublisher.PublishAsync(eventLog,0);
+            }
+            return result;
+        }
+        #endregion
+        
         public async Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid)
         {
             var userWorkMetric = await _omniRepository.DashboardRepository.GetUserWorkMetric(workspaceGuid, userGuid);

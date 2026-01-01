@@ -23,6 +23,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task<bool> DeleteTicket(string ticketId)
         {
             bool isDeleted = await _omniRepository.TicketRepository.DeleteTicket(ticketId);
+            if (isDeleted)
+            {
+                EventsLog eventLog = new EventsLog
+                {
+                    EventTypeId = (int)GeneralEnums.EventType.TicketDeleted,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Ticket is deleted",
+                    TicketGuid = ticketId,
+                    EventGuid = Guid.NewGuid().ToString(),
+                };
+
+                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+
+            }
             return isDeleted;
         }
 
@@ -45,6 +59,42 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 CreatedAt = DateTime.UtcNow
             };
             bool isEdited = await _omniRepository.TicketRepository.EditTicket(ticketId, userId, ticket);
+            if (isEdited)
+            {
+                EventsLog eventLog = new EventsLog();
+
+                if (ticketDto.Status == TicketEnums.TicketStatus.Closed)
+                {
+
+                    eventLog = new EventsLog
+                    {
+                        EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                        CreatedAt = DateTime.UtcNow,
+                        EventDescription = "Ticket is closed",
+                        TicketGuid = ticketId,
+                        UserGuid = userId,
+                        EventGuid = Guid.NewGuid().ToString(),
+                    };
+
+                    string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
+                    byte[] body = Encoding.UTF8.GetBytes(json);
+                    await _eventPublisher.PublishAsync(eventLog, 0);
+                }
+                else
+                {
+                    eventLog = new EventsLog
+                    {
+                        EventTypeId = (int)GeneralEnums.EventType.TicketUpdated,
+                        CreatedAt = DateTime.UtcNow,
+                        EventDescription = "Ticket is updated",
+                        TicketGuid = ticketId,
+                        UserGuid = userId,
+                        EventGuid = Guid.NewGuid().ToString(),
+                    };
+                }
+
+                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+            }
             return isEdited;
         }
 
@@ -136,9 +186,23 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
 
             bool isCreated = await _omniRepository.TicketRepository.CreateTicket(ticket);
+
+            if (isCreated)
+            {
+                EventsLog eventLog = new EventsLog()
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventTypeId = (int)GeneralEnums.EventType.TicketCreated,
+                    EventDescription = "Ticket is created.",
+                    TicketGuid = ticket.TicketGuid.ToString(),
+                    UserGuid = userId,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+            }
             return isCreated;
         }
-
+         
         public async Task<List<string>> GetTicketStep(string ticketGuid)
         {
             var result = await _omniRepository.TicketRepository.GetTicketSteps(ticketGuid);
@@ -316,13 +380,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (updatedTicket!=null)
             {
                 // Make the event model
-                EventsLogDto eventLogs = new EventsLogDto
+                EventsLog eventLogs = new EventsLog
                 {
-                    TicketId = ticketId,
+                    TicketGuid = updatedTicket.TicketGuid.ToString(),
                     EventDescription = "Ticket is resolved by user",
                     //UserId = updatedTicket.AssignedTo,
-                    SprintId = null,
-                    WorkspaceId = workspaceGuid,
+                    SprintGuid = null,
+                    WorkspaceGuid = workspaceGuid,
                     EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
                     CreatedAt = DateTime.UtcNow,
                 };
@@ -330,7 +394,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 // Publish inside the rabbitmq message broker.
                 string json = System.Text.Json.JsonSerializer.Serialize(eventLogs);
                 byte[] body = Encoding.UTF8.GetBytes(json);
-                //_eventPublisher.PublishAsync(body);
+                _eventPublisher.PublishAsync(eventLogs,0);
 
                 // Save the event log to database
             }
