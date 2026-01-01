@@ -15,5 +15,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> DeleteWorkspace(int workspaceId);
         Task<List<WorkspaceDto>> GetAllWorkspaces(string userClaimId);
         Task<bool> HasWorkspace(string email);
+        Task<List<int>> GetAllActiveWorkspaceIds();
+        Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId);
     }
 }

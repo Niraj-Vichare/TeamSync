@@ -18,7 +18,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<SprintDropdownModel>> GetSprintsByProjectId(int projectId);
         Task<Sprint> GetSprint(string sprintGuid);
         Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize);
-        Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
         Task<SprintMetric> GetSprintBreakdown(string sprintGuid);
         Task<List<TeamMemberDropdownDto>> GetTeamMembers(string sprintGuid);
 

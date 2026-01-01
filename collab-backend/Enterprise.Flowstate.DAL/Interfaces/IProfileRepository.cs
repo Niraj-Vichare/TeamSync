@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.DAL.Interfaces
 {
@@ -18,5 +19,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<WorkspaceUserMapping>> GetWorkspaceUsers(string workspaceGuid);
         Task<bool> InializeUserConfiguration(int userId, DateTime startDate, DateTime endDate);
         Task<bool> UpdateUserConfiguration(string userGuid,string workspaceGuid,int memberCount);
+        Task AddEventLog(EventsLog eventsLog);
+        Task<bool> UpertWeeklyUserMetric(WeeklyUserStats weeklyUserStats);
     }
 }

@@ -18,5 +18,7 @@ namespace Enterprise.Flowstate.DAL.DTO
         public int? WorkspaceId { get; set; }
         public float Efficiency { get; set; }
         public int RankPosition { get; set; }
+        public DateTime? StartPeriod { get; set; }
+        public DateTime? EndPeriod { get; set; }    
     }
 }

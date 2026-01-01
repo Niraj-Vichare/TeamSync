@@ -66,6 +66,7 @@ namespace Enterprise.Flowstate.DAL.Enums
             AssignedUserToTask,
 
             TicketCreated,
+            TicketUpdated,
             TicketCompleted,
             TicketDeleted,
             TicketClosed,
@@ -79,6 +80,7 @@ namespace Enterprise.Flowstate.DAL.Enums
 
             CreateWorkspace,
             DeleteWorkspace,
+
             
 
         }

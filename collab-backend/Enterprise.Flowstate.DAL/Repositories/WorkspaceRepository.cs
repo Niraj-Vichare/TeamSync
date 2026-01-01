@@ -76,7 +76,17 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return workspace.Models.FirstOrDefault().Id;
         }
 
-        
+        public async Task<List<int>> GetAllActiveWorkspaceIds()
+        {
+            var workspaces = await _supabaseClient.From<Workspace>().Get();
+            List<int> workspacesIds = workspaces.Models.Select(w => w.Id).ToList();
+            return workspacesIds;
+        }
+        public async Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId)
+        {
+            var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping => mapping.WorkspaceId == workspaceId).Get();
+            return workspaces.Models.ToList();
+        }
         public async Task<int> GetWorkspaceMemberCount(string workspaceId)
         {
             var workspaceGuid = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceId).Get();

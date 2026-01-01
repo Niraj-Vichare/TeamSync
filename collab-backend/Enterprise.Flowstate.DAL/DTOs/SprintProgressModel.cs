@@ -11,5 +11,6 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public DateTime Date { get;set; }
         public int Completed { get; set; }
         public int Pending { get; set; }
+        public string DateInString => Date.ToString("yyyy-MM-dd");
     }
 }

@@ -19,19 +19,20 @@ namespace Enterprise.Flowstate.DAL.Models
         public string? EventDescription { get; set; }
 
         [Column("user_id")]
-        public int? UserId { get; set; }
+        public string? UserGuid { get; set; }
         [Column("workspace_id")]
-        public string? WorkspaceId { get; set; }
+        public string? WorkspaceGuid { get; set; }
         [Column("sprint_id")]
-        public int? SprintId
+        public string? SprintGuid
         {
             get; set;
         }
+        public string? ProjectGuid { get; set; }    
         [Column("ticket_id")]
-        public int? TicketId { get; set; }
+        public string? TicketGuid { get; set; }
 
         [Column("task_id")]
-        public int? TaskId { get; set; }
+        public string? TaskGuid { get; set; }
         [Column("metadata")]
         public string Metadata { get; set; }
         [Column("event_guid")]

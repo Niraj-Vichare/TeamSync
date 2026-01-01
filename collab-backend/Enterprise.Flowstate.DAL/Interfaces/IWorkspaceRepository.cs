@@ -14,5 +14,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> HasWorkspace(string email);
         Task<int> GetWorkspaceId(string workspaceGuid);
         Task<int> GetWorkspaceMemberCount(string workspaceId);
+        Task<List<int>> GetAllActiveWorkspaceIds();
+        Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId);
     }
 }

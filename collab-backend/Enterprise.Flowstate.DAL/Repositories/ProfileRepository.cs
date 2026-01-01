@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.DAL.Interfaces
 {
@@ -125,8 +126,28 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             return true;
         }
 
+        public async Task AddEventLog(EventsLog eventsLog)
+        {
+            if(eventsLog == null)
+            {
+                return;
+            }
+            await _supabaseClient.From<EventsLog>().Insert(eventsLog);
+        }
 
-
+        public async Task<bool> UpertWeeklyUserMetric(WeeklyUserStats weeklyUserStats)
+        {
+            var isExist = await _supabaseClient.From<WeeklyUserStats>().Where(userStatus => userStatus.StartPeriod == weeklyUserStats.StartPeriod && userStatus.EndPeriod == weeklyUserStats.EndPeriod).Get();
+            if(isExist.Models.Any())
+            {
+                _supabaseClient.From<WeeklyUserStats>().Update(weeklyUserStats);
+            }
+            else
+            {
+                _supabaseClient.From<WeeklyUserStats>().Insert(weeklyUserStats);
+            }
+            return true;
+        }
         public async Task<bool> UpdateUserConfiguration(string userGuid, string workspaceGuid, int memberCount)
         {
             var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();

@@ -212,16 +212,10 @@ namespace Enterprise.Flowstate.DAL.Repositories
             {
                 return null;
             }
-            var sprintId = sprint.Models.FirstOrDefault().SprintId;
-            var events =await _supabaseClient.From<EventsLog>().Where(eventLogs=>eventLogs.SprintId == sprintId).Get();
+            var events =await _supabaseClient.From<EventsLog>().Where(eventLogs=>eventLogs.SprintGuid == sprintGuid).Get();
             return events.Models.ToList();
         }
 
-        // When task compelete event happen in the week
-        public async Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid)
-        {
-            return null;
-        }
 
         public async Task<SprintMetric> GetSprintBreakdown(string sprintGuid)
         {

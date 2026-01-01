@@ -1,12 +1,6 @@
-﻿using Enterprise.Flowstate.DAL.DTOs;
-using Enterprise.Flowstate.DAL.Models;
+﻿using Enterprise.Flowstate.DAL.DTO;
+using Enterprise.Flowstate.DAL.DTOs;
 using Supabase.Gotrue;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IProfileService
@@ -15,5 +9,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<string> GetCurrentWorkspaceId(string userGuid);
         Task<ProfileDto> GetProfile(string userGuid);
         Task<List<ProfileDto>> GetWorkspaceUsers(string workspaceGuid);
+        System.Threading.Tasks.Task UpertWeeklyUserMetric(WeeklyUserStatsDto weeklyUserStatsDto);
     }
 }
