@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace Enterprise.Flowstate.Controllers
 {
     [Route("sprints")]
-    public class SprintController : AuthBaseController
+    public class SprintController : OwnerAuthorizedControllerBase
     {
         private IOmniService _omniService;
         public SprintController(IOmniService omniService)

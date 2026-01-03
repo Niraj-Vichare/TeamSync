@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("workspace")]
-    public class WorkspaceController : AuthBaseController
+    public class WorkspaceController : OwnerAuthorizedControllerBase
     {
         private readonly IOmniService _omniService;
         public WorkspaceController(IOmniService omniService)

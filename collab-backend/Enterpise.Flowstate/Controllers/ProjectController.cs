@@ -10,7 +10,7 @@ using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("projects")]
-    public class ProjectController : AuthBaseController
+    public class ProjectController : OwnerAuthorizedControllerBase
     {
         private readonly IOmniService _omniService;
 

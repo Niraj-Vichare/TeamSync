@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("tasks")]
-    public class TaskController : AuthBaseController
+    public class TaskController : MemberAuthorizedControllerBase
     {
         private IOmniService _omniService;
         public TaskController(IOmniService omniService)
