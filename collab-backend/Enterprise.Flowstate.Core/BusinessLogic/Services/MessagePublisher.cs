@@ -90,7 +90,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             await EnsureInitializedAsync();
 
-            IChannel channel = null;
+            IChannel? channel = null;
             try
             {
                 await _channelSemaphore.WaitAsync();
@@ -121,12 +121,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     basicProperties: properties,
                     body: body);
 
-                //var confirmed = await channel.WaitForConfirmsAsync(TimeSpan.FromSeconds(5));
-                //if (!confirmed)
-                //{
-                //    _logger.LogError("Message not confirmed by broker");
-                //    return false;
-                //}
+                
 
                 _logger.LogDebug("Message published for UserId={UserId}", eventLogs?.UserGuid);
                 return true;

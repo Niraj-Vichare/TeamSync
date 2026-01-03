@@ -201,8 +201,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     ProjectGuid = projectGuid,
                     Metadata = "Project marked as completed."
                 };
-                _omniRepository.ProfileRepository.AddEventLog(eventLogs);
-                _eventPublisher.PublishAsync(eventLogs, 0);
+                await _omniRepository.ProfileRepository.AddEventLog(eventLogs);
+                await _eventPublisher.PublishAsync(eventLogs, 0);
             }
             return isUpdated;
         }

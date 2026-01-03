@@ -422,7 +422,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 // Publish inside the rabbitmq message broker.
                 string json = System.Text.Json.JsonSerializer.Serialize(eventLogs);
                 byte[] body = Encoding.UTF8.GetBytes(json);
-                _eventPublisher.PublishAsync(eventLogs,0);
+                await _eventPublisher.PublishAsync(eventLogs,0);
 
                 // Save the event log to database
             }

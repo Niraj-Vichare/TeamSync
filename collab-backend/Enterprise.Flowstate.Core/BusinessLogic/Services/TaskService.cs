@@ -263,7 +263,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         CreatedAt = DateTime.UtcNow,
   
                     };
-                    _eventPublisher.PublishAsync(eventDto,0);
+                    await _eventPublisher.PublishAsync(eventDto,0);
                 }
             }
             return isUpdated;
@@ -286,7 +286,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     CreatedAt = DateTime.UtcNow,
 
                 };
-                _eventPublisher.PublishAsync(eventDto, 0);
+                await _eventPublisher.PublishAsync(eventDto, 0);
             }
             return isUpdated;
         }
