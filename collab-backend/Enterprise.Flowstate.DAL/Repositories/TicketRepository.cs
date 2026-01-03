@@ -88,7 +88,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
         public async Task<List<TicketDropdownModel>> GetTicketsBySprintId(int sprintId)
         {
-            var ticketResponse = await _supabaseClient.From<Ticket>().Where(t=> t.SprintId == sprintId).Get();
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(t => t.SprintId == sprintId).Get();
             if (ticketResponse == null)
             {
                 return new List<TicketDropdownModel>();
@@ -103,13 +103,13 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
         public async Task<List<Ticket>> GetUserTickets(string workspaceGuid, string userGuid)
         {
-            var userResponse = await _supabaseClient.From<Profile>().Where(user=>user.Guid == userGuid).Get();
+            var userResponse = await _supabaseClient.From<Profile>().Where(user => user.Guid == userGuid).Get();
             if (userResponse == null)
                 return new List<Ticket>();
             var user = userResponse.Models.FirstOrDefault();
             int userId = user.Id;
             var ticketResponse = await _supabaseClient.From<Ticket>().Select("*,project:project_id(project_name),sprint:sprint_id(title),assignedByUser:profile!reported_by(display_name),assignedToUser:profile!assigned_to(display_name)").Where(ticket => ticket.AssignedTo == userId).Get();
-            if(ticketResponse == null)
+            if (ticketResponse == null)
             {
                 return new List<Ticket>();
             }
@@ -249,7 +249,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         public async Task<bool> UpdateTicketSteps(string ticketGuid, string steps)
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
-                return false; 
+                return false;
             var response = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Get();
 
             var ticket = response.Models.FirstOrDefault();
@@ -282,7 +282,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
                 return null; // invalid ticketGuid
-            var ticketResponse = await _supabaseClient.From<Ticket>().Where(task=>task.TicketGuid == guid).Get();
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(task => task.TicketGuid == guid).Get();
             if (!ticketResponse.Models.Any())
             {
                 return null;
@@ -301,7 +301,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return ticket.Models.FirstOrDefault();
         }
 
-        public async Task<Ticket?> UpdateTicketStatus(string workspaceGuid,int ticketId, int status)
+        public async Task<Ticket?> UpdateTicketStatus(string workspaceGuid, int ticketId, int status)
         {
             var workspaceResult = await _supabaseClient
                 .From<Workspace>()
@@ -314,6 +314,19 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var workspace = workspaceResult.Models.FirstOrDefault();
             var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketId == ticketId).Update(new Ticket { StatusId = status });
             return result.Models.FirstOrDefault();
+        }
+
+        public async Task<bool> UpdateTicketPriority(string ticketGuid, int priority)
+        {
+            Enum.TryParse(ticketGuid, out Guid guid);
+            var ticket = await _supabaseClient.From<Ticket>().Where(tic => tic.TicketGuid == guid).Limit(1).Get();
+            if(ticket == null)
+            {
+                return false;
+            }
+            int ticketId = ticket.Models.First().TicketId;
+            var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketId == ticketId).Update(new Ticket { PriorityId = priority });
+            return true;
         }
     }
 }

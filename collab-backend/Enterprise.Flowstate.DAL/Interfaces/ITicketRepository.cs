@@ -24,6 +24,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<Ticket>> GetSprintTickets(string sprintGuid);
         Task<List<Task>> GetTicketTask(string ticketGuid);
         Task<Ticket?> UpdateTicketStatus(string workspaceGuid, int ticketId, int status);
+        Task<bool> UpdateTicketPriority(string ticketGuid, int priority);
 
     }
 

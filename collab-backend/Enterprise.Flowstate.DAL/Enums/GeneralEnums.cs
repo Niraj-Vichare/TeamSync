@@ -50,6 +50,7 @@ namespace Enterprise.Flowstate.DAL.Enums
             ProjectCreated =1,
             ProjectCompleted,
             ProjectDeleted,
+            ProjectUpdated,
             ProjectClosed,
             ProjectPaused,
             SprintCreated,
@@ -62,11 +63,13 @@ namespace Enterprise.Flowstate.DAL.Enums
             TaskCompleted,
             TaskDeleted,
             TaskClosed,
+            TaskUpdated,
             TaskPaused,
             AssignedUserToTask,
 
             TicketCreated,
             TicketUpdated,
+            TicketIncludeInSprint,
             TicketCompleted,
             TicketDeleted,
             TicketClosed,
@@ -78,6 +81,10 @@ namespace Enterprise.Flowstate.DAL.Enums
             CheckIn,
             CheckOut,
 
+            AddCustomTeam,
+            RemoveCustomTeamMember,
+            UpdateCustomTeam,
+            
             CreateWorkspace,
             DeleteWorkspace,
 
