@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Supabase.Interfaces;
+using Enterprise.Flowstate.DAL.Enums;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -58,6 +59,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
             
             var result = await _omniRepository.TeamRepository.AddMember(workspaceGuid, members);
+            if (result)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Team.MemberAdded",
+                    EventTypeId = (int)GeneralEnums.EventType.AddMember,
+                    WorkspaceGuid = workspaceGuid,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+
+            }
             return result;
         }
 
@@ -174,6 +188,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     };
                     await _omniRepository.TeamRepository.AddTeamMemberMapping(mapping);
                 }
+
+                EventsLog eventsLog = new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Team.MemberAdded",
+                    EventTypeId = (int)GeneralEnums.EventType.AddCustomTeam,
+                    WorkspaceGuid = team.WorkspaceGuid,
+                };
+
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
                 return true;
             }
             return false;
@@ -187,13 +212,33 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 MemberId = teamMapping.MemberId,
                 IsLeader = teamMapping.IsLeader,
             };
-            _omniRepository.TeamRepository.AddTeamMemberMapping(mapping);
+            await _omniRepository.TeamRepository.AddTeamMemberMapping(mapping);
+            EventsLog eventsLog = new EventsLog
+            {
+                EventGuid = Guid.NewGuid().ToString(),
+                CreatedAt = DateTime.UtcNow,
+                EventDescription = "Team.Update",
+                EventTypeId = (int)GeneralEnums.EventType.UpdateCustomTeam,
+            };
+            await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
             return true;
         }
 
         public async Task<bool> RemoveTeam(int teamId)
         {
-            return await _omniRepository.TeamRepository.RemoveTeam(teamId);
+            var isDeleted = await _omniRepository.TeamRepository.RemoveTeam(teamId);
+            if (isDeleted)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Team.Update",
+                    EventTypeId = (int)GeneralEnums.EventType.UpdateCustomTeam,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+            }
+            return isDeleted;
         }
         public async System.Threading.Tasks.Task RemoveTeamMember(TeamMemberMapping teamMapping)
         {
@@ -203,13 +248,38 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 MemberId = teamMapping.MemberId,
                 IsLeader = teamMapping.IsLeader,
             };
-            await _omniRepository.TeamRepository.RemoveTeamMemberMapping(mapping);
+            var isRemoved = await _omniRepository.TeamRepository.RemoveTeamMemberMapping(mapping);
+            if (isRemoved)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Team.Member.Remove",
+                    EventTypeId = (int)GeneralEnums.EventType.RemoveCustomTeamMember,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+            }
 
         }
 
         public async Task<bool> DeleteMember(string workspaceGuid, int memberId)
         {
-            return await _omniRepository.TeamRepository.DeleteMember(workspaceGuid, memberId);
+            bool isDeleted = await _omniRepository.TeamRepository.DeleteMember(workspaceGuid, memberId);
+            if (isDeleted)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Member.Remove",
+                    EventTypeId = (int)GeneralEnums.EventType.RemoveMember,
+                    WorkspaceGuid = workspaceGuid,
+                    Metadata = $"Deleted member id: ${memberId}"
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+            }
+            return isDeleted;
         }
 
         public async Task<bool> UpdateTeam(string workspaceGuid,TeamDto teamDto)
@@ -225,6 +295,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
 
             var isEdited = await _omniRepository.TeamRepository.EditTeam(team);
+            if (isEdited)
+            {
+
+                EventsLog eventsLog = new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Team.Updated",
+                    EventTypeId = (int)GeneralEnums.EventType.UpdateCustomTeam,
+                    WorkspaceGuid = workspaceGuid,
+                    Metadata = $"Updated Team with Id: ${team.TeamId}"
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+
+            }
             return isEdited;
         }
     }

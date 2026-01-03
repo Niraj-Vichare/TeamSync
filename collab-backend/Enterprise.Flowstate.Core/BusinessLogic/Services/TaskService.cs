@@ -25,6 +25,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             task.AssignedBy = await _omniRepository.ProfileRepository.GetProfileId(userGuid);
             task.AssignedTo = task.AssignedBy;
+            var taskGuid = Guid.NewGuid();
             Task taskDB = new Task()
             {
                 AssignedBy = task.AssignedBy,
@@ -37,17 +38,43 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 TicketId = task.TicketId,
                 StartDate = task.StartDate,
                 Title = task.Title,
-                TaskGuid = Guid.NewGuid(),
+                TaskGuid = taskGuid,
                 Priority = (int)task.Priority,
                 Status = (int)task.Status,
             };
             bool isCreated =await _omniRepository.TaskRepository.CreateTask(taskDB);
+            if (isCreated)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    EventDescription = "Task.Created",
+                    EventTypeId = (int)GeneralEnums.EventType.TaskCreated,
+                    UserGuid = userGuid,
+                    TaskGuid = taskGuid.ToString(),
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+            }
             return isCreated;
         }
 
         public async Task<bool> DeleteTask(string taskId)
         {
-            return await _omniRepository.TaskRepository.DeleteTask(taskId);
+            var isDeleted = await _omniRepository.TaskRepository.DeleteTask(taskId);
+            if (isDeleted)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    EventDescription = "Task.Deleted",
+                    EventTypeId = (int)GeneralEnums.EventType.TaskDeleted,
+                    TaskGuid = taskId.ToString(),
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+            }
+            return isDeleted;
         }
 
         public Task<TaskDto> GetTaskById(int taskId)
@@ -247,6 +274,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             TaskEnums.TaskStatus statusEnum = Enum.Parse<TaskEnums.TaskStatus>(taskStatus);
             int taskStatusInInt = (int)statusEnum;
             bool isUpdated = await _omniRepository.TaskRepository.UpdateTaskStatus(userGuid, taskId, taskStatusInInt);
+            if (isUpdated)
+            {
+                EventsLog eventDto = new EventsLog
+                {
+                    EventTypeId = (int)GeneralEnums.EventType.TaskUpdated,
+                    EventDescription = $"Task status updated to {taskStatus}",
+                    WorkspaceGuid = workspaceGuid,
+                    UserGuid = userGuid,
+                    TaskGuid = taskId.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+
+                };
+                _eventPublisher.PublishAsync(eventDto, 0);
+            }
             return isUpdated;
         }
 

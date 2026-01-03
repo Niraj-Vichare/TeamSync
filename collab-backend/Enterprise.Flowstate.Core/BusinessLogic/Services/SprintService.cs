@@ -58,6 +58,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid,int teamId)
         {
             bool isIncluded = await _omniRepository.SprintRepository.IncludeTicketInSprint(sprintGuid, ticketGuid,teamId);
+            if (isIncluded)
+            {
+                EventsLog eventsLog = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Sprint.Ticket.Included",
+                    EventGuid= Guid.NewGuid().ToString(),
+                    SprintGuid = sprintGuid,
+                    TicketGuid = ticketGuid,
+                    EventTypeId = (int)GeneralEnums.EventType.TicketIncludeInSprint,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+
+            }
             return isIncluded;
         }
 
@@ -218,7 +232,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             return progressList;
         }
-
 
         public async Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid)
         {

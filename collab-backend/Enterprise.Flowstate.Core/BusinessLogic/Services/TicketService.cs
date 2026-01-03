@@ -3,6 +3,7 @@ using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using FirebaseAdmin.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -220,7 +221,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<bool> UpdateTicketPriority(string ticketGuid, TicketEnums.TicketPriority priority)
         {
-            throw new NotImplementedException();
+            bool isUpdated = await _omniRepository.TicketRepository.UpdateTicketPriority(ticketGuid, (int)priority);
+            if (isUpdated)
+            {
+                EventsLog eventsLogs = new EventsLog
+                {
+                    EventDescription = "Ticket.Updated",
+                    CreatedAt = DateTime.UtcNow,
+                    TicketGuid = ticketGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    EventTypeId = (int)GeneralEnums.EventType.TicketUpdated,
+                    Metadata = $"Ticket priority updated to {priority}",
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLogs);
+            }
+            return isUpdated;
         }
 
         public async Task<bool> AssignTicketToUser(string ticketGuid, string userId)
@@ -232,6 +247,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             string stepsString = string.Join(",", steps);
             bool isUpdated = await _omniRepository.TicketRepository.UpdateTicketSteps(ticketGuid, stepsString);
+            if (isUpdated)
+            {
+                EventsLog eventsLogs = new EventsLog
+                {
+                    EventDescription = "Ticket.Updated",
+                    CreatedAt = DateTime.UtcNow,
+                    TicketGuid = ticketGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    EventTypeId = (int)GeneralEnums.EventType.TicketUpdated,
+                    Metadata = $"Updated the ticket steps {ticketGuid}",
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLogs);
+            }
             return isUpdated;
         }
 

@@ -2,6 +2,7 @@
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Enterprise.Flowstate.DAL.Enums;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -23,7 +24,18 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (!string.IsNullOrEmpty(workspaceGuid))
             {
                 int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
-                _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid,memberCount);
+                await _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid,memberCount);
+                EventsLog eventsLogs = new EventsLog
+                {
+                    EventDescription = "Workspace.Created",
+                    CreatedAt = DateTime.UtcNow,
+                    WorkspaceGuid = workspaceGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    EventTypeId = (int)GeneralEnums.EventType.CreateWorkspace,
+                    Metadata = $"Workspace '{name}' created."
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventsLogs);
+
                 return true;
             }
             return false;
