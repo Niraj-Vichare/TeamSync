@@ -1,21 +1,14 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Constants;
-using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.DTOs;
-using Enterprise.Flowstate.DAL.Enums;
-using Enterprise.Flowstate.DAL.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
@@ -304,32 +297,22 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             // NO TOPOLOGY DECLARATION HERE!
         }
 
-        protected void Dispose(bool disposing)
+        public void Dispose()
         {
-            if (disposing)
-            {
-                try
-                {
-                    _channel?.CloseAsync().GetAwaiter().GetResult();
-                    _channel?.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error closing channel");
-                }
-
-                try
-                {
-                    _connection?.CloseAsync().GetAwaiter().GetResult();
-                    _connection?.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error closing connection");
-                }
-            }
-
-            Dispose(disposing);
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposing) return;
+
+            try { _channel?.CloseAsync(); _channel?.Dispose(); }
+            catch (Exception ex) { _logger.LogError(ex, "Error closing channel"); }
+
+            try { _connection?.CloseAsync(); _connection?.Dispose(); }
+            catch (Exception ex) { _logger.LogError(ex, "Error closing connection"); }
+        }
+
     }
 }

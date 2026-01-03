@@ -35,6 +35,7 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
 });
 builder.Services.AddSignalR();
 
+builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
 builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IOmniService, OmniService>();
@@ -43,8 +44,8 @@ builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
 builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
 builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();
 builder.Services.AddHostedService<MessageConsumer>();
-//builder.Services.AddHostedService<DatabaseSyncService>();
-//builder.Services.AddHostedService<WeeklyPeriodResetService>();
+builder.Services.AddHostedService<DatabaseSyncService>();
+builder.Services.AddHostedService<WeeklyPeriodResetService>();
 
 builder.Services.AddCors(options =>
 {

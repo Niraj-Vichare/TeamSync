@@ -1,25 +1,17 @@
 ﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.DTO;
-using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Google.Apis.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Formats.Asn1.AsnWriter;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 {
     public class DatabaseSyncService : BackgroundService
     {
-        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<DatabaseSyncService> _logger;
         private readonly TimeSpan _syncInterval = TimeSpan.FromHours(3); // Sync every 3 hours
         private readonly IConfiguration _configuration;
@@ -27,11 +19,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
         private readonly ICache _cache;
 
         public DatabaseSyncService(
-        IServiceScopeFactory serviceScopeFactory,
         ILogger<DatabaseSyncService> logger,
         IConfiguration configuration, IOmniService omniService, ICache cache)
         {
-            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _configuration = configuration;
             _omniService = omniService;

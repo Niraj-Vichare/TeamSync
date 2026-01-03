@@ -4,10 +4,12 @@ using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -17,6 +19,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private IOmniService _omniService;
         private readonly ILeaderboardHubService _hubService;
         private ILogger<MessageProcessor> _logger;
+        private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
+        private readonly TimeSpan _debounceDelay = TimeSpan.FromSeconds(2);
         public MessageProcessor(ICache cacheRepository,IOmniService omniService,ILogger<MessageProcessor> logger,ILeaderboardHubService leaderboardHubService)
         {
             _cache = cacheRepository;
@@ -28,108 +32,114 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             if (eventLogDto == null)
             {
-                throw new InvalidOperationException("Invalid message payload");
+                throw new ArgumentNullException(nameof(eventLogDto), "Invalid message payload");
             }
-            /*
-            #region First Version
+            if (string.IsNullOrWhiteSpace(eventLogDto.UserId))
+            {
+                throw new ArgumentException("UserId cannot be empty", nameof(eventLogDto));
+            }
+
+            if (string.IsNullOrWhiteSpace(eventLogDto.WorkspaceId))
+            {
+                throw new ArgumentException("WorkspaceId cannot be empty", nameof(eventLogDto));
+            }
+
+            if (!Enum.IsDefined(typeof(GeneralEnums.EventType), eventLogDto.EventTypeId))
+            {
+                _logger.LogWarning("Invalid EventTypeId: {EventTypeId} for UserId: {UserId}",
+                    eventLogDto.EventTypeId, eventLogDto.UserId);
+                throw new ArgumentException($"Invalid EventTypeId: {eventLogDto.EventTypeId}");
+            }
+
             try
             {
-                // Get or create metric from cache
-                RankingCacheModel metric = await _cache.GetUserMetricAsync(eventLogDto.UserId, eventLogDto.WorkspaceId);
+
+                var metric = await _cache.GetUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId);
 
                 if (metric == null)
                 {
-                    var userDbMetric = await _omniService.DashboardService.GetUserMetric(eventLogDto.WorkspaceId, eventLogDto.UserId);
-                    var rankingMetric = await _omniService.WorkspaceService.GetUserRanking(eventLogDto.WorkspaceId, eventLogDto.UserId);
-
-                    if (userDbMetric == null || rankingMetric == null)
-                    {
-                        _logger.LogWarning("User metric not found for UserId={UserId}, WorkspaceId={WorkspaceId}", eventLogDto.UserId, eventLogDto.WorkspaceId);
-                        // NACK the message to requeue it
-                        //await _channel.BasicNackAsync(@event.DeliveryTag, false, true);
-                        return false;
-                    }
-
-                    // FIX: Assign the created model to 'metric'
                     metric = new RankingCacheModel
                     {
-                        ContributionScore = userDbMetric.ContributionScore,
-                        Efficiency = userDbMetric.Efficiency,
-                        Point = userDbMetric.Points,
-                        Ranking = rankingMetric.RankPosition,
-                        TotalHours = userDbMetric.TotalHours,
-                        TotalTaskCompleted = userDbMetric.TasksCompleted,
+                        Score = 0,
+                        Efficiency = 0,
+                        ContributionPoint = 0,
+                        Ranking = 0,
+                        TotalHours = 0,
+                        TotalTicketCompleted = 0
                     };
                 }
-            
-                double newMetricScore = ComputeScore(metric);
 
-                // Update metric based on event
-                UpdateRankingMetric(eventLogDto, metric);
+                UpdateMetricFromEvent(eventLogDto, metric);
 
-                var rank = await _cache.UpdateWorkspaceRankingAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, newMetricScore);
 
-                // Create or Update the existing metric in cache
-                await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId,metric);
+                float newScore = ComputeScore(metric);
 
-            
+                var (newRank, _) = await _cache.UpdateWorkspaceRankingAtomicAsync(eventLogDto.WorkspaceId,eventLogDto.UserId,newScore);
+
+                if (newRank == -1)
+                {
+                    _logger.LogError(
+                        "Failed to update ranking for UserId={UserId}, WorkspaceId={WorkspaceId}",
+                        eventLogDto.UserId, eventLogDto.WorkspaceId);
+                    throw new InvalidOperationException("Ranking update failed");
+                }
+
+                metric.Ranking = newRank;
+                metric.Score = newScore;
+
+                await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId,eventLogDto.UserId,metric);
+
+                // Background job will handle actual DB write
+                await _cache.AddPendingUpdateAsync(eventLogDto.WorkspaceId, eventLogDto.UserId);
+
+                // Debounced leaderboard broadcast instead of immediate
+                ScheduleLeaderboardUpdate(eventLogDto.WorkspaceId);
+
+
+                _logger.LogDebug("Processed event for UserId={UserId}, Rank={Rank}, Score={Score:F2}",eventLogDto.UserId, newRank, newScore);
+
                 return true;
             }
-            #endregion
-            */
-
-
-            var metric = await _cache.GetUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId);
-
-            if (metric == null)
+            catch (Exception ex)
             {
-                metric = new RankingCacheModel
-                {
-                    Score = 0,
-                    Efficiency = 0,
-                    ContributionPoint = 0,
-                    Ranking = 0,
-                    TotalHours = 0,
-                    TotalTicketCompleted = 0
-                };
+                _logger.LogError(ex,
+                    "Error processing message for UserId={UserId}, WorkspaceId={WorkspaceId}",
+                    eventLogDto.UserId, eventLogDto.WorkspaceId);
+                throw;
             }
-
-            UpdateMetricFromEvent(eventLogDto, metric);
-
-
-            double newScore = ComputeScore(metric);
-
-            var newRank = await _cache.UpdateWorkspaceRankingAsync(eventLogDto.WorkspaceId, eventLogDto.UserId, newScore);
-            if (newRank == -1)
-            {
-
-            }
-            metric.Ranking = newRank;
-
-            await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId,eventLogDto.UserId,metric);
-
-            // Background job will handle actual DB write
-            await _cache.AddPendingUpdateAsync(eventLogDto.WorkspaceId,eventLogDto.UserId);
-
-            var leaderboard = await _omniService.LeaderboardComparisonService.GetLeaderboardWithComparisonAsync(
-                    eventLogDto.WorkspaceId,0,10);
-
-            await _hubService.SendLeaderboardUpdateAsync(
-                eventLogDto.WorkspaceId,
-                leaderboard);
-
-            _logger.LogDebug("Processed event for UserId={UserId}, Rank={Rank}, Score={Score:F2}",eventLogDto.UserId, newRank, newScore);
-
-            return true;
 
         }
 
         #region Private Methods
-        private static double ComputeScore(RankingCacheModel m)
+        private void ScheduleLeaderboardUpdate(string workspaceId)
+        {
+            var timer = _debounceTimers.AddOrUpdate(
+                workspaceId,
+                _ => new Timer(async _ => await BroadcastLeaderboard(workspaceId),
+                              null, _debounceDelay, Timeout.InfiniteTimeSpan),
+                (_, existingTimer) =>
+                {
+                    existingTimer.Change(_debounceDelay, Timeout.InfiniteTimeSpan);
+                    return existingTimer;
+                }
+            );
+        }
+
+        private async Task BroadcastLeaderboard(string workspaceId)
+        {
+            var leaderboard = await _omniService.LeaderboardComparisonService
+                .GetLeaderboardWithComparisonAsync(workspaceId, 0, 10);
+
+            await _hubService.SendLeaderboardUpdateAsync(workspaceId, leaderboard);
+
+            _debounceTimers.TryRemove(workspaceId, out _);
+        }
+
+        private static float ComputeScore(RankingCacheModel m)
         {
             double eff = m.Efficiency;
             double pts = m.ContributionPoint;
-            double cs = (double)m.Score;
+            double cs = (float)m.Score;
             double hrs = m.TotalHours;
 
             var score =
@@ -138,7 +148,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 (cs * 0.2) +
                 (hrs * 0.1);
 
-            return Math.Round(score, 2);
+            return (float)Math.Round(score, 2);
         }
 
         private static void UpdateMetricFromEvent(EventsLogDto? eventLog, RankingCacheModel rankingCacheModel)

@@ -15,14 +15,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     public class CacheService : ICache
     {
         private readonly IConfiguration _config;
-        private IDatabase _db;
         private readonly ILogger<CacheService> _logger;
         private IConnectionMultiplexer _redis;
-        public CacheService(IConfiguration config, ILogger<CacheService> logger)
+        internal IDatabase _db;
+        public CacheService(IConnectionMultiplexer redis,IConfiguration config,ILogger<CacheService> logger)
         {
-            _config = config;
-            InitializeRedisConnection();
             _logger = logger;
+            _redis = redis ?? throw new ArgumentNullException(nameof(redis));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _db = _redis.GetDatabase();
         }
 
 
@@ -63,7 +64,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return default;
             }
         }
-
         public async Task<bool> SetAsync<T>(string key, T value, TimeSpan? expiry = null)
         {
             try
@@ -128,13 +128,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return await GetAsync<RankingCacheModel>(key);
         }
 
-        public async Task<double> GetUserScore(string workspaceId,string userId)
+        public async Task<double> GetUserScore(string workspaceId, string userId)
         {
             try
             {
-
-                var key = string.Format(FlowStateConstants.USER_METRIC_KEY, workspaceId,userId);
-                var score = await _db.SortedSetScoreAsync(key, userId);
+                // FIX: Read from workspace ranking sorted set, NOT user metric key
+                var rankingKey = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
+                var score = await _db.SortedSetScoreAsync(rankingKey, userId);
                 return score.HasValue ? score.Value : 0;
             }
             catch
@@ -142,18 +142,49 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return 0;
             }
         }
-        
+
         public async Task<string> GetUserInfoAsync(string userId)
         {
             var key = string.Format(FlowStateConstants.USER_INFO_KEY, userId);
             return await GetAsync<string>(key);
         }
 
-        
+
         #endregion
 
         #region Ranking Operation
 
+        // Use Redis transaction for atomicity
+        public async Task<(long rank, double score)> UpdateWorkspaceRankingAtomicAsync(
+            string workspaceId, string userId, double score)
+        {
+            try
+            {
+                var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
+
+                var transaction = _db.CreateTransaction();
+
+                var addTask = transaction.SortedSetAddAsync(key, userId, score);
+                var rankTask = transaction.SortedSetRankAsync(key, userId, Order.Descending);
+
+                if (await transaction.ExecuteAsync())
+                {
+                    var rank = await rankTask;
+                    return (rank.HasValue ? rank.Value + 1 : -1, score);
+                }
+
+                _logger.LogError("Transaction failed for workspace {WorkspaceId}, user {UserId}",
+                    workspaceId, userId);
+                return (-1, score);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in atomic ranking update for user {UserId} in workspace {WorkspaceId}",
+                    userId, workspaceId);
+                return (-1, score);
+            }
+        }
+        // Need to update
         public async Task<long> UpdateWorkspaceRankingAsync(string workspaceId, string userId, double score)
         {
             try
@@ -165,11 +196,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating ranking for user {UserId} in workspace {WorkspaceId}", userId, workspaceId);
+                _logger.LogError(ex, "Error updating ranking for user {UserId} in workspace {WorkspaceId}",
+                    userId, workspaceId);
                 return -1;
             }
         }
-        // Need to update
         public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(string workspaceId,int pageNumber,int pageSize)
         {
             // Calculate index boundaries for pagination
@@ -251,14 +282,32 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             try
             {
                 var key = string.Format(FlowStateConstants.PENDING_DB_UPDATES, workspaceId);
+                var processingKey = $"{key}:processing:{Guid.NewGuid():N}";
 
-                // Get all members
-                var members = await _db.SetMembersAsync(key);
+                // Check if key exists first
+                if (!await _db.KeyExistsAsync(key))
+                {
+                    return new List<string>();
+                }
 
-                // Clear the set
-                await _db.KeyDeleteAsync(key);
+                // Atomic snapshot using RENAME
+                try
+                {
+                    await _db.KeyRenameAsync(key, processingKey);
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("no such key"))
+                {
+                    _logger.LogDebug("Key {Key} already processed by another instance", key);
+                    return new List<string>();
+                }
 
-                return members.Select(m=>m.ToString()).ToList();
+                // Get all members from the snapshot
+                var members = await _db.SetMembersAsync(processingKey);
+
+                // Delete the processing key
+                await _db.KeyDeleteAsync(processingKey);
+
+                return members.Select(m => m.ToString()).ToList();
             }
             catch (Exception ex)
             {
@@ -267,6 +316,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
+
+        
         #endregion
 
         #region Previous Week Metric
@@ -308,10 +359,55 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return null;
             }
         }
+        public async Task<bool> ClearWorkspaceRankingsAsync(string workspaceId)
+        {
+            try
+            {
+                var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
+                return await _db.KeyDeleteAsync(key);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing workspace rankings for {WorkspaceId}", workspaceId);
+                return false;
+            }
+        }
+        // Added method to expose sorted set copy operation (encapsulation fix)
+        public async Task CopySortedSetAsync(string sourceKey, string destinationKey, TimeSpan? expiry = null)
+        {
+            try
+            {
+                var db = _redis.GetDatabase();
+
+                // Delete old destination
+                await db.KeyDeleteAsync(destinationKey);
+
+                // Copy using ZUNIONSTORE
+                await db.SortedSetCombineAndStoreAsync(
+                    SetOperation.Union,
+                    destinationKey,
+                    new RedisKey[] { sourceKey });
+
+                // Set expiry if provided
+                if (expiry.HasValue)
+                {
+                    await db.KeyExpireAsync(destinationKey, expiry.Value);
+                }
+
+                _logger.LogInformation("Successfully copied sorted set from {Source} to {Dest}",
+                    sourceKey, destinationKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error copying sorted set from {Source} to {Dest}",
+                    sourceKey, destinationKey);
+                throw;
+            }
+        }
         #endregion
 
         #region Project Metric
-        
+
 
         #endregion
 
