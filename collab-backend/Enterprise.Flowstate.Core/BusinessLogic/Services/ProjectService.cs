@@ -15,15 +15,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     public class ProjectService:IProjectService
     {
         private IOmniRepository _omniRepository;
-        public ProjectService(IOmniRepository omniRepository)
+        private IEventPublisher _eventPublisher;
+        public ProjectService(IOmniRepository omniRepository,IEventPublisher eventPublisher)
         {
             _omniRepository = omniRepository;
+            _eventPublisher = eventPublisher;   
         }
 
-        public Task<bool> CreateProject(int workspaceId, string name, string description)
-        {
-            return null;
-        }
 
         public async Task<List<ProjectDto>> GetOngoingProject(string userClaims)
         {
@@ -73,7 +71,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
         }
 
-
         public async Task<(bool,ErrorStatus)> CreateProject(string workspaceGuid, ProjectDto projectDto)
         {
             if(projectDto == null)
@@ -95,6 +92,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
 
             var (isSuccess,status) = await _omniRepository.ProjectRepository.CreateProject(workspaceGuid, project);
+            if (isSuccess)
+            {
+                EventsLog eventLogs = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Project.Created",
+                    EventTypeId = (int)EventType.ProjectCreated,
+                    EventGuid = Guid.NewGuid().ToString(),  
+                    WorkspaceGuid = workspaceGuid,
+                };
+
+                await _omniRepository.ProfileRepository.AddEventLog(eventLogs);
+            }
             return (isSuccess, status);
         }
 
@@ -117,6 +127,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 ProjectStatus = (int)projectDto.Status
             };
             var (isSuccess, status) = await _omniRepository.ProjectRepository.UpdateProject(projectGuid, updateProject);
+            if (isSuccess)
+            {
+                EventsLog eventLogs = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Project.Updated",
+                    EventTypeId = (int)EventType.ProjectUpdated,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    ProjectGuid = projectGuid,
+                    Metadata = $"Project '{projectDto.ProjectTitle}' updated."
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventLogs);
+
+            }
             return (isSuccess, status);
         }
 
@@ -144,14 +168,43 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return projectDto;
         }
 
-        public Task<(bool, ErrorStatus)> DeleteProject(string workspaceId, string projectGuid)
+        public async Task<(bool, ErrorStatus)> DeleteProject(string workspaceId, string projectGuid)
         {
-            return _omniRepository.ProjectRepository.DeleteProject(workspaceId,projectGuid);
+            var (isDeleted,status) = await _omniRepository.ProjectRepository.DeleteProject(workspaceId,projectGuid);
+            if(isDeleted)
+            {
+                EventsLog eventLogs = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Project.Deleted",
+                    EventTypeId = (int)EventType.ProjectDeleted,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    ProjectGuid = projectGuid,
+                };
+                await _omniRepository.ProfileRepository.AddEventLog(eventLogs);
+                return (true, status);
+            }
+            return (false, status); 
         }
 
-        public Task<bool> UpdateProjectStatus(string projectGuid,int projectStatus)
+        public async Task<bool> UpdateProjectStatus(string projectGuid,int projectStatus)
         {
-            return _omniRepository.ProjectRepository.UpdateProjectStatus(projectGuid, projectStatus);
+            var isUpdated = await _omniRepository.ProjectRepository.UpdateProjectStatus(projectGuid, projectStatus);
+            if(projectStatus == (int)ProjectEnums.ProjectStatus.Completed)
+            {
+                EventsLog eventLogs = new EventsLog
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Project.Completed",
+                    EventTypeId = (int)EventType.ProjectCompleted,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    ProjectGuid = projectGuid,
+                    Metadata = "Project marked as completed."
+                };
+                _omniRepository.ProfileRepository.AddEventLog(eventLogs);
+                _eventPublisher.PublishAsync(eventLogs, 0);
+            }
+            return isUpdated;
         }
 
         public async Task<List<ProjectDropdownModel>> GetProjectDropDown(string workspaceGuid)

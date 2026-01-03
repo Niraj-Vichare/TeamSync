@@ -40,7 +40,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             LeaderboardComparisonService = new LeaderboardComparisonService(_cache, _omniRepository);
             ProfileService = new ProfileService(_omniRepository);
             WorkspaceService = new WorkspaceService(_omniRepository);
-            ProjectService = new ProjectService(_omniRepository);
+            ProjectService = new ProjectService(_omniRepository,eventPublish);
             TeamService = new TeamService(_omniRepository,_client);
             SprintService = new SprintService(_omniRepository);
             TicketService = new TicketService(_omniRepository);
