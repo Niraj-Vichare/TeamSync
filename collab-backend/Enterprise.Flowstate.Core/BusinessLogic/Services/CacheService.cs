@@ -45,6 +45,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return string.Empty;
         }
         #endregion
+
         #region Basic Operation
         public async Task<T> GetAsync<T>(string key)
         {
