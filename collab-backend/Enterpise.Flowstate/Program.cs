@@ -7,6 +7,7 @@ using Enterprise.Flowstate.DAL.Repositories;
 using Enterprise.Flowstate.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using Supabase;
 using System.Text;
 
@@ -34,12 +35,30 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
     );
 });
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    var redisOptions = new ConfigurationOptions
+    {
+        EndPoints =
+        {
+            { config["RedisConnection:HostName"], int.Parse(config["RedisConnection:Port"]) }
+        },
+        User = config["RedisConnection:UserName"],
+        Password = config["RedisConnection:Password"],
+        AbortOnConnectFail = false
+    };
+
+    return ConnectionMultiplexer.Connect(redisOptions);
+});
+
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
 builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IOmniService, OmniService>();
-builder.Services.AddScoped<ICache,CacheService>();
+builder.Services.AddSingleton<ICache,CacheService>();
 builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
 builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
 builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();

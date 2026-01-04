@@ -4,6 +4,7 @@ using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.Models;
 using Google.Apis.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Task = System.Threading.Tasks.Task;
@@ -15,17 +16,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
         private readonly ILogger<DatabaseSyncService> _logger;
         private readonly TimeSpan _syncInterval = TimeSpan.FromHours(3); // Sync every 3 hours
         private readonly IConfiguration _configuration;
-        private readonly IOmniService _omniService;
-        private readonly ICache _cache;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public DatabaseSyncService(
         ILogger<DatabaseSyncService> logger,
-        IConfiguration configuration, IOmniService omniService, ICache cache)
+        IConfiguration configuration, IServiceScopeFactory scopeFactory)
         {
             _logger = logger;
             _configuration = configuration;
-            _omniService = omniService;
-            _cache = cache;
+            _scopeFactory = scopeFactory; 
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -40,7 +39,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             {
                 try
                 {
-                    await PerformSyncAsync(stoppingToken);
+                    using var scope = _scopeFactory.CreateScope();
+                    var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+                    var cache = scope.ServiceProvider.GetRequiredService<ICache>();
+
+                    await PerformSyncAsync(omniService,cache,stoppingToken);
 
                     _logger.LogInformation("Next sync scheduled in {Interval} hours", _syncInterval.TotalHours);
                     await Task.Delay(_syncInterval, stoppingToken);
@@ -61,14 +64,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             _logger.LogInformation("Database Sync Service stopped");
         }
 
-        private async Task PerformSyncAsync(CancellationToken stoppingToken)
+        private async Task PerformSyncAsync(IOmniService omniService,ICache cache,CancellationToken stoppingToken)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             _logger.LogInformation("Starting database sync...");
 
             try
             {
-                var activeWorkspaceIds = await _omniService.WorkspaceService.GetAllActiveWorkspaceIds();
+                var activeWorkspaceIds = await omniService.WorkspaceService.GetAllActiveWorkspaceIds();
                 int totalSynced = 0;
                 int totalErrors = 0;
 
@@ -79,7 +82,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     try
                     {
-                        var synced = await SyncWorkspaceDataAsync(workspaceId, stoppingToken);
+                        var synced = await SyncWorkspaceDataAsync(workspaceId,cache,omniService,stoppingToken);
                         totalSynced += synced;
                     }
                     catch (Exception ex)
@@ -102,10 +105,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
 
         }
-        private async Task<int> SyncWorkspaceDataAsync(int workspaceId,CancellationToken stoppingToken)
+        private async Task<int> SyncWorkspaceDataAsync(int workspaceId,ICache cache,IOmniService omniService,CancellationToken stoppingToken)
         {
             string workspaceIdInString = workspaceId.ToString();
-            var pendingUserIds = await _cache.GetAndClearPendingUpdatesAsync(workspaceIdInString);
+            var pendingUserIds = await cache.GetAndClearPendingUpdatesAsync(workspaceIdInString);
 
             if (!pendingUserIds.Any())
             {
@@ -123,7 +126,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                     break;
                 try
                 {
-                    RankingCacheModel metric = await _cache.GetUserMetricAsync(workspaceIdInString, userId);
+                    RankingCacheModel metric = await cache.GetUserMetricAsync(workspaceIdInString, userId);
 
                     if (metric == null)
                     {
@@ -131,7 +134,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                             userId, workspaceIdInString);
                         continue;
                     }
-                    var rank = await _cache.GetUserRankAsync(workspaceIdInString, userId);
+                    var rank = await cache.GetUserRankAsync(workspaceIdInString, userId);
 
                     WeeklyUserStatsDto userMetric = new WeeklyUserStatsDto
                     {
@@ -148,7 +151,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                         StartPeriod = currentWeekStart,
                     };
                     // Upesert the metric to database
-                    await _omniService.ProfileService.UpertWeeklyUserMetric(userMetric);
+                    await omniService.ProfileService.UpertWeeklyUserMetric(userMetric);
 
                     syncedCount++;
                 }
