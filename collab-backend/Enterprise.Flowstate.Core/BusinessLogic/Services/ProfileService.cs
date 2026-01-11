@@ -106,5 +106,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
             var result = _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
         }
+
+       
     }
 }

@@ -405,6 +405,26 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 throw;
             }
         }
+
+        public Task<List<string>> GetUserPermissionsAsync(string userId, int workspaceId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> GetUserRoleAsync(string userId, int workspaceId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task InvalidateUserCacheAsync(string userId, int workspaceId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task CacheUserPermissionsAsync(string userId, int workspaceId, List<string> permissions, string roleName)
+        {
+            throw new NotImplementedException();
+        }
         #endregion
 
         #region Project Metric

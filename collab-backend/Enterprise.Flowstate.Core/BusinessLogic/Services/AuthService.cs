@@ -1,15 +1,9 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
-using Enterprise.Flowstate.DAL.Models;
-using FirebaseAdmin.Auth;
 using Supabase.Gotrue;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Enterprise.Flowstate.DAL.Enums;
+
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {

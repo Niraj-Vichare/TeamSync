@@ -221,6 +221,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return result;
         }
 
+        public async Task<bool> IsWeeklyUserStatsPresent(DateTime startDate, DateTime endDate)
+        {
+            var isTrue = await _omniRepository.LeaderBoardRepository.IsWeeklyUserStatsPresent(startDate, endDate);
+            return isTrue;
+        }
 
         private RankingComparison CalculateComparison(int currentRank,double currentScore,RankingCacheModel currentMetric,int? prevRank,double? prevScore,RankingCacheModel prevMetric)
         {
@@ -286,6 +291,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return comparison;
         }
         
+
 
     }
 }

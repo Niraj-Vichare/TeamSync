@@ -21,7 +21,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             ILogger<WeeklyPeriodResetService> logger,
             IServiceScopeFactory scopeFactory,
             ICache cache
-
             )
         {
             _logger = logger;
@@ -37,24 +36,28 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             {
                 try
                 {
-
-                    var scope = _scopeFactory.CreateScope();
-                    var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();                               
-                    
                     var now = DateTime.UtcNow;
                     var nextReset = GetNextResetTime(now);
                     var delay = nextReset - now;
                     if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;
 
                     _logger.LogInformation("Next weekly reset scheduled for: {NextReset} UTC (in {Delay})", nextReset, delay);
+
+                    // Check for mid-week startup edge case BEFORE waiting
+                    await HandleMidWeekStartupAsync(stoppingToken);
+
                     await Task.Delay(delay, stoppingToken);
 
                     if (stoppingToken.IsCancellationRequested)
                         break;
 
+                    // Create scope just before using it
+                    using var scope = _scopeFactory.CreateScope();
+                    var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+
                     // Perform weekly reset
                     _logger.LogInformation("Starting weekly period reset...");
-                    await PerformWeeklyResetAsync(omniService,stoppingToken);
+                    await PerformWeeklyResetAsync(omniService, stoppingToken);
                     _logger.LogInformation("Weekly period reset completed");
 
                     // Wait 2 hours to avoid multiple resets
@@ -75,18 +78,59 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             _logger.LogInformation("Weekly Period Reset Service stopped");
         }
 
-        private async Task PerformWeeklyResetAsync(IOmniService omniService,CancellationToken stoppingToken)
+        private async Task HandleMidWeekStartupAsync(CancellationToken stoppingToken)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+
+                var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriod();
+                bool isWeeklyExist = await omniService.LeaderboardComparisonService.IsWeeklyUserStatsPresent(startDate, endDate);
+
+                if (!isWeeklyExist)
+                {
+                    _logger.LogWarning("No weekly stats found for current period {StartDate} to {EndDate}. Service may have started mid-week.", startDate, endDate);
+                    _logger.LogInformation("Performing initial sync of current week data...");
+
+                    var workspaceIds = await omniService.WorkspaceService.GetAllActiveWorkspaceIds();
+                    int totalSynced = 0;
+
+                    foreach (var workspaceId in workspaceIds)
+                    {
+                        if (stoppingToken.IsCancellationRequested)
+                            break;
+
+                        try
+                        {
+                            var synced = await SyncWorkspaceDataAsync(workspaceId, omniService, stoppingToken);
+                            totalSynced += synced;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error during initial sync for workspace {WorkspaceId}", workspaceId);
+                        }
+                    }
+
+                    _logger.LogInformation("Initial weekly sync completed: {Total} users synced", totalSynced);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling mid-week startup check");
+                // Don't throw - allow service to continue with normal schedule
+            }
+        }
+
+        private async Task PerformWeeklyResetAsync(IOmniService omniService, CancellationToken stoppingToken)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
-                // Step 1: Sync any pending Redis data to DB before reset
                 _logger.LogInformation("Syncing pending data before reset...");
 
-                // Step 2: Get all active workspaces
                 var workspaceIds = await omniService.WorkspaceService.GetAllActiveWorkspaceIds();
-
                 _logger.LogInformation("Processing {Count} workspaces for weekly reset", workspaceIds.Count);
 
                 int totalProcessed = 0;
@@ -98,7 +142,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     try
                     {
-                        var processed = await ProcessWorkspaceResetAsync(workspaceId,omniService,stoppingToken);
+                        var processed = await ProcessWorkspaceResetAsync(workspaceId, omniService, stoppingToken);
                         totalProcessed += processed;
                     }
                     catch (Exception ex)
@@ -108,29 +152,29 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                 }
 
                 stopwatch.Stop();
-                _logger.LogInformation("✅ Weekly reset completed: {Total} users processed, Duration: {Duration}s",
+                _logger.LogInformation("Weekly reset completed: {Total} users processed, Duration: {Duration}s",
                     totalProcessed, stopwatch.Elapsed.TotalSeconds);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Fatal error during weekly reset");
+                _logger.LogError(ex, "Fatal error during weekly reset");
                 throw;
             }
         }
 
-        private async Task<int> ProcessWorkspaceResetAsync(int workspaceId,IOmniService omniService,CancellationToken cancellationToken)
+        private async Task<int> ProcessWorkspaceResetAsync(int workspaceId, IOmniService omniService, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Processing workspace {WorkspaceId}", workspaceId);
 
             // Perform final sync before reset
-            await FinalSyncBeforeResetAsync(workspaceId,omniService,cancellationToken);
+            await SyncWorkspaceDataAsync(workspaceId, omniService, cancellationToken);
 
             try
             {
-                // Step 1: Freeze current week rankings to previous week in Redis
+                // Freeze current week rankings to previous week in Redis
                 await FreezeRankingsToRedisAsync(workspaceId, _cache);
 
-                // Step 2: Get all users in this workspace (from DB + Redis)
+                // Get all users in this workspace
                 var allUserIds = await omniService.WorkspaceService.GetAllActiveWorkspaceUser(workspaceId);
 
                 _logger.LogInformation("Found {Count} users in workspace {WorkspaceId}", allUserIds.Count, workspaceId);
@@ -182,9 +226,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
         }
 
-        public async Task<int> FinalSyncBeforeResetAsync(int workspaceId,IOmniService omniService,CancellationToken stoppingToken)
+        // Consolidated sync method - used by both initial sync and weekly reset
+        private async Task<int> SyncWorkspaceDataAsync(int workspaceId, IOmniService omniService, CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Performing final sync for workspace {WorkspaceId} before reset", workspaceId);
+            _logger.LogInformation("Syncing workspace {WorkspaceId}", workspaceId);
 
             try
             {
@@ -193,6 +238,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                 if (!pendingUserIds.Any())
                 {
+                    //omniService.DashboardService.CopyPreviousStats(workspaceId);
                     _logger.LogDebug("No pending updates for workspace {WorkspaceId}", workspaceIdInString);
                     return 0;
                 }
@@ -252,7 +298,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process workspace {WorkspaceId}", workspaceId);
+                _logger.LogError(ex, "Failed to sync workspace {WorkspaceId}", workspaceId);
                 throw;
             }
         }
