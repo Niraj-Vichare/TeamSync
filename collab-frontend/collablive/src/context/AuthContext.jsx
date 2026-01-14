@@ -12,17 +12,27 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [ongoingProjects,setOngoingProjects] = useState([]);
-  const [workspaces,setWorkspaces] = useState([]);
+  const [ongoingProjects, setOngoingProjects] = useState([]);
+  const [workspaces, setWorkspaces] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Check authentication status on app load
-    useEffect(() => {
-      checkAuthStatus();
+  useEffect(() => {
+    const initializeAuth = async () => {
+      await checkAuthStatus();
+    };
+    initializeAuth();
+  }, []);
+
+  // Load workspaces and projects when user is authenticated and has workspace
+  useEffect(() => {
+    if (isAuthenticated && workspaceId) {
       getUserWorkspaces();
       getUserProjects();
-    }, []);
+    }
+  }, [isAuthenticated, workspaceId]);
 
   const checkAuthStatus = async () => {
     try {
@@ -31,18 +41,20 @@ export function AuthProvider({ children }) {
       
       if (isAuth) {
         const user = authService.getCurrentUser();
+        const storedWorkspaceId = authService.getCurrentWorkspaceId();
+        
         setCurrentUser(user);
-        //setUserProfile(user);
+        setWorkspaceId(storedWorkspaceId);
         setIsAuthenticated(true);
       } else {
         setCurrentUser(null);
-        //setUserProfile(null);
+        setWorkspaceId(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
       setCurrentUser(null);
-      //setUserProfile(null);
+      setWorkspaceId(null);
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
@@ -53,8 +65,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await authService.signUpWithEmail(signupData);
       setCurrentUser(result.user);
-      setCurrentWorkspaceId(result.workspaceId);
-      //setUserProfile(result.user);
+      setWorkspaceId(result.workspaceId);
       setIsAuthenticated(true);
       return result;
     } catch (error) {
@@ -68,7 +79,8 @@ export function AuthProvider({ children }) {
       
       if (result.success) {
         setCurrentUser(result.user);
-        setCurrentWorkspaceId(result.workspaceId);
+        setWorkspaceId(result.workspaceId);
+        setUserRole(result.userRole);
         setIsAuthenticated(true);
       }
       
@@ -81,8 +93,6 @@ export function AuthProvider({ children }) {
   const loginWithGoogle = async () => {
     try {
       await authService.signInWithGoogle();
-      // Note: The user will be redirected, so we don't need to update state here
-      // The state will be updated when they return and the app reloads
     } catch (error) {
       throw error;
     }
@@ -91,8 +101,6 @@ export function AuthProvider({ children }) {
   const loginWithGitHub = async () => {
     try {
       await authService.signInWithGitHub();
-      // Note: The user will be redirected, so we don't need to update state here
-      // The state will be updated when they return and the app reloads
     } catch (error) {
       throw error;
     }
@@ -102,12 +110,18 @@ export function AuthProvider({ children }) {
     try {
       await authService.signOut();
       setCurrentUser(null);
-      //setUserProfile(null);
+      setWorkspaceId(null);
+      setUserRole(null);
+      setWorkspaces([]);
+      setOngoingProjects([]);
       setIsAuthenticated(false);
     } catch (error) {
       // Even if logout fails on backend, clear frontend state
       setCurrentUser(null);
-      //setUserProfile(null);
+      setWorkspaceId(null);
+      setUserRole(null);
+      setWorkspaces([]);
+      setOngoingProjects([]);
       setIsAuthenticated(false);
       throw error;
     }
@@ -121,7 +135,6 @@ export function AuthProvider({ children }) {
     try {
       const { profile, userData } = await authService.refreshUserData();
       setCurrentUser(profile.data);
-      setUserProfile(profile.data);
       return { user: profile.data, profile: profile.data, userData };
     } catch (error) {
       console.error('Error refreshing user data:', error);
@@ -131,42 +144,55 @@ export function AuthProvider({ children }) {
 
   // Get current workspace ID
   const getCurrentWorkspaceId = () => {
-    return authService.getCurrentWorkspaceId();
+    return workspaceId || authService.getCurrentWorkspaceId();
   };
 
-  // Set current workspace ID
-  const setCurrentWorkspaceId = (workspaceId) => {
-    authService.setCurrentWorkspaceId(workspaceId);
+  // Set current workspace ID and sync with service
+  const setCurrentWorkspaceId = (newWorkspaceId) => {
+    authService.setCurrentWorkspaceId(newWorkspaceId);
+    setWorkspaceId(newWorkspaceId);
   };
   
   const getUserWorkspaces = async () => {
-    if (workspaces.length > 0) return; // already cached
-    var result = await workspaceService.getUserWorkspaces();
-    const {successCode,data,success,message} =  result.data;
-    if(successCode === 200 && success){
-      setWorkspaces(data);
-    } else {
+    try {
+      const result = await workspaceService.getUserWorkspaces();
+      const { successCode, data, success } = result.data;
+      
+      if (successCode === 200 && success) {
+        setWorkspaces(data);
+      } else {
+        setWorkspaces([]);
+      }
+      console.log("User Workspaces:", data);
+    } catch (error) {
+      console.error("Error fetching workspaces:", error);
       setWorkspaces([]);
     }
-    console.log("User Workspaces:",data);
-  }
+  };
 
   const getUserProjects = async () => {
-    if (ongoingProjects.length > 0) return; // already cached
-    var result = await projectService.getUserProjects();
-    const {successCode,data,success,message} =  result.data;
-    if(successCode === 200 && success){
-      setOngoingProjects(data);
-    } else {
+    try {
+      const result = await projectService.getUserProjects();
+      const { successCode, data, success } = result.data;
+      
+      if (successCode === 200 && success) {
+        setOngoingProjects(data);
+      } else {
+        setOngoingProjects([]);
+      }
+      console.log("Ongoing Projects:", data);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
       setOngoingProjects([]);
     }
-    console.log("Ongoing Projects:",data);
-  }
+  };
 
   const value = {
     currentUser,
+    userRole,
+    workspaceId,
     loading,
-    isAuthenticated: isAuthenticated,
+    isAuthenticated,
     signup,
     login,
     loginWithGoogle,
@@ -179,6 +205,7 @@ export function AuthProvider({ children }) {
     setCurrentWorkspaceId,
     workspaces,
     ongoingProjects,
+    getUserWorkspaces, // Export this so components can refresh workspaces
   };
 
   return (

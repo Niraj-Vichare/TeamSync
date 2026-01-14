@@ -49,6 +49,7 @@ function Leaderboard() {
                 pageNumber: page,
                 pageSize
             });
+            console.log("Leaderboard data fetched:", result);   
 
             if (!result || !result.rankings) {
                 setRankingData([]);
@@ -68,6 +69,7 @@ function Leaderboard() {
                 trend: getTrendType(r.comparison.rankChangeType),
                 userId: r.userId
             }));
+            console.log("Transformed leaderboard data:", transformed);
 
             setRankingData(transformed);
             setTotalCount(result.totalCount);
@@ -101,7 +103,7 @@ function Leaderboard() {
                 name: r.userName,
                 avatar: getInitials(r.userName),
                 score: Math.round(r.currentScore),
-                tasksCompleted: r.currentMetrics.tasksCompleted,
+                ticketCompleted: r.currentMetrics.ticketCompleted,
                 efficiency: Math.round(r.currentMetrics.efficiency * 100),
                 change: r.comparison.rankChange,
                 trend: getTrendType(r.comparison.rankChangeType),
@@ -163,11 +165,11 @@ function Leaderboard() {
     };
 
     const getTrendType = (changeType) => {
-        switch (changeType?.toLowerCase()) {
-            case 'up': return 'up';
-            case 'down': return 'down';
-            case 'new': return 'up';
-            default: return 'same';
+        switch (changeType) {
+            case 0: return 'up';
+            case 1: return 'down';
+            case 2: return 'same';
+            default: return 'new';
         }
     };
 
@@ -243,7 +245,7 @@ function Leaderboard() {
                             <div className="col-span-1">Rank</div>
                             <div className="col-span-4">Team Member</div>
                             <div className="col-span-2">Score</div>
-                            <div className="col-span-2">Tasks</div>
+                            <div className="col-span-2">Tickets</div>
                             <div className="col-span-2">Efficiency</div>
                             <div className="col-span-1">Trend</div>
                         </div>
@@ -297,7 +299,6 @@ function Leaderboard() {
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-foreground">{member.name}</p>
-                                                        <p className="text-sm text-muted-foreground">Software Engineer</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -313,7 +314,7 @@ function Leaderboard() {
                                             </div>
 
                                             <div className="col-span-2">
-                                                <p className="font-semibold text-foreground">{member.tasksCompleted}</p>
+                                                <p className="font-semibold text-foreground">{member.ticketsCompleted}</p>
                                                 <p className="text-xs text-muted-foreground">completed</p>
                                             </div>
 

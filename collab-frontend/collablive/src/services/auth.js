@@ -8,16 +8,22 @@ class AuthService {
     this.baseURL = API_BASE_URL;
     this.currentUser = null;
     this.currentWorkspaceId = null;
+    this.userRole = null;
   }
 
   // Sign up with email and password
   async signUpWithEmail(signupData) {
     try {
-      const response = await axios.post(`${this.baseURL}/auth/signup`, signupData,{
+      const response = await axios.post(`${this.baseURL}/auth/signup`, signupData, {
         withCredentials: true
       });
-      this.setCurrentWorkspaceId(response.data.workspaceId); // Clear current workspace ID
+
       if (response.data.success) {
+        // Set workspace ID if provided
+        if (response.data.workspaceId) {
+          this.setCurrentWorkspaceId(response.data.workspaceId);
+        }
+
         const profile = await this.getProfile();
         this.currentUser = profile.data;
 
@@ -39,27 +45,28 @@ class AuthService {
   // Sign in with email and password
   async signinWithEmail(loginData) {
     try {
-      // Make sure loginData is an object with email and password
-      const response = await axios.post(`${this.baseURL}/auth/signin`, loginData,{
+      const response = await axios.post(`${this.baseURL}/auth/signin`, loginData, {
         withCredentials: true
       });
 
       if (response.data.success) {
-        
-        this.setCurrentWorkspaceId(response.data.data.workspaceId); // Clear current workspace ID
-        this.currentUser = response.data.data.userId;
-        // Store workspace ID if provided
+        // Set workspace ID and user role
         if (response.data.data?.workspaceId) {
-          this.currentWorkspaceId = response.data.data.workspaceId;
-          localStorage.setItem('currentWorkspaceId', response.data.data.workspaceId);
+          this.setCurrentWorkspaceId(response.data.data.workspaceId);
         }
+        
+        if (response.data.data?.userRole) {
+          this.setUserRole(response.data.data.userRole);
+        }
+
         const profile = await this.getProfile();
         this.currentUser = profile.data;
 
         return {
           success: true,
           user: profile.data,
-          workspaceId: response.data.data?.workspaceId,
+          workspaceId: this.currentWorkspaceId,
+          userRole: this.userRole,
           message: response.data.message || 'Signin successful'
         };
       } else {
@@ -71,28 +78,20 @@ class AuthService {
     }
   }
 
-  // Sign in with Google (if you want to keep this option)
+  // Sign in with Google
   async signInWithGoogle() {
     try {
-      // Redirect to backend Google OAuth endpoint
       window.location.href = `${this.baseURL}/auth/google`;
-      
-      // Note: The backend should handle the OAuth flow and redirect back
-      // with appropriate tokens/cookies set
     } catch (error) {
       console.error('Google signin error:', error);
       throw new Error('Google signin failed');
     }
   }
 
-  // Sign in with GitHub (if you want to keep this option)
+  // Sign in with GitHub
   async signInWithGitHub() {
     try {
-      // Redirect to backend GitHub OAuth endpoint
       window.location.href = `${this.baseURL}/auth/github`;
-      
-      // Note: The backend should handle the OAuth flow and redirect back
-      // with appropriate tokens/cookies set
     } catch (error) {
       console.error('GitHub signin error:', error);
       throw new Error('GitHub signin failed');
@@ -128,7 +127,7 @@ class AuthService {
       // Clear local data
       this.currentUser = null;
       this.currentWorkspaceId = null;
-      cookieStore.delete('authToken');
+      this.userRole = null;
       localStorage.removeItem('currentWorkspaceId');
       
       return { success: true };
@@ -137,6 +136,7 @@ class AuthService {
       // Even if backend call fails, clear local data
       this.currentUser = null;
       this.currentWorkspaceId = null;
+      this.userRole = null;
       localStorage.removeItem('currentWorkspaceId');
       
       throw new Error('Signout failed');
@@ -186,9 +186,19 @@ class AuthService {
     try {
       const profile = await this.getProfile();
       this.currentUser = profile.data;
+      
+      // Load workspace ID from localStorage if not in memory
+      if (!this.currentWorkspaceId) {
+        const storedWorkspaceId = localStorage.getItem('currentWorkspaceId');
+        if (storedWorkspaceId) {
+          this.currentWorkspaceId = storedWorkspaceId;
+        }
+      }
+      
       return true;
     } catch (error) {
       this.currentUser = null;
+      this.currentWorkspaceId = null;
       return false;
     }
   }
@@ -205,13 +215,39 @@ class AuthService {
 
   // Get current workspace ID
   getCurrentWorkspaceId() {
-    return this.currentWorkspaceId || localStorage.getItem('currentWorkspaceId');
+    // Return from memory or fallback to localStorage
+    if (this.currentWorkspaceId) {
+      return this.currentWorkspaceId;
+    }
+    
+    const stored = localStorage.getItem('currentWorkspaceId');
+    if (stored) {
+      this.currentWorkspaceId = stored;
+      return stored;
+    }
+    
+    return null;
   }
 
-  // Set current workspace ID
+  // Set current workspace ID (consistent storage)
   setCurrentWorkspaceId(workspaceId) {
-    this.currentWorkspaceId = workspaceId;
-    localStorage.setItem('currentWorkspaceId', workspaceId);
+    if (workspaceId) {
+      this.currentWorkspaceId = workspaceId;
+      localStorage.setItem('currentWorkspaceId', workspaceId);
+    } else {
+      this.currentWorkspaceId = null;
+      localStorage.removeItem('currentWorkspaceId');
+    }
+  }
+
+  // Set user role
+  setUserRole(userRole) {
+    this.userRole = userRole;
+  }
+
+  // Get user role
+  getUserRole() {
+    return this.userRole;
   }
 }
 

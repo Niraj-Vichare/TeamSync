@@ -8,6 +8,8 @@ import {
     YAxis,
     Tooltip,
     ResponsiveContainer,
+    CartesianGrid,
+    Legend
 } from 'recharts'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,67 +28,37 @@ const STATUS_COLORS = {
     'InProgress': '#3b82f6',
     'Pending': '#ef4444',
     'Completed': '#6b7280',
-    'Blocked': '#f59e0b'
+    'Blocked': '#f59e0b',
+    'Closed': '#10b981'
 }
 
 const TICKET_STATUS_COLORS = {
     'Completed': '#34d399',
     'Pending': '#fbbf24',
     'Paused': '#f87171',
+    'Closed': '#10b981',
     'default': '#9ca3af'
 }
 
 const DEFAULT_PAGE_SIZE = 10
 const PREVIEW_ACTIVITIES_COUNT = 5
 
-// Static demo data (kept for backwards compatibility)
-const DEMO_SUMMARY_DATA = {
-    overallProgress: 68,
-    totalTickets: 24,
-    completedTickets: 16,
-    inProgressTickets: 6,
-    teamVelocity: 8.5,
-    daysRemaining: 0,
-}
-
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
-/**
- * Gets status color with fallback
- * @param {string} status - The status string
- * @returns {string} Hex color code
- */
 const getStatusColor = (status) => {
-    if (!status) {
-        console.warn('[getStatusColor] No status provided, using default color')
-        return '#6b7280'
-    }
+    if (!status) return '#6b7280'
     return STATUS_COLORS[status] || '#6b7280'
 }
 
-/**
- * Gets ticket status color with fallback
- * @param {string} name - The ticket status name
- * @returns {string} Hex color code
- */
 const getTicketStatusColor = (name) => {
-    if (!name) {
-        console.warn('[getTicketStatusColor] No status name provided')
-        return TICKET_STATUS_COLORS.default
-    }
+    if (!name) return TICKET_STATUS_COLORS.default
     return TICKET_STATUS_COLORS[name] || TICKET_STATUS_COLORS.default
 }
 
-/**
- * Safely formats a date string
- * @param {string|Date} dateValue - Date to format
- * @returns {string} Formatted date or fallback
- */
 const formatDate = (dateValue) => {
     if (!dateValue) return '—'
-    
     try {
         return new Date(dateValue).toLocaleDateString()
     } catch (error) {
@@ -95,14 +67,8 @@ const formatDate = (dateValue) => {
     }
 }
 
-/**
- * Safely formats a date-time string
- * @param {string|Date} dateValue - Date to format
- * @returns {string} Formatted date-time or fallback
- */
 const formatDateTime = (dateValue) => {
     if (!dateValue) return '—'
-    
     try {
         return new Date(dateValue).toLocaleString()
     } catch (error) {
@@ -111,24 +77,14 @@ const formatDateTime = (dateValue) => {
     }
 }
 
-/**
- * Gets assignee name with multiple fallbacks
- * @param {Object} ticket - Ticket object
- * @returns {string} Assignee name or 'Unassigned'
- */
 const getAssigneeName = (ticket) => {
     if (!ticket) return 'Unassigned'
-    return ticket.assignee?.name || ticket.assignedToName || ticket.assignedToName || 'Unassigned'
+    return ticket.assignedToName || 'Unassigned'
 }
 
-/**
- * Gets ticket ID with fallback
- * @param {Object} ticket - Ticket object
- * @returns {string|number} Ticket ID
- */
 const getTicketId = (ticket) => {
     if (!ticket) return 'N/A'
-    return ticket.id || ticket.ticketId || 'N/A'
+    return ticket.ticketId || ticket.id || 'N/A'
 }
 
 // ============================================================================
@@ -149,11 +105,11 @@ export default function Sprint() {
     
     // State
     const [sprint, setSprint] = useState(null)
-    const [sprintTeam, setSprintTeam] = useState([])
-    const [sprintTickets, setSprintTickets] = useState({ list: [], total: 0 })
+    const [sprintTeam, setSprintTeam] = useState(null)
+    const [sprintTickets, setSprintTickets] = useState([])
     const [sprintActivities, setSprintActivities] = useState([])
-    const [sprintBreakdown,setSprintBreakdown] = useState(null);
-    const [sprintProgress,setSprintProgress] = useState(null);
+    const [sprintBreakdown, setSprintBreakdown] = useState(null)
+    const [sprintProgress, setSprintProgress] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [pageNumber, setPageNumber] = useState(1)
@@ -165,63 +121,32 @@ export default function Sprint() {
     const [selectedMember, setSelectedMember] = useState(null)
     
     // -------------------------
-    // VALIDATION
-    // -------------------------
-    useEffect(() => {
-        console.log('[Sprint] Validating required props')
-        
-        if (!sprintGuid) {
-            const errorMsg = 'Sprint ID is required but not provided'
-            console.error('[Sprint]', errorMsg)
-            setError(errorMsg)
-            return
-        }
-        
-        if (!workspaceGuid) {
-            const errorMsg = 'Workspace ID is required but not found'
-            console.error('[Sprint]', errorMsg)
-            setError(errorMsg)
-            return
-        }
-        
-        console.log('[Sprint] Validation passed', { workspaceGuid, sprintGuid })
-    }, [sprintGuid, workspaceGuid])
-    
-    // -------------------------
-    // API CALLS (with proper error handling)
+    // API CALLS
     // -------------------------
     
-    /**
-     * Fetches sprint progress data
-     */
     const fetchSprintProgress = useCallback(async (sprintId) => {
         console.log('[fetchSprintProgress] Starting...', { sprintId })
         
         if (!sprintId) {
-            console.error('[fetchSprintProgress] Missing required parameters')
-            throw new Error('Workspace ID and Sprint ID are required')
+            console.error('[fetchSprintProgress] Missing sprint ID')
+            throw new Error('Sprint ID is required')
         }
         
         try {
             const response = await sprintService.getSprintProgress(sprintId)
-            console.log('[fetchSprintProgress] Success:', response?.data)
+            console.log('[fetchSprintProgress] Response:', response?.data)
             
-            if (!response?.data) {
-                console.warn('[fetchSprintProgress] No data in response')
-                return null
-            }
-            console.log(response.data,"Progress");
-            setSprintProgress(response.data)
-            return response.data
+            // Handle the progress data - it's already an array
+            const progressData = Array.isArray(response?.data) ? response.data : []
+            setSprintProgress(progressData)
+            return progressData
         } catch (error) {
             console.error('[fetchSprintProgress] Error:', error.message, error)
+            setSprintProgress([])
             throw error
         }
     }, [])
 
-    /**
-     * Fetches sprint data from API
-     */
     const fetchSprintData = useCallback(async (workspaceId, sprintId) => {
         console.log('[fetchSprintData] Starting...', { workspaceId, sprintId })
         
@@ -247,9 +172,6 @@ export default function Sprint() {
         }
     }, [])
     
-    /**
-     * Fetches sprint team members
-     */
     const fetchSprintTeam = useCallback(async (sprintId) => {
         console.log('[fetchSprintTeam] Starting...', { sprintId })
         
@@ -260,21 +182,19 @@ export default function Sprint() {
         
         try {
             const response = await sprintService.getSprintTeam(sprintId)
-            console.log('[fetchSprintTeam] Success:', response?.data?.length,response.data ,'members')
+            console.log('[fetchSprintTeam] Success:', response?.data)
             
-            setSprintTeam(response.data)
-            console.log(sprintTeam,"SERPPRPRPPRPRPRPdvbejvevjevbeh");
-            return response.data;
+            // The team data is an object with members array
+            const teamData = response?.data || { members: [], name: 'Team' }
+            setSprintTeam(teamData)
+            return teamData
         } catch (error) {
             console.error('[fetchSprintTeam] Error:', error.message, error)
-            setSprintTeam([])
+            setSprintTeam({ members: [], name: 'Team' })
             throw error
         }
     }, [])
     
-    /**
-     * Fetches sprint tickets
-     */
     const fetchSprintTickets = useCallback(async (sprintId) => {
         if (!sprintId) {
             console.error('[fetchSprintTickets] Missing sprint ID')
@@ -285,22 +205,18 @@ export default function Sprint() {
             const response = await sprintService.getSprintTickets(sprintId)
             console.log('[fetchSprintTickets] Success:', response?.data)
             
-            const ticketsData = response?.data
-            
-            
+            // Tickets come as an array directly
+            const ticketsData = Array.isArray(response?.data) ? response.data : []
             setSprintTickets(ticketsData)
             return ticketsData
         } catch (error) {
             console.error('[fetchSprintTickets] Error:', error.message, error)
-            setSprintTickets({ list: [], total: 0 })
+            setSprintTickets([])
             throw error
         }
     }, [])
 
-    /**
-     * Fetch the sprint breakdown
-     */
-    const fetchBreakdown = useCallback(async (sprintId)=>{
+    const fetchBreakdown = useCallback(async (sprintId) => {
         if (!sprintId) {
             console.error('[fetchBreakdown] Missing sprint ID')
             throw new Error('Sprint ID is required')
@@ -310,21 +226,23 @@ export default function Sprint() {
             const response = await sprintService.getSprintBreakdown(sprintId)
             console.log('[fetchBreakdown] Success:', response?.data)
             
-            const sprintBreakdown = response?.data
-            setSprintBreakdown(sprintBreakdown);
-            console.log(sprintBreakdown);
-            return sprintBreakdown;
+            const breakdown = response?.data || {
+                totalTickets: 0,
+                pendingTickets: 0,
+                completedTickets: 0,
+                effiency: 0,
+                sprintVelocity: 0,
+                notStarted: 0
+            }
+            setSprintBreakdown(breakdown)
+            return breakdown
         } catch (error) {
-            console.error('[fetchSprintTickets] Error:', error.message, error)
-            setSprintBreakdown(null);
+            console.error('[fetchBreakdown] Error:', error.message, error)
+            setSprintBreakdown(null)
             throw error
         }
-
-    },[])
+    }, [])
     
-    /**
-     * Fetches sprint activities with pagination
-     */
     const fetchSprintActivities = useCallback(async (sprintId, page, size) => {
         console.log('[fetchSprintActivities] Starting...', { sprintId, page, size })
         
@@ -335,7 +253,7 @@ export default function Sprint() {
         
         try {
             const response = await sprintService.getSprintActivities(sprintId, page, size)
-            console.log('[fetchSprintActivities] Success:', response?.data?.length, 'activities')
+            console.log('[fetchSprintActivities] Success:', response?.data)
             
             const activitiesData = Array.isArray(response?.data) ? response.data : []
             setSprintActivities(activitiesData)
@@ -347,9 +265,6 @@ export default function Sprint() {
         }
     }, [])
     
-    /**
-     * Main data loading function
-     */
     const loadSprintData = useCallback(async () => {
         console.log('[loadSprintData] Starting data load...')
         
@@ -374,9 +289,8 @@ export default function Sprint() {
                 fetchSprintActivities(sprintGuid, pageNumber, pageSize)
             ])
             
-            // Log results
             results.forEach((result, index) => {
-                const names = ['Sprint Data', 'Team', 'Tickets', 'Activities']
+                const names = ['Sprint Data', 'Team', 'Tickets', 'Breakdown', 'Progress', 'Activities']
                 if (result.status === 'fulfilled') {
                     console.log(`[loadSprintData] ${names[index]} loaded successfully`)
                 } else {
@@ -384,7 +298,6 @@ export default function Sprint() {
                 }
             })
             
-            // Check if any critical data failed
             const criticalFailed = results.slice(0, 3).some(r => r.status === 'rejected')
             if (criticalFailed) {
                 console.warn('[loadSprintData] Some critical data failed to load')
@@ -398,7 +311,7 @@ export default function Sprint() {
         } finally {
             setLoading(false)
         }
-    }, [workspaceGuid, sprintGuid, pageNumber, pageSize, fetchSprintData, fetchSprintTeam, fetchSprintTickets, fetchSprintActivities])
+    }, [workspaceGuid, sprintGuid, pageNumber, pageSize, fetchSprintData, fetchSprintTeam, fetchSprintTickets, fetchBreakdown, fetchSprintProgress, fetchSprintActivities])
     
     // -------------------------
     // EFFECTS
@@ -409,7 +322,7 @@ export default function Sprint() {
     }, [loadSprintData])
     
     // -------------------------
-    // COMPUTED VALUES (Memoized for performance)
+    // COMPUTED VALUES
     // -------------------------
     const previewActivities = useMemo(() => {
         const preview = sprintActivities.slice(0, PREVIEW_ACTIVITIES_COUNT)
@@ -418,31 +331,54 @@ export default function Sprint() {
     }, [sprintActivities])
     
     const hasMoreActivities = useMemo(() => {
-        const hasMore = sprintActivities.length > PREVIEW_ACTIVITIES_COUNT
-        console.log('[hasMoreActivities]', hasMore)
-        return hasMore
+        return sprintActivities.length > PREVIEW_ACTIVITIES_COUNT
     }, [sprintActivities])
     
-    const progressLineData = useMemo(() => {
-        const data = sprint?.dailyProgress || []
-        console.log('[progressLineData] Computed:', data.length, 'data points')
-        return data
-    }, [sprint?.dailyProgress])
+    // Transform progress data for the chart
+    const progressChartData = useMemo(() => {
+        if (!Array.isArray(sprintProgress) || sprintProgress.length === 0) {
+            console.log('[progressChartData] No progress data available')
+            return []
+        }
+        
+        // Format the data for recharts
+        const chartData = sprintProgress.map(item => ({
+            date: formatDate(item.date),
+            completed: item.completed || 0,
+            pending: item.pending || 0,
+            fullDate: item.date
+        }))
+        
+        console.log('[progressChartData] Formatted data:', chartData)
+        return chartData
+    }, [sprintProgress])
     
     const totalTeamMembers = useMemo(() => {
-        console.log("!!!!!SPRINT TEAM!!!",sprintTeam)
-        const count = sprintTeam?.length
+        const count = sprintTeam?.members?.length || 0
         console.log('[totalTeamMembers]', count)
         return count
     }, [sprintTeam])
+    
+    // Calculate days remaining
+    const daysRemaining = useMemo(() => {
+        if (!sprint?.endDate) return 0
+        
+        try {
+            const endDate = new Date(sprint.endDate)
+            const today = new Date()
+            const diffTime = endDate - today
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            return Math.max(0, diffDays)
+        } catch (error) {
+            console.error('[daysRemaining] Error calculating:', error)
+            return 0
+        }
+    }, [sprint?.endDate])
     
     // -------------------------
     // EVENT HANDLERS
     // -------------------------
     
-    /**
-     * Filters tickets assigned to a specific member
-     */
     const getMemberTickets = useCallback((memberName) => {
         console.log('[getMemberTickets] Filtering for:', memberName)
         
@@ -461,9 +397,6 @@ export default function Sprint() {
         return tickets
     }, [sprintTickets])
     
-    /**
-     * Handles ticket navigation
-     */
     const handleViewTicket = useCallback((ticketId) => {
         console.log('[handleViewTicket] Navigating to ticket:', ticketId)
         
@@ -475,11 +408,8 @@ export default function Sprint() {
         navigate(`/tickets/${ticketId}`)
     }, [navigate])
     
-    /**
-     * Handles member card click
-     */
     const handleMemberClick = useCallback((member) => {
-        console.log('[handleMemberClick] Member clicked:', member?.name)
+        console.log('[handleMemberClick] Member clicked:', member?.profile?.displayName)
         
         if (!member) {
             console.warn('[handleMemberClick] No member data provided')
@@ -490,9 +420,6 @@ export default function Sprint() {
         setOpenMemberModal(true)
     }, [])
     
-    /**
-     * Handles back navigation
-     */
     const handleBackNavigation = useCallback(() => {
         console.log('[handleBackNavigation] Navigating back')
         navigate(-1)
@@ -582,36 +509,39 @@ export default function Sprint() {
                             )}
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                                 <span>Total Tickets: {sprintTickets?.length || 0}</span>
-                                <span>• Assigned To: {sprintTeam.name} team</span>
+                                <span>• Team: {sprintTeam?.name || 'Unknown'}</span>
                             </div>
                         </CardContent>
                     </Card>
+
                     {/* Team Members */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Team Members</CardTitle>
+                            <CardTitle>Team Members ({totalTeamMembers})</CardTitle>
                         </CardHeader>
 
                         <CardContent>
-                            {sprintTeam?.members.length === 0 ? (
+                            {!sprintTeam?.members || sprintTeam.members.length === 0 ? (
                                 <div className="text-sm text-gray-500">No team members assigned.</div>
                             ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                    {sprintTeam?.members.map((member, idx) => (
+                                    {sprintTeam.members.map((member, idx) => (
                                         <div
-                                            key={member.guid || idx}
+                                            key={member.profile?.guid || idx}
                                             className="p-3 border rounded-lg cursor-pointer transition hover:shadow-md flex flex-col items-center"
                                             onClick={() => handleMemberClick(member)}
                                         >
                                             <Avatar className="w-12 h-12">
-                                                <AvatarImage src={member.profile?.profileImageUrl} alt={member?.profile.displayName || 'User'} />
+                                                <AvatarImage src={member.profile?.profileImageUrl} alt={member.profile?.displayName || 'User'} />
                                                 <AvatarFallback className="text-sm bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                                                    {member.profile?.displayName ? member.profile?.displayName.charAt(0).toUpperCase() : 'U'}
+                                                    {member.profile?.displayName ? member.profile.displayName.charAt(0).toUpperCase() : 'U'}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="mt-2 text-center">
                                                 <p className="text-sm font-medium">{member.profile?.displayName || 'Unknown'}</p>
-                                                {member.departmentDto?.departmentName && <p className="text-xs text-gray-500">{member.departmentDto?.departmentName}</p>}
+                                                {member.departmentDto?.departmentName && (
+                                                    <p className="text-xs text-gray-500">{member.departmentDto.departmentName}</p>
+                                                )}
                                                 {member.position && <p className="text-xs text-gray-400">{member.position}</p>}
                                             </div>
                                         </div>
@@ -626,15 +556,17 @@ export default function Sprint() {
                                 {selectedMember && (
                                     <>
                                         <DialogHeader>
-                                            <DialogTitle>{selectedMember.displayName || 'Member'} - Sprint Tasks</DialogTitle>
+                                            <DialogTitle>
+                                                {selectedMember.profile?.displayName || 'Member'} - Sprint Tasks
+                                            </DialogTitle>
                                         </DialogHeader>
 
                                         <div className="space-y-4 mt-4">
                                             {(() => {
-                                                const memberTickets = getMemberTickets(selectedMember.displayName)
+                                                const memberTickets = getMemberTickets(selectedMember.profile?.displayName)
                                                 
                                                 if (memberTickets.length === 0) {
-                                                    return <p className="text-sm text-gray-500">No tasks assigned in this sprint.</p>
+                                                    return <p className="text-sm text-gray-500">No tickets assigned in this sprint.</p>
                                                 }
                                                 
                                                 return memberTickets.map((ticket, idx) => {
@@ -647,12 +579,12 @@ export default function Sprint() {
                                                         >
                                                             <div className="flex items-center justify-between">
                                                                 <h4 className="font-medium text-gray-800">{ticket.title || 'Untitled'}</h4>
-                                                                {ticket.status && (
+                                                                {ticket.statusInString && (
                                                                     <span
                                                                         className="px-2 py-0.5 text-xs rounded-md text-white"
-                                                                        style={{ background: getStatusColor(ticket.status) }}
+                                                                        style={{ background: getStatusColor(ticket.statusInString) }}
                                                                     >
-                                                                        {ticket.status}
+                                                                        {ticket.statusInString}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -662,7 +594,7 @@ export default function Sprint() {
                                                             </p>
 
                                                             <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                                                                <span>Priority: {ticket.priority || 'N/A'}</span>
+                                                                <span>Priority: {ticket.priorityInString || 'N/A'}</span>
                                                                 <span>• Updated: {updatedDate}</span>
                                                             </div>
                                                         </div>
@@ -677,20 +609,20 @@ export default function Sprint() {
                     </Card>
 
                     {/* Tickets List */}
-                    <Card className="bg-gray-400 text-white">
+                    <Card>
                         <CardHeader>
                             <CardTitle>Tickets in Sprint</CardTitle>
                         </CardHeader>
 
                         <CardContent className="space-y-4">
                             {sprintTickets.length === 0 ? (
-                                <div className="text-sm text-gray-200">No tickets in this sprint.</div>
+                                <div className="text-sm text-gray-500">No tickets in this sprint.</div>
                             ) : (
-                                <div className="space-y-4 z-10">
+                                <div className="space-y-4">
                                     {sprintTickets.map((ticket, idx) => {
                                         const ticketId = getTicketId(ticket)
                                         const assigneeName = getAssigneeName(ticket)
-                                        const updatedDate = formatDate(ticket.updatedAt || ticket.UpdatedAt)
+                                        const updatedDate = formatDate(ticket.updatedAt)
                                         
                                         return (
                                             <div
@@ -699,7 +631,7 @@ export default function Sprint() {
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <h3 className="font-semibold text-gray-800">{ticket.title || 'Untitled Ticket'}</h3>
-                                                    {ticket.status && (
+                                                    {ticket.statusInString && (
                                                         <span
                                                             className="px-2 py-0.5 rounded-md text-xs font-medium text-white"
                                                             style={{ background: getStatusColor(ticket.statusInString) }}
@@ -727,7 +659,7 @@ export default function Sprint() {
                                                 </div>
 
                                                 <p className="mt-2 text-sm text-gray-600 break-words line-clamp-2">
-                                                    {ticket.description || ticket.Description || 'No description.'}
+                                                    {ticket.description || 'No description.'}
                                                 </p>
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
@@ -738,7 +670,7 @@ export default function Sprint() {
                                                     <div className="flex justify-end mt-4">
                                                         <Button 
                                                             variant="primary" 
-                                                            className="bg-black w-20" 
+                                                            className="bg-black text-white w-20" 
                                                             size="sm" 
                                                             onClick={() => handleViewTicket(ticketId)}
                                                         >
@@ -753,8 +685,6 @@ export default function Sprint() {
                             )}
                         </CardContent>
                     </Card>
-
-                    
                 </div>
 
                 {/* Right Column */}
@@ -767,7 +697,9 @@ export default function Sprint() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold text-green-600">
-                                    {DEMO_SUMMARY_DATA.overallProgress}%
+                                    {sprintBreakdown?.totalTickets > 0 
+                                        ? Math.round((sprintBreakdown.completedTickets / sprintBreakdown.totalTickets) * 100)
+                                        : 0}%
                                 </div>
                             </CardContent>
                         </Card>
@@ -777,19 +709,19 @@ export default function Sprint() {
                                 <CardTitle className="text-base font-medium">Total Tickets</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold">{DEMO_SUMMARY_DATA.totalTickets}</div>
+                                <div className="text-3xl font-bold">{sprintBreakdown?.totalTickets || 0}</div>
                                 <p className="text-sm text-gray-500">
-                                    {DEMO_SUMMARY_DATA.completedTickets} completed, {DEMO_SUMMARY_DATA.inProgressTickets} in progress
+                                    {sprintBreakdown?.completedTickets || 0} completed, {sprintBreakdown?.pendingTickets || 0} pending
                                 </p>
                             </CardContent>
                         </Card>
 
                         <Card className="shadow-sm">
                             <CardHeader className="pb-1">
-                                <CardTitle className="text-base font-medium">Team Velocity</CardTitle>
+                                <CardTitle className="text-base font-medium">Sprint Velocity</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold">{DEMO_SUMMARY_DATA.teamVelocity}</div>
+                                <div className="text-3xl font-bold">{sprintBreakdown?.sprintVelocity || 0}</div>
                                 <p className="text-sm text-gray-500">Story points per day</p>
                             </CardContent>
                         </Card>
@@ -800,14 +732,14 @@ export default function Sprint() {
                             </CardHeader>
                             <CardContent>
                                 <div
-                                    className={`text-3xl font-bold ${DEMO_SUMMARY_DATA.daysRemaining === 0 ? "text-red-600" : "text-blue-600"}`}
+                                    className={`text-3xl font-bold ${daysRemaining === 0 ? "text-red-600" : "text-blue-600"}`}
                                 >
-                                    {DEMO_SUMMARY_DATA.daysRemaining}
+                                    {daysRemaining}
                                 </div>
                                 <p className="text-sm text-gray-500">
-                                    {DEMO_SUMMARY_DATA.daysRemaining === 0
+                                    {daysRemaining === 0
                                         ? "Sprint ends today"
-                                        : `${DEMO_SUMMARY_DATA.daysRemaining} days left`}
+                                        : `${daysRemaining} days left`}
                                 </p>
                             </CardContent>
                         </Card>
@@ -819,139 +751,38 @@ export default function Sprint() {
                             <CardTitle>Sprint Activity</CardTitle>
                         </CardHeader>
 
-                        <CardContent className="space-y-6">
-                            {sprintActivities.length === 0 ? (
-                                <div className="text-sm text-gray-500">No activity yet.</div>
+                        <CardContent className="space-y-4">
+                            {previewActivities.length === 0 ? (
+                                <div className="text-sm text-gray-500">No recent activities.</div>  
                             ) : (
-                                <>
-                                    <div className="space-y-6">
-                                        {previewActivities.map((update, idx) => {
-                                            const userName = update.user?.name || 'Unknown User'
-                                            const userInitial = userName.charAt(0).toUpperCase()
-                                            const activityDate = formatDateTime(update.date)
-                                            
-                                            return (
-                                                <div key={update.id || idx} className="flex items-start gap-3 relative">
-                                                    <Avatar className="w-8 h-8">
-                                                        <AvatarImage src={update.user?.img} alt={userName} />
-                                                        <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                                                            {userInitial}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-
-                                                    <div className="flex-1">
-                                                        <p className="text-sm">
-                                                            <span className="font-medium">{userName}</span>{": "}
-                                                            <span className="break-words">{update.message || 'No message'}</span>
-                                                        </p>
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            {activityDate}
-                                                            {update.ticketId && (
-                                                                <>
-                                                                    {" • Ticket "}
-                                                                    <span className="font-medium text-purple-600">{update.ticketId}</span>
-                                                                </>
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-
-                                    {hasMoreActivities && (
-                                        <div className="flex justify-center">
-                                            <Button variant="ghost" size="sm" onClick={() => setOpenActivityModal(true)}>
-                                                View All
-                                            </Button>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </CardContent>
-
-                        {/* All Activities Modal */}
-                        <Dialog open={openActivityModal} onOpenChange={setOpenActivityModal}>
-                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                                <DialogHeader>
-                                    <DialogTitle>All Sprint Activity</DialogTitle>
-                                </DialogHeader>
-
-                                <div className="space-y-6 mt-4">
-                                    {sprintActivities.map((update, idx) => {
-                                        const userName = update.user?.name || 'Unknown User'
-                                        const userInitial = userName.charAt(0).toUpperCase()
-                                        const activityDate = formatDateTime(update.date)
-                                        
+                                <div className="space-y-3">
+                                    {previewActivities.map((activity, idx) => {
+                                        const activityDate = formatDate(activity.date)
                                         return (
-                                            <div key={update.id || idx} className="flex items-start gap-3">
-                                                <Avatar className="w-8 h-8">
-                                                    <AvatarImage src={update.user?.img} alt={userName} />
-                                                    <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                                                        {userInitial}
-                                                    </AvatarFallback>
-                                                </Avatar>
-
-                                                <div className="flex-1">
-                                                    <p className="text-sm">
-                                                        <span className="font-medium">{userName}</span>{": "}
-                                                        <span className="break-words">{update.message || 'No message'}</span>
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        {activityDate}
-                                                        {update.ticketId && (
-                                                            <>
-                                                                {" • Ticket "}
-                                                                <span className="font-medium text-purple-600">{update.ticketId}</span>
-                                                            </>
-                                                        )}
-                                                    </p>
-                                                </div>
+                                            <div key={idx} className="text-sm text-gray-700">
+                                                <p>{activity.description || 'No description'}</p>
+                                                <span className="text-xs text-gray-400">• {activityDate}</span>
                                             </div>
                                         )
                                     })}
                                 </div>
-                            </DialogContent>
-                        </Dialog>
-                    </Card>
-                </div>
-            </div>
-            <div className='grid grid-cols-12 gap-6'>
-                <div className="col-span-12 lg:col-span-12">
-                    {/* Progress Chart */}
-                    <Card className="bg-yellow-400">
-                        <CardHeader>
-                            <CardTitle>Sprint Progress</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {progressLineData.length === 0 ? (
-                                <div className="w-full h-48 flex items-center justify-center text-sm text-gray-500">
-                                    No progress data available.
+                            )}
+                            {hasMoreActivities && (
+                                <div className="flex justify-center mt-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => navigate(`/sprints/${sprintGuid}/activities`)}
+                                    >
+                                        View All Activities
+                                    </Button>
                                 </div>
-                            ) : (
-                                <Card>
-                                    <ResponsiveContainer width="100%" height={250}>
-                                        <LineChart data={progressLineData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                            <XAxis dataKey="day" />
-                                            <YAxis />
-                                            <Tooltip />
-                                            <Line type="monotone" dataKey="completed" stroke="#10b981" strokeWidth={2} name="Completed" />
-                                            <Line type="monotone" dataKey="pending" stroke="#ef4444" strokeWidth={2} name="Pending" />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </Card>
                             )}
                         </CardContent>
                     </Card>
-                    
                 </div>
-
-
+                
             </div>
+            
         </div>
     )
 }
-
-
-
-

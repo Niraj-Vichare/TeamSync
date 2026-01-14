@@ -12,13 +12,17 @@ function CreateWorkspace() {
   const [workspaceDesc,setWorkspaceDesc] = useState('');
   const navigate = useNavigate();
 
-  const handleCreateWorkspace=()=>{
+  const handleCreateWorkspace=async ()=>{
     try{
       if(workspaceName == ''){
         toast.error("Workspace name is required");
         return;
       }
-      var response = workspaceService.createWorkspace(workspaceName,workspaceDesc);
+      var workspaceRequestModel = {
+        workspaceName:workspaceName,
+        workspaceDescription:workspaceDesc
+      }
+      var response = await workspaceService.createWorkspace(workspaceRequestModel);
       const { success,data,message,statusCode } = response.data;
       if(success || statusCode == 200){
         toast.success(message || "Workspace created successfully");
@@ -26,7 +30,7 @@ function CreateWorkspace() {
       }
 
     }catch(error){
-      toast.error("");
+      toast.error("Something went wrong while creating workspace");
     }
   }
 

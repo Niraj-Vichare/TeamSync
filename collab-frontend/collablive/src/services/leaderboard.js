@@ -9,7 +9,7 @@ class LeaderBoardService {
             const response = await axiosInstance.get('/leaderboard', {
                 params: { workspaceId, pageNumber, pageSize }
             });
-            return response;
+            return response.data;
         } catch (error) {
             console.error('Error while loading leaderboard:', error);
             throw error;

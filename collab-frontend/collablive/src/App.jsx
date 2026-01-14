@@ -22,26 +22,28 @@ import Sprint from './pages/sprint';
 import Leaderboard from './pages/leaderboard';
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated,workspaceId,loading } = useAuth();
 
   return (
 
     <Router>
       <ThemeProvider defaultTheme="light" storageKey='vite-ui-theme'>
-        {console.log(isAuthenticated)}
+        {console.log(isAuthenticated,workspaceId,loading)}
         <Toaster position="top-center" richColors />
-        <InnerApp isAuthenticated={isAuthenticated} />
+        <InnerApp isAuthenticated={isAuthenticated} workspaceId={workspaceId}
+  loading={loading}/>
       </ThemeProvider>
     </Router>
   );
 }
 
-function InnerApp({ isAuthenticated }) {
-  const { loading } = useAuth();
+function InnerApp({ isAuthenticated,workspaceId,loading }) {
+  
   const location = useLocation();
 
   if (loading) return <div>Loading...</div>;
 
+  //  Not authenticated → auth flow
   if (!isAuthenticated) {
     return (
       <Routes>
@@ -54,30 +56,40 @@ function InnerApp({ isAuthenticated }) {
     );
   }
 
+  // ✅ Authenticated but NO workspace → force creation
+  if (!workspaceId) {
+    return (
+      <Routes>
+        <Route element={<PlainLayout />}>
+          <Route
+            path="/workspace/create-workspace"
+            element={<CreateWorkspace />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to="/workspace/create-workspace" replace />}
+          />
+        </Route>
+      </Routes>
+    );
+  }
+
+  // Authenticated + workspace exists → full app
   return (
     <Routes>
-      {/* Routes with sidebar layout */}
       <Route element={<SidebarLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/tasks" element={<Task/>}/>
-        <Route path='/projects' element={<Projects/>}/>
-        <Route path='/sprints' element={<Sprints/>}/>
-        <Route path='/projects/:projectId' element={<Project/>}/>
-        <Route path='/team' element={<Team/>}/>
-        <Route path='/analytics' element={<Analytics/>}/>
-        <Route path='/leaderboard' element={<Leaderboard/>}/>
-        <Route path='/sprints/:sprintId' element={<Sprint/>}/>
-        {/* <Route path='/report' element={<Report/>}/> */}
-        <Route path='/settings' element={<Settings/>}/>
+        <Route path="/tasks" element={<Task />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:projectId" element={<Project />} />
+        <Route path="/sprints" element={<Sprints />} />
+        <Route path="/sprints/:sprintId" element={<Sprint />} />
+        <Route path="/team" element={<Team />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
-      {/* Routes with NO sidebar */}
-      <Route element={<PlainLayout />}>
-        <Route path="/workspace/create-workspace" element={<CreateWorkspace />} />
-        <Route path="/workspace/invite-teamperson" element={<InviteTeamPerson />} />
-      </Route>
-
-      {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

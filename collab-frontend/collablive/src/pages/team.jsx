@@ -61,14 +61,15 @@ function Team() {
   const workspaceGuid = getCurrentWorkspaceId();
 
   const handleAddMember=async()=>{
-    
+    debugger;
     // Validate form data
     const newErrors = {};
     if (!formData.memberName) newErrors.memberName = 'Member name is required';
-    if(!formData.Password) newErrors.Password = 'Password is required';
+    if(!formData.memberPassword) newErrors.memberPassword = 'Password is required';
     if (!formData.memberEmail) newErrors.memberEmail = 'Member email is required';
     if (!formData.memberRole) newErrors.memberRole = 'Member role is required';
     if (!formData.memberDepartment) newErrors.memberDepartment = 'Member department is required';
+    if(!formData.memberPosition) newErrors.memberPosition = 'Member position is required';
     if (!formData.memberStatus) newErrors.memberStatus = 'Member status is required';
     setErrors(newErrors);
 
@@ -81,7 +82,7 @@ function Team() {
         profile:{
           displayName:formData.memberName,
           email:formData.memberEmail,
-          password:formData.Password,
+          password:formData.memberPassword,
           guid:'',
           bio:'',
           workspaceId:workspaceGuid,
@@ -92,7 +93,8 @@ function Team() {
         statusId:parseInt(formData.memberStatus),
       };
       var response = await teamService.addTeamMember(workspaceGuid,member);
-      if(response && response.success){
+      if(response && response.data?.success)
+      {
         setMemberDialogOpen(false);
         fetchWorkspaceMembers(workspaceGuid);
         toast.success("Team member added successfully");
