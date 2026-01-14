@@ -15,9 +15,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     public class ProfileService : IProfileService
     {
         private IOmniRepository _omniRepository;
-        public ProfileService(IOmniRepository omniRepository)
+        private ICache _cache;
+
+        public ProfileService(ICache cache,IOmniRepository omniRepository)
         {
             _omniRepository = omniRepository;
+            _cache = cache;
         }
         public async Task<bool> CreateProfile(User user,string displayName)
         {
@@ -26,8 +29,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (profileId > 0)
             {
                 (DateTime startDate,DateTime endDate) = PeriodHelper.GetCurrentWeekPeriod();
-                _omniRepository.ProfileRepository.InializeUserConfiguration(profileId,startDate,endDate);
+                await _omniRepository.ProfileRepository.InializeUserConfiguration(profileId,startDate,endDate);
+                
             }
+            
             return profileId > 0;
         }
 

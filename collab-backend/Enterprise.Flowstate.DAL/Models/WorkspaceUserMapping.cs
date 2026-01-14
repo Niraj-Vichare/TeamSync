@@ -11,9 +11,9 @@ namespace Enterprise.Flowstate.DAL.Models
     [Table("workspace_user_mapping")]
     public class WorkspaceUserMapping:BaseModel
     {
-        [PrimaryKey("workspace_id")]
+        [Column("workspace_id")]
         public int WorkspaceId { get; set; }
-        [PrimaryKey("profile_id")]
+        [Column("profile_id")]
         public int UserId { get; set; }
         [Column("role_id")]
         public int RoleId { get; set; } 

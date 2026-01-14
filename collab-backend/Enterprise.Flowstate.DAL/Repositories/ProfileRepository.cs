@@ -18,7 +18,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             // Initialize any required services or repositories here
         }
 
-        public async Task<int?> CreateProfileAsync(Profile profile)
+        public async Task<int?> CreateProfileAsync(Profile profile,int roleId)
         {
             // First need to create the supabase profile
             var result = await _supabaseClient
@@ -30,7 +30,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             {
                 return 0;
             }
-            var finalResult = await InsertProfileWorkspaceMapping((int)profileId, profile.WorkspaceId);
+            var finalResult = await InsertProfileWorkspaceMapping((int)profileId, profile.WorkspaceId, roleId);
             if(!finalResult)
             {
                 return 0;
@@ -38,7 +38,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             return profileId;
         }
 
-        public async Task<bool> InsertProfileWorkspaceMapping(int profileId, string workspaceGuid)
+        public async Task<bool> InsertProfileWorkspaceMapping(int profileId, string workspaceGuid,int role)
         {
             var workspaceResponse = _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
             if(workspaceResponse == null)
@@ -49,7 +49,8 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             WorkspaceUserMapping mapping = new WorkspaceUserMapping
             {
                 UserId = profileId,
-                WorkspaceId = workspaceId
+                WorkspaceId = workspaceId,
+                RoleId = role
             };
             var result = await _supabaseClient.From<WorkspaceUserMapping>().Insert(mapping);
             return result.Models.Count > 0;
@@ -61,7 +62,8 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             {
                 Guid = user.Id,
                 CreatedAt = DateTime.UtcNow,
-                DisplayName = displayName
+                DisplayName = displayName,
+                Email = user.Email
             };
             var result = await _supabaseClient.From<Profile>().Insert(profile);
             return result.Models.FirstOrDefault().Id;
@@ -148,27 +150,33 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             }
             return true;
         }
-        public async Task<bool> UpdateUserConfiguration(string userGuid, string workspaceGuid, int memberCount)
+        public async Task<string> UpdateUserConfiguration(string userGuid, string workspaceGuid, int memberCount)
         {
             var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
-            var profile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
-            if(workspace == null && profile == null)
+            var profileResponse = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            
+            if(workspace == null && profileResponse == null)
             {
-                return false;
+                return string.Empty;
             }
-            int profileId = profile.Models.FirstOrDefault().Id;
+            int profileId = profileResponse.Models.FirstOrDefault().Id;
             int workspaceId = workspace.Models.FirstOrDefault().Id;
+
+            var profile = profileResponse.Models.FirstOrDefault();
+            profile.WorkspaceId = workspaceGuid;
+
+            await _supabaseClient.From<Profile>().Update(profile);
             var userMetricResponse = await _supabaseClient.From<WeeklyUserStats>().Where(userMetric => userMetric.Id == profileId).Get();
-            if (userMetricResponse == null)
+            if (userMetricResponse.Models.Count <= 0)
             {
-                return false;
+                return string.Empty;
             }
             WeeklyUserStats userMetric = userMetricResponse.Models.FirstOrDefault();
 
             userMetric.WorkspaceId = workspaceId;
             
             _supabaseClient.From<WeeklyUserStats>().Update(userMetric);
-            return true;
+            return profileId.ToString();
         }
     }
 }

@@ -2,7 +2,6 @@
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Models;
-using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 
@@ -57,8 +56,10 @@ namespace Enterpise.Flowstate.Controllers
                     };
                 }
 
+                var currentWorkspaceId = await _omniService.ProfileService.GetCurrentWorkspaceId(response.User.Id);
+                
                 // Get current workspace ID after successful signin
-                string currentWorkspaceId = await _omniService.ProfileService.GetCurrentWorkspaceId(response.User.Id);
+                int userRole = await _omniService.WorkspaceService.GetUserWorkspaceInfo(currentWorkspaceId,response.User.Id);
 
                 var accessToken = response.AccessToken;
                 if (!string.IsNullOrEmpty(accessToken))
@@ -84,7 +85,8 @@ namespace Enterpise.Flowstate.Controllers
                         Data = new
                         {
                             workspaceId = currentWorkspaceId,
-                            userId = response.User.Id
+                            userId = response.User.Id,
+                            userRole = userRole
                         }
                     };
                 }

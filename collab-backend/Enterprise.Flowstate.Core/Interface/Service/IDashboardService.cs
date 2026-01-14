@@ -20,6 +20,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<ClockActionResult> ClockOut(string workspaceGuid, string userGuid, bool isAutomatic);
         Task<List<UserWorkMetric>> GetUserWorkMetric(string workspaceGuid, string userGuid);
         Task<List<UserContributionMetric>> GetUserContribution(string workspaceGuid, string userGuid);
-        Task<ClockStatusDto> GetCurrentStatus(string workspaceGuid, string userGuid);   
+        Task<ClockStatusDto> GetCurrentStatus(string workspaceGuid, string userGuid);
     }
 }

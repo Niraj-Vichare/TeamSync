@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Interfaces;
+﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
+using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -121,6 +122,33 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
 
             return result;
+        }
+
+        public async Task<bool> IsWeeklyUserStatsPresent(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                var result= await _supabaseClient.From<WeeklyUserStats>().Filter(stat=>stat.StartPeriod,Supabase.Postgrest.Constants.Operator.Equals,startDate.ToString("MM-dd-yyyy"))
+                    .Filter(stat => stat.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, endDate.ToString("MM-dd-yyyy")).Get();
+
+                return result.Models.Any();
+            }catch(Exception ex)
+            {
+                return false;
+            }
+            
+        }
+
+        public async System.Threading.Tasks.Task CopyPreviousStats(int workspaceId,DateTime startPeriod,DateTime endPeriod)
+        {
+            var (previousStart,previousEnd) = PeriodHelper.GetPreviousWeekPeriod();
+
+            var weeklyStatsResponse = await _supabaseClient.From<WeeklyUserStats>()
+                .Where(stat => stat.WorkspaceId == workspaceId)
+
+                .Get();
+
+            var previousRecords = weeklyStatsResponse.Models;
         }
 
 

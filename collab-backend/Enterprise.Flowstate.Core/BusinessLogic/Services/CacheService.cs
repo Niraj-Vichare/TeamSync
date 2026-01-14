@@ -1,5 +1,6 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Constants;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.Extensions.Configuration;
@@ -142,6 +143,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 return 0;
             }
+        }
+
+        public async Task UpsertUserProfile(UserDto user)
+        {
+            var key = string.Format(FlowStateConstants.USER_INFO_KEY, user.Id);
+            await SetAsync(key,user);
         }
 
         public async Task<string> GetUserInfoAsync(string userId)

@@ -13,5 +13,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<WeeklyUserStats> GetUserMetricAsync(string workspaceGuid, string userId, DateTime startPeriod, DateTime endPeriod);
         Task<List<WeeklyUserStats>> GetUserRankingHistory(string workspaceGuid, string userGuid);
         Task<Dictionary<string, RankingCacheModel>> GetWorkspaceWeekRankings(string workspaceGuid, DateTime startPeriod, DateTime endPeriod);
+        Task<bool> IsWeeklyUserStatsPresent(DateTime startDate, DateTime endDate);
     }
 }

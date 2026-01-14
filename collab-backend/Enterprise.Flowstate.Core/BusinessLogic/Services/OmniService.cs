@@ -38,10 +38,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             AuthService = new AuthService(_client);
             TaskService = new TaskService(_omniRepository,_eventPublisher);
             LeaderboardComparisonService = new LeaderboardComparisonService(_cache, _omniRepository);
-            ProfileService = new ProfileService(_omniRepository);
-            WorkspaceService = new WorkspaceService(_omniRepository);
+            ProfileService = new ProfileService(_cache,_omniRepository);
+            WorkspaceService = new WorkspaceService(_cache,_omniRepository);
             ProjectService = new ProjectService(_omniRepository,eventPublish);
-            TeamService = new TeamService(_omniRepository,_client);
+            TeamService = new TeamService(_omniRepository,_client,_cache);
             SprintService = new SprintService(_omniRepository);
             TicketService = new TicketService(_omniRepository);
             DashboardService = new DashboardService(_omniRepository,_eventPublisher);

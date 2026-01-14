@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.Filters;
+using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost]
+        //[RequirePermission("sprints.create")]
         public async Task<ApiResponseModel<object>> CreateSprint([FromQuery] string workspaceGuid,[FromBody] SprintDto sprintDto)
         {
             try

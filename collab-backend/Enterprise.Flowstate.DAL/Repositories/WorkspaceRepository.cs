@@ -2,6 +2,7 @@
 using Enterprise.Flowstate.DAL.Models;
 using Supabase.Gotrue;
 using Supabase.Interfaces;
+using Supabase.Postgrest;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,9 @@ namespace Enterprise.Flowstate.DAL.Repositories
         public async Task<string> CreateWorkspace(string ownerId, string name,string description)
         {
             var profile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == ownerId).Get();
-            if(profile.Models.Count == 0)
+            
+
+            if (profile.Models.Count == 0)
             {
                 return string.Empty; // Profile not found
             }
@@ -30,15 +33,23 @@ namespace Enterprise.Flowstate.DAL.Repositories
             {
                 Name = name,
                 Description = description,
-                OwnerId = siteuserId,                
+                OwnerId = siteuserId,          
+                CreatedAt = DateTime.Now,
+                WorkspaceGuid = Guid.NewGuid().ToString()
             };
+            //var result = await _supabaseClient.From<Workspace>().Insert(workspace);
             var result = await _supabaseClient.From<Workspace>().Insert(workspace);
+
+
+            int workspaceId = result.Models.FirstOrDefault().Id;
             if (result.Models.Count > 0)
             {
                 var mapping = new WorkspaceUserMapping
                 {
                     UserId = siteuserId,
-                    WorkspaceId = result.Models.FirstOrDefault().Id
+                    WorkspaceId = workspaceId,
+                    RoleId = 1 // Assuming 1 is the role ID for owner/admin
+                    
                 };
                 await _supabaseClient.From<WorkspaceUserMapping>().Insert(mapping);
             }
@@ -86,6 +97,16 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping => mapping.WorkspaceId == workspaceId).Get();
             return workspaces.Models.ToList();
+        }
+
+        public async Task<int> GetUserWorkspaceInfo(string workspaceGuid, string userGuid)
+        {
+            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            int workspaceId = workspaceResponse.Models.FirstOrDefault().Id;
+            var userResponse = await _supabaseClient.From<Profile>().Where(profile=>profile.Guid == userGuid).Get();
+            int userId = userResponse.Models.FirstOrDefault().Id;
+            var mappingResponse = await _supabaseClient.From<WorkspaceUserMapping>().Where(m => m.WorkspaceId == workspaceId && m.UserId == userId).Get();
+           return mappingResponse.Models.FirstOrDefault().RoleId;
         }
         public async Task<int> GetWorkspaceMemberCount(string workspaceId)
         {

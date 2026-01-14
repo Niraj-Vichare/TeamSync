@@ -47,7 +47,7 @@ namespace Enterpise.Flowstate.Controllers
 
                 var result = await _omniService.TeamService.AddMember(workspaceGuid, mapping);
 
-                if (result)
+                if (!result)
                 {
                     return ApiResponseHelper.FromErrorStatus<object>(
                         ErrorStatus.FAILURE,

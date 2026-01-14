@@ -1,5 +1,6 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.Controllers;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -17,11 +18,11 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpPost]
         [Route("create-workspace")]
-        public async Task<ApiResponseModel<object>> CreateWorkspace(string workspaceName, string workspaceDescription)
+        public async Task<ApiResponseModel<object>> CreateWorkspace(WorkspaceRequestModel workspaceRequestModel)
         {
             try
             {
-                if (workspaceName == null || workspaceDescription == null)
+                if (workspaceRequestModel.WorkspaceName == null || workspaceRequestModel.WorkspaceDescription == null)
                 {
                     return new ApiResponseModel<object>
                     {
@@ -44,8 +45,8 @@ namespace Enterpise.Flowstate.Controllers
                         StatusCode = StatusCodes.Status401Unauthorized,
                     };
                 }
-                bool isCreated = await _omniService.WorkspaceService.CreateWorkspace(userId.ToString(), workspaceName, workspaceDescription);
-                if (!isCreated)
+                string workspaceGuid = await _omniService.WorkspaceService.CreateWorkspace(userId.ToString(), workspaceRequestModel.WorkspaceName,workspaceRequestModel.WorkspaceDescription);
+                if (string.IsNullOrEmpty(workspaceGuid))
                 {
                     return new ApiResponseModel<object>
                     {
@@ -53,12 +54,13 @@ namespace Enterpise.Flowstate.Controllers
                         Success = false,
                         Message = "Failed to create workspace"
                     };
-
+                        
                 }
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status200OK,
                     Success = true,
+                    Data = workspaceGuid,
                     Message = "Successfully created an workspace for the user"
                 };
 

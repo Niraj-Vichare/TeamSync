@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.Models;
+using Supabase.Gotrue;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,5 +17,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<int> GetWorkspaceMemberCount(string workspaceId);
         Task<List<int>> GetAllActiveWorkspaceIds();
         Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId);
+        Task<int> GetUserWorkspaceInfo(string workspaceGuid,string userId);
     }
 }

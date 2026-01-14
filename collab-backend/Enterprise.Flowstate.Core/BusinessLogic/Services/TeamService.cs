@@ -17,10 +17,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     {
         public IOmniRepository _omniRepository;
         private readonly Supabase.Client _supabaseClient;
-        public TeamService(IOmniRepository omniRepository, Supabase.Client supabaseClient)
+        private ICache _cache;
+        public TeamService(IOmniRepository omniRepository, Supabase.Client supabaseClient,ICache cache)
         {
             _omniRepository = omniRepository;
-            _supabaseClient = supabaseClient;   
+            _supabaseClient = supabaseClient;
+            _cache = cache;
         }
         public async Task<bool> AddMember(string workspaceGuid,TeamMemberDto teamMemberDto)
         {
@@ -32,6 +34,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return false;
             }
 
+            int workspaceId = await _omniRepository.WorkspaceRepository.GetWorkspaceId(workspaceGuid);
             Profile profile = new Profile
             {
                 Bio = "",
@@ -43,11 +46,40 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 UpdatedAt = DateTime.UtcNow,
                 Guid = user.User.Id,
             };
-            var profileId = await _omniRepository.ProfileRepository.CreateProfileAsync(profile);
+            var profileId = await _omniRepository.ProfileRepository.CreateProfileAsync(profile, teamMemberDto.RoleId);
             if(profileId <= 0)
             {
                 return false;
             }
+            int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
+            RankingCacheModel rankingCacheMetric = new RankingCacheModel
+            {
+                ContributionPoint = 0,
+                Efficiency = 0,
+                Ranking = memberCount,
+                Score = 0,
+                TotalHours = 0,
+                TotalTicketCompleted = 0,
+                UserName = teamMemberDto.Profile.DisplayName,
+                UserId = (int)profileId
+            };
+            await _cache.UpsertUserMetricAsync(workspaceGuid,user.User.Id,rankingCacheMetric);
+
+            var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriod();
+            WeeklyUserStats weeklyUserStats = new WeeklyUserStats
+            {
+                ContributionPoints = 0,
+                Efficiency = 0,
+                RankPosition = memberCount,
+                Score = 0,
+                TotalHours = 0,
+                TicketCompleted = 0,
+                UserId = (int)profileId,
+                StartPeriod = startDate,
+                EndPeriod = endDate,
+                WorkspaceId = workspaceId
+            };
+            await _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
 
             Members members = new Members()
             {

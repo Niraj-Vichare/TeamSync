@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTO;
+using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -30,5 +31,10 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<double> GetUserScore(string workspaceId, string userId);
         Task<bool> ClearWorkspaceRankingsAsync(string workspaceId);
         Task CopySortedSetAsync(string sourceKey, string destinationKey, TimeSpan? expiry = null);
+        Task UpsertUserProfile(UserDto user);
+        Task<List<string>> GetUserPermissionsAsync(string userId, int workspaceId);
+        Task<string> GetUserRoleAsync(string userId, int workspaceId);
+        Task InvalidateUserCacheAsync(string userId, int workspaceId);
+        Task CacheUserPermissionsAsync(string userId, int workspaceId, List<string> permissions, string roleName);
     }
 }
