@@ -61,10 +61,10 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var organizationId = workspaceResponse.Models.FirstOrDefault().Id;
             var userIdInt = userResponse.Models.FirstOrDefault().Id;
             var metricResponse = await _supabaseClient.From<WeeklyUserStats>()
-                .Where(um => um.WorkspaceId == organizationId
-                             && um.UserId == userIdInt
-                             && um.StartPeriod == startPeriod.Date
-                             && um.EndPeriod == endPeriod.Date)
+                .Filter(user=>user.UserId,Supabase.Postgrest.Constants.Operator.Equals, userIdInt.ToString())
+                .Filter(user=>user.WorkspaceId,Supabase.Postgrest.Constants.Operator.Equals,organizationId.ToString())
+                .Filter(user=>user.StartPeriod,Supabase.Postgrest.Constants.Operator.Equals,startPeriod.Date.ToString("yyyy-MM-dd"))
+                .Filter(user=>user.EndPeriod,Supabase.Postgrest.Constants.Operator.Equals,endPeriod.Date.ToString("yyyy-MM-dd"))
                 .Get();
             return metricResponse.Models.Any() ? metricResponse.Models.FirstOrDefault() : null;
         }

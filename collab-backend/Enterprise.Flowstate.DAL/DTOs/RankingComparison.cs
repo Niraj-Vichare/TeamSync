@@ -19,7 +19,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
 
         // Metric Changes
         public int PointsChange { get; set; }
-        public int TasksCompletedChange { get; set; }
+        public int TicketsCompletedChange { get; set; }
         public int HoursChange { get; set; }
         public double EfficiencyChange { get; set; }
 

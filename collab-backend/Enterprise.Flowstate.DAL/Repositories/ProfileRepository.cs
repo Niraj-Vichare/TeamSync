@@ -139,7 +139,11 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 
         public async Task<bool> UpertWeeklyUserMetric(WeeklyUserStats weeklyUserStats)
         {
-            var isExist = await _supabaseClient.From<WeeklyUserStats>().Where(userStatus => userStatus.StartPeriod == weeklyUserStats.StartPeriod && userStatus.EndPeriod == weeklyUserStats.EndPeriod).Get();
+            var isExist = await _supabaseClient.From<WeeklyUserStats>().
+                Where(userStatus => userStatus.UserId == weeklyUserStats.UserId).
+                Filter(userStats=>userStats.StartPeriod,Supabase.Postgrest.Constants.Operator.Equals,weeklyUserStats.StartPeriod).
+                Filter(userStats=>userStats.EndPeriod,Supabase.Postgrest.Constants.Operator.Equals,weeklyUserStats.EndPeriod)
+                .Get();
             if(isExist.Models.Any())
             {
                 _supabaseClient.From<WeeklyUserStats>().Update(weeklyUserStats);
