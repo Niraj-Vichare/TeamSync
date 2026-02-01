@@ -109,9 +109,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
         #region Clock In/Out    
-        public async Task<ClockActionResult> ClockOut(string workspaceId, string userId,bool isAutomatic)
+        public async Task<ClockActionResult> ClockOut(string workspaceGuid, string userGuid,bool isAutomatic)
         {
-            var result = await _omniRepository.DashboardRepository.ClockOut(workspaceId, userId, isAutomatic);
+            var result = await _omniRepository.DashboardRepository.ClockOut(workspaceGuid, userGuid, isAutomatic);
             if (result == ClockActionResult.Success)
             {
 
@@ -120,16 +120,28 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     EventTypeId = (int)EventType.CheckOut,
                     CreatedAt = DateTime.UtcNow,
                     EventDescription = "User Clock out",
-                    UserGuid = userId,
-                    WorkspaceGuid = workspaceId,
+                    UserGuid = userGuid,
+                    WorkspaceGuid = workspaceGuid,
                     EventGuid = Guid.NewGuid().ToString(),
                 };
 
                 await _omniRepository.ProfileRepository.AddEventLog(eventLog);
 
+                #region Event Publishing
+                EventsLogDto eventLogDto = new EventsLogDto
+                {
+                    EventTypeId = (int)EventType.CheckOut,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "User Clock out",
+                    UserGuid = userGuid,
+                    WorkspaceGuid = workspaceGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                };
                 string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
                 byte[] body = Encoding.UTF8.GetBytes(json);
-                await _eventPublisher.PublishAsync(eventLog, 0);
+                await _eventPublisher.PublishAsync(eventLogDto, 0);
+                #endregion 
+
             }
             return result;
         }
@@ -148,12 +160,24 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     WorkspaceGuid = workspaceGuid,
                     EventGuid = Guid.NewGuid().ToString(),
                 };
+
                 
                 await _omniRepository.ProfileRepository.AddEventLog(eventLog);
 
-                string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
+                #region Event Publishing
+                EventsLogDto eventLogDto = new EventsLogDto
+                {
+                    EventTypeId = (int)EventType.CheckIn,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "User Clock in",
+                    UserGuid = userGuid,
+                    WorkspaceGuid = workspaceGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                };
+                string json = System.Text.Json.JsonSerializer.Serialize(eventLogDto);
                 byte[] body = Encoding.UTF8.GetBytes(json);
-                await _eventPublisher.PublishAsync(eventLog,0);
+                await _eventPublisher.PublishAsync(eventLogDto,0);
+                #endregion
             }
             return result;
         }

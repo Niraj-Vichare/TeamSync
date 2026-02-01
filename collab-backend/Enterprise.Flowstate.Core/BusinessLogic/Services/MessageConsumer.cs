@@ -121,11 +121,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     return;
                 }
 
-                _logger.LogInformation("Processing message for UserId={UserId}", evt.UserId);
+                _logger.LogInformation("Processing message for UserId={UserId}", evt.UserGuid);
 
                 var result = await processor.ProcessMessageAsync(evt);
 
-                _logger.LogInformation("Message processed successfully for UserId={UserId}", evt.UserId);
+                _logger.LogInformation("Message processed successfully for UserId={UserId}", evt.UserGuid);
 
                 await _channel.BasicAckAsync(@event.DeliveryTag, false);
             }

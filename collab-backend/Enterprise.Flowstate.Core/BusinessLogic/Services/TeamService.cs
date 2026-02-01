@@ -2,13 +2,6 @@
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
-using Supabase.Gotrue;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Supabase.Interfaces;
 using Enterprise.Flowstate.DAL.Enums;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services

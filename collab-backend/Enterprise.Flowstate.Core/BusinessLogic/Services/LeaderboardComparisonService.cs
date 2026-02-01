@@ -26,6 +26,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             _omniRepository = omniRepository;
         }
 
+
         public async Task<LeaderboardResponse> GetLeaderboardWithComparisonAsync(string workspaceId, int pageNumber,int pageSize=10)
         {
             try
@@ -36,20 +37,51 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 // Get current week rankings from Redis
                 var currentRankings = await _cache.GetWorkspaceRankingsAsync(workspaceId,pageNumber,pageSize);
 
-                if(currentRankings.Count <= 0)
+                if(currentRankings == null || currentRankings.Count <= 0)
                 {
-                    var ranking = await _omniRepository.LeaderBoardRepository.GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
-                    if (ranking == null || ranking.Count == 0)
+                    var dbRankings = await _omniRepository.LeaderBoardRepository.GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
+                    if (dbRankings == null || dbRankings.Count == 0)
                     {
-                        return null;
+                        return new LeaderboardResponse
+                        {
+                            WorkspaceId = workspaceId,
+                            CurrentPeriod = new PeriodInfo { StartDate = currentStart, EndDate = currentEnd },
+                            PreviousPeriod = new PeriodInfo { StartDate = prevStart, EndDate = prevEnd },
+                            Rankings = new List<UserRankingWithComparison>(),
+                            GeneratedAt = DateTime.UtcNow
+                        };
+                    }
+                    foreach (var ranking in dbRankings)
+                    {
+                        var rankMetric = ranking.Value;
+                        var userId = ranking.Key;   
+
+                        var metric = new RankingCacheModel
+                        {
+                            TotalHours = rankMetric.TotalHours,
+                            TotalTicketCompleted = rankMetric.TotalTicketCompleted,
+                            ContributionPoint = rankMetric.ContributionPoint,
+                            Score = rankMetric.Score,
+                            Efficiency = rankMetric.Efficiency,
+                            Ranking = rankMetric.Ranking,
+                            UserId = rankMetric.UserId,
+                            UserName = rankMetric.UserName,
+                            UserProfilePic = rankMetric.UserProfilePic
+                        };
+
+                        await _cache.UpsertUserMetricAsync(workspaceId,userId, metric);
+                        await _cache.UpdateWorkspaceRankingAtomicAsync(workspaceId, userId, (double)rankMetric.Score);
                     }
                 }
+
 
                 var userRankings = new List<UserRankingWithComparison>();
 
                 foreach (var entry in currentRankings)
                 {
                     var comparison = await GetUserRankingWithComparisonAsync(workspaceId, entry.Key);
+
+                    await _cache.UpsertUserMetricAsync(workspaceId,entry.Key, entry.Value);
                     if (comparison != null)
                     {
                         userRankings.Add(comparison);
@@ -80,7 +112,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        public async Task<UserRankingWithComparison> GetUserRankingWithComparisonAsync(string workspaceId, string userId)
+        public async Task<UserRankingWithComparison> GetUserRankingWithComparisonAsync(string workspaceId,string userId)
         {
             try
             {
@@ -91,35 +123,43 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
                 if (currentMetric == null)
                 {
-                    //_logger.LogWarning("No current metric found for UserId={UserId}", userId);
+                    //_logger.LogWarning("No current metric found for user {UserId} in workspace {WorkspaceId}",
+                    //    userId, workspaceId);
                     return null;
                 }
 
-                // Get previous week data from cache (if available)
+                // Get previous week data from cache
                 var prevMetric = await _cache.GetPreviousWeekMetricAsync(workspaceId, userId);
                 var prevRank = await _cache.GetPreviousWeekRankAsync(workspaceId, userId);
                 var prevScore = await _cache.GetPreviousWeekScoreAsync(workspaceId, userId);
 
-                // If not in cache, try database
                 if (prevMetric == null)
                 {
                     var (prevStart, prevEnd) = PeriodHelper.GetPreviousWeekPeriod();
-                    var dbMetric = await _omniRepository.LeaderBoardRepository.GetUserMetricAsync(userId, workspaceId, prevStart, prevEnd);
-                    var dbRanking = await _omniRepository.LeaderBoardRepository.GetUserRankingAsync(userId, workspaceId, prevStart, prevEnd);
 
-                    if (dbMetric != null)
+                    var dbRankings = await _omniRepository.LeaderBoardRepository.GetUserMetricAsync(workspaceId,userId, prevStart, prevEnd);
+
+
+                    if (dbRankings != null)
                     {
                         prevMetric = new RankingCacheModel
                         {
-                            TotalHours = dbMetric.TotalHours ?? 0,
-                            TotalTicketCompleted = dbMetric.TicketCompleted ?? 0,
-                            ContributionPoint = dbMetric.ContributionPoints,
-                            Score = dbMetric.Score,
-                            Efficiency = dbMetric.Efficiency,
-                            Ranking = dbRanking.RankPosition
+                            TotalHours = (int)dbRankings.TotalHours,
+                            TotalTicketCompleted = dbRankings.TicketCompleted ?? 0,
+                            ContributionPoint = dbRankings.ContributionPoints,
+                            Score = dbRankings.Score,
+                            Efficiency = dbRankings.Efficiency,
+                            Ranking = dbRankings?.RankPosition ?? -1
                         };
-                        prevRank = dbRanking?.RankPosition;
-                        prevScore = dbRanking?.Score;
+                        prevRank = dbRankings?.RankPosition;
+                        prevScore = dbRankings?.Score;
+
+                        // Cache the previous week data for future requests
+                        await _cache.SetAsync(
+                            string.Format(FlowStateConstants.PREVIOUS_WEEK_METRIC_KEY, workspaceId, userId),
+                            prevMetric,
+                            TimeSpan.FromDays(7)
+                        );
                     }
                 }
 
@@ -132,14 +172,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     prevScore,
                     prevMetric);
 
-                
-                var userInfo = await _cache.GetUserInfo(userId);
-
                 return new UserRankingWithComparison
                 {
                     UserId = userId,
-                    UserName = null,
-                    UserAvatar = null,
+                    UserName = currentMetric.UserName,
+                    UserAvatar = currentMetric.UserProfilePic,
                     CurrentRank = currentRank ?? 0,
                     CurrentScore = currentScore,
                     CurrentMetrics = new WeeklyUserStatsDto
@@ -165,11 +202,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex, "Error getting user ranking comparison");
+                //_logger.LogError(ex, "Error getting user ranking comparison for user {UserId} in workspace {WorkspaceId}",
+                //    userId, workspaceId);
                 return null;
             }
         }
-
         public async Task<List<RankingHistoryDto>> GetUserRankingHistory(string workspaceGuid, string userGuid)
         {
             var rankings = await _omniRepository.LeaderBoardRepository
@@ -276,14 +313,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (prevMetric != null)
             {
                 comparison.PointsChange = currentMetric.ContributionPoint - prevMetric.ContributionPoint;
-                comparison.TasksCompletedChange = currentMetric.TotalTicketCompleted - prevMetric.TotalTicketCompleted;
+                comparison.TicketsCompletedChange = currentMetric.TotalTicketCompleted - prevMetric.TotalTicketCompleted;
                 comparison.HoursChange = currentMetric.TotalHours - prevMetric.TotalHours;
                 comparison.EfficiencyChange = currentMetric.Efficiency - prevMetric.Efficiency;
             }
             else
             {
                 comparison.PointsChange = currentMetric.ContributionPoint;
-                comparison.TasksCompletedChange = currentMetric.TotalTicketCompleted;
+                comparison.TicketsCompletedChange = currentMetric.TotalTicketCompleted;
                 comparison.HoursChange = currentMetric.TotalHours;
                 comparison.EfficiencyChange = currentMetric.Efficiency;
             }

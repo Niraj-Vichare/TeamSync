@@ -263,7 +263,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         CreatedAt = DateTime.UtcNow,
   
                     };
-                    await _eventPublisher.PublishAsync(eventDto,0);
+
+                    EventsLogDto eventLogDto = new EventsLogDto
+                    {
+                        EventTypeId = (int)GeneralEnums.EventType.TaskCompleted,
+                        CreatedAt = DateTime.UtcNow,
+                        EventDescription = "Task is compeleted",
+                        UserGuid = userId,
+                        WorkspaceGuid = workspaceGuid,
+                        EventGuid = Guid.NewGuid().ToString(),
+                    };
+                    await _eventPublisher.PublishAsync(eventLogDto, 0);
                 }
             }
             return isUpdated;
@@ -284,9 +294,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     UserGuid = userGuid,
                     TaskGuid = taskId.ToString(),
                     CreatedAt = DateTime.UtcNow,
-
                 };
-                await _eventPublisher.PublishAsync(eventDto, 0);
+
+                #region Event Publishing    
+
+                EventsLogDto eventLogDto = new EventsLogDto
+                {
+                    EventTypeId = (int)GeneralEnums.EventType.CheckIn,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "User Clock in",
+                    UserGuid = userGuid,
+                    WorkspaceGuid = workspaceGuid,
+                    EventGuid = Guid.NewGuid().ToString(),
+                };
+                await _eventPublisher.PublishAsync(eventLogDto, 0);
+                #endregion
             }
             return isUpdated;
         }

@@ -34,12 +34,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 throw new ArgumentNullException(nameof(eventLogDto), "Invalid message payload");
             }
-            if (string.IsNullOrWhiteSpace(eventLogDto.UserId))
+            if (string.IsNullOrWhiteSpace(eventLogDto.UserGuid))
             {
                 throw new ArgumentException("UserId cannot be empty", nameof(eventLogDto));
             }
 
-            if (string.IsNullOrWhiteSpace(eventLogDto.WorkspaceId))
+            if (string.IsNullOrWhiteSpace(eventLogDto.WorkspaceGuid))
             {
                 throw new ArgumentException("WorkspaceId cannot be empty", nameof(eventLogDto));
             }
@@ -47,14 +47,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (!Enum.IsDefined(typeof(GeneralEnums.EventType), eventLogDto.EventTypeId))
             {
                 _logger.LogWarning("Invalid EventTypeId: {EventTypeId} for UserId: {UserId}",
-                    eventLogDto.EventTypeId, eventLogDto.UserId);
+                    eventLogDto.EventTypeId, eventLogDto.UserGuid);
                 throw new ArgumentException($"Invalid EventTypeId: {eventLogDto.EventTypeId}");
             }
 
             try
             {
 
-                var metric = await _cache.GetUserMetricAsync(eventLogDto.WorkspaceId, eventLogDto.UserId);
+                var metric = await _cache.GetUserMetricAsync(eventLogDto.WorkspaceGuid, eventLogDto.UserGuid);
 
                 if (metric == null)
                 {
@@ -74,29 +74,29 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
                 float newScore = ComputeScore(metric);
 
-                var (newRank, _) = await _cache.UpdateWorkspaceRankingAtomicAsync(eventLogDto.WorkspaceId,eventLogDto.UserId,newScore);
+                var (newRank, _) = await _cache.UpdateWorkspaceRankingAtomicAsync(eventLogDto.WorkspaceGuid,eventLogDto.UserGuid,newScore);
 
                 if (newRank == -1)
                 {
                     _logger.LogError(
                         "Failed to update ranking for UserId={UserId}, WorkspaceId={WorkspaceId}",
-                        eventLogDto.UserId, eventLogDto.WorkspaceId);
+                        eventLogDto.UserGuid, eventLogDto.WorkspaceGuid);
                     throw new InvalidOperationException("Ranking update failed");
                 }
 
                 metric.Ranking = newRank;
                 metric.Score = newScore;
 
-                await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceId,eventLogDto.UserId,metric);
+                await _cache.UpsertUserMetricAsync(eventLogDto.WorkspaceGuid,eventLogDto.UserGuid,metric);
 
                 // Background job will handle actual DB write
-                await _cache.AddPendingUpdateAsync(eventLogDto.WorkspaceId, eventLogDto.UserId);
+                await _cache.AddPendingUpdateAsync(eventLogDto.WorkspaceGuid, eventLogDto.UserGuid);
 
                 // Debounced leaderboard broadcast instead of immediate
-                ScheduleLeaderboardUpdate(eventLogDto.WorkspaceId);
+                ScheduleLeaderboardUpdate(eventLogDto.WorkspaceGuid);
 
 
-                _logger.LogDebug("Processed event for UserId={UserId}, Rank={Rank}, Score={Score:F2}",eventLogDto.UserId, newRank, newScore);
+                _logger.LogDebug("Processed event for UserId={UserId}, Rank={Rank}, Score={Score:F2}",eventLogDto.UserGuid, newRank, newScore);
 
                 return true;
             }
@@ -104,7 +104,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 _logger.LogError(ex,
                     "Error processing message for UserId={UserId}, WorkspaceId={WorkspaceId}",
-                    eventLogDto.UserId, eventLogDto.WorkspaceId);
+                    eventLogDto.UserGuid, eventLogDto.WorkspaceGuid);
                 throw;
             }
 

@@ -201,8 +201,18 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     ProjectGuid = projectGuid,
                     Metadata = "Project marked as completed."
                 };
+
+                EventsLogDto eventLogsDto = new EventsLogDto
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Project.Completed",
+                    EventTypeId = (int)EventType.ProjectCompleted,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    ProjectGuid = projectGuid,
+                    Metadata = "Project marked as completed."
+                };
                 await _omniRepository.ProfileRepository.AddEventLog(eventLogs);
-                await _eventPublisher.PublishAsync(eventLogs, 0);
+                await _eventPublisher.PublishAsync(eventLogsDto, 0);
             }
             return isUpdated;
         }

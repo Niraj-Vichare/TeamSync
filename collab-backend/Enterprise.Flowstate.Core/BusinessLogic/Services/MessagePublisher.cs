@@ -86,7 +86,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        public async Task<bool> PublishAsync(EventsLog eventLogs,int initalizeRetryCount)
+        public async Task<bool> PublishAsync(EventsLogDto eventLogs,int initalizeRetryCount)
         {
             await EnsureInitializedAsync();
 

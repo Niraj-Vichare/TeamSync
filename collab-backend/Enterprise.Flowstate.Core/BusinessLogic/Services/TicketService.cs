@@ -38,6 +38,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<bool> EditTicket(string ticketId, string userId, TicketDto ticketDto)
         {
+            var ticketGuid = Guid.NewGuid();
             Ticket ticket = new Ticket()
             {
                 Points = ticketDto.Points,
@@ -50,7 +51,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 ReportedBy = ticketDto.ReportedBy,
                 Title = ticketDto.Title,
                 TypeId = (int)ticketDto.TypeId,
-                TicketGuid = Guid.NewGuid(),
+                TicketGuid = ticketGuid,
                 Tags = ticketDto.Tags,
                 CreatedAt = DateTime.UtcNow
             };
@@ -72,9 +73,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         EventGuid = Guid.NewGuid().ToString(),
                     };
 
+                    EventsLogDto eventLogDto = new EventsLogDto
+                    {
+                        EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                        CreatedAt = DateTime.UtcNow,
+                        EventDescription = "Ticket is closed",
+                        TicketGuid = ticketGuid.ToString(),
+                        UserGuid = userId,
+                        EventGuid = Guid.NewGuid().ToString(),
+                    };
+
                     string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
                     byte[] body = Encoding.UTF8.GetBytes(json);
-                    await _eventPublisher.PublishAsync(eventLog, 0);
+                    await _eventPublisher.PublishAsync(eventLogDto, 0);
                 }
                 else
                 {
@@ -414,10 +425,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     CreatedAt = DateTime.UtcNow,
                 };
 
+                EventsLogDto eventsLogDto = new EventsLogDto
+                {
+                    TicketGuid = updatedTicket.TicketGuid.ToString(),
+                    EventDescription = "Ticket is resolved by user",
+                    SprintGuid = null,
+                    WorkspaceGuid = workspaceGuid,
+                    EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                    CreatedAt = DateTime.UtcNow,
+                };
+
                 // Publish inside the rabbitmq message broker.
                 string json = System.Text.Json.JsonSerializer.Serialize(eventLogs);
                 byte[] body = Encoding.UTF8.GetBytes(json);
-                await _eventPublisher.PublishAsync(eventLogs,0);
+                await _eventPublisher.PublishAsync(eventsLogDto, 0);
 
                 // Save the event log to database
             }

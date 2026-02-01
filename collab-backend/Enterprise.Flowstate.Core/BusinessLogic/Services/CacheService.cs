@@ -120,7 +120,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task UpsertUserMetricAsync(string workspaceId, string userId, RankingCacheModel metric)
         {
             var key = string.Format(FlowStateConstants.USER_METRIC_KEY, workspaceId, userId);
-            // Cache for 7 days (weekly period)
+            // Pass the object directly - SetAsync will handle serialization
             await SetAsync(key, metric, TimeSpan.FromDays(7));
         }
 
