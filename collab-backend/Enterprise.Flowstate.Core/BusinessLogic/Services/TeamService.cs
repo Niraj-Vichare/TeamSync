@@ -3,6 +3,7 @@ using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Enums;
+using Enterprise.Flowstate.DAL.Constants;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -28,6 +29,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
 
             int workspaceId = await _omniRepository.WorkspaceRepository.GetWorkspaceId(workspaceGuid);
+
+            if (workspaceId <= 0)
+                return false;
+
+
             Profile profile = new Profile
             {
                 Bio = "",
@@ -45,6 +51,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return false;
             }
             int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
+
             RankingCacheModel rankingCacheMetric = new RankingCacheModel
             {
                 ContributionPoint = 0,
@@ -73,7 +80,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 WorkspaceId = workspaceId
             };
             await _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
-
             Members members = new Members()
             {
                 DepartmentId = teamMemberDto.DepartmentId,
@@ -82,8 +88,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Status = teamMemberDto.StatusId,
                 WorkspaceGuid = workspaceGuid,
             };
-            
+
             var result = await _omniRepository.TeamRepository.AddMember(workspaceGuid, members);
+            await _cache.SetUserRoleAsync(user.User.Id, workspaceGuid,((AuthEnums.RoleEnum)teamMemberDto.RoleId).ToString());
+
+            string workspaceCacheKey = string.Format(FlowStateConstants.USER_WORKSPACE,user.User.Id.ToString());
+
+            await _cache.SetStringAsync(workspaceCacheKey,workspaceGuid,TimeSpan.FromMinutes(30));
             if (result)
             {
                 EventsLog eventsLog = new EventsLog

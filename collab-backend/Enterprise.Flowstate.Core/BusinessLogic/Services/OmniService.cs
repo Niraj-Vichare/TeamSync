@@ -26,6 +26,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private IEventPublisher _eventPublisher;
         public IDashboardService DashboardService { get; set; }
         public ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
+        public IRoleService RoleService { get; set; }   
 
         private IOmniRepository _omniRepository;
         private ICache _cache;
@@ -45,6 +46,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             SprintService = new SprintService(_omniRepository);
             TicketService = new TicketService(_omniRepository);
             DashboardService = new DashboardService(_omniRepository,_eventPublisher);
+            RoleService = new RoleService(_omniRepository, _cache);
         }
 
     }

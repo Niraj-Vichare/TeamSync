@@ -19,6 +19,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         ITicketService TicketService { get; set; }
         IDashboardService DashboardService { get; set; }
         ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
+        IRoleService RoleService { get; set; }
         
     }
 }

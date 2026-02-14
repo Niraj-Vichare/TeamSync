@@ -8,10 +8,8 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IRoleService
     {
-        Task<List<string>> GetRolesByUserIdAsync(Guid userId, Guid? companyId = null);
-        Task<List<string>> GetPermissionsByUserIdAsync(Guid userId, Guid? companyId = null);
-        Task AssignRoleAsync(Guid userId, Guid roleId, Guid companyId, Guid assignedBy);
-        Task RevokeRoleAsync(Guid userId, Guid roleId, Guid companyId, Guid revokedBy);
+        Task<int> GetUserRole(string userId);
         //Task<List<PermissionDto>> GetAllPermissionsAsync();
+        Task<string> GetUserWorkspaceId(string userId);
     }
 }

@@ -57,9 +57,17 @@ namespace Enterpise.Flowstate.Controllers
                 }
 
                 var currentWorkspaceId = await _omniService.ProfileService.GetCurrentWorkspaceId(response.User.Id);
-                
-                // Get current workspace ID after successful signin
-                int userRole = await _omniService.WorkspaceService.GetUserWorkspaceInfo(currentWorkspaceId,response.User.Id);
+                if (string.IsNullOrEmpty(currentWorkspaceId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Message = "No workspace found for the user",
+                        Success = false
+                    };
+                }
+                int userRole = await _omniService.RoleService.GetUserRole(response.User.Id);
+
 
                 var accessToken = response.AccessToken;
                 if (!string.IsNullOrEmpty(accessToken))

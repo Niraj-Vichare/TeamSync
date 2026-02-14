@@ -3,6 +3,7 @@ using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Enums;
+using Enterprise.Flowstate.DAL.Constants;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -26,7 +27,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (!string.IsNullOrEmpty(workspaceGuid))
             {
                 int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
-                string profileId = await _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid, memberCount);
+                string profileId = await _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid, 0);
                 
                 RankingCacheModel userMetric = new RankingCacheModel
                 {
@@ -37,7 +38,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     TotalHours = 0,
                     TotalTicketCompleted = 0,
                 };
+                #region Cache Things
+                string roleKey = string.Format(FlowStateConstants.USER_ROLE, userClaimsId,workspaceGuid);
+                string workspaceKey = string.Format(FlowStateConstants.USER_WORKSPACE, userClaimsId);
+
                 await _cache.UpsertUserMetricAsync(workspaceGuid, userClaimsId,userMetric);
+                await _cache.SetStringAsync(roleKey, AuthEnums.RoleEnum.Owner.ToString());
+                
+                await _cache.SetStringAsync(workspaceKey, workspaceGuid, TimeSpan.FromHours(30));
+                #endregion
+
                 Members members = new Members()
                 {
                     DepartmentId = (int)WorkspaceEnums.Department.Administration,

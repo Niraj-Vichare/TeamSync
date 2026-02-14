@@ -19,7 +19,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private readonly ILogger<CacheService> _logger;
         private IConnectionMultiplexer _redis;
         internal IDatabase _db;
-        public CacheService(IConnectionMultiplexer redis,IConfiguration config,ILogger<CacheService> logger)
+        public CacheService(IConnectionMultiplexer redis, IConfiguration config, ILogger<CacheService> logger)
         {
             _logger = logger;
             _redis = redis ?? throw new ArgumentNullException(nameof(redis));
@@ -99,6 +99,36 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
+        public async Task<string> GetStringAsync(string key)
+        {
+            try
+            {
+                var value = await _db.StringGetAsync(key);
+                return value.HasValue ? value.ToString() : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting string cache key: {Key}", key);
+                return null;
+            }
+        }
+
+        public async Task<bool> SetStringAsync(string key, string value, TimeSpan? expiry = null)
+        {
+            try
+            {
+                var db = _redis.GetDatabase();
+                if (db == null) return false;
+
+                return await db.StringSetAsync(key, value, expiry);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting string cache key: {Key}", key);
+                return false;
+            }
+        }
+
         #endregion
 
         #region User Metric
@@ -110,7 +140,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 var key = string.Format(FlowStateConstants.USER_METRIC_KEY, workspaceId, userId);
                 return await _db.KeyDeleteAsync(key);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 //_logger.LogError(ex, "Error deleting user metric for user {UserId} in workspace {WorkspaceId}", userId, workspaceId);
                 return false;
@@ -148,7 +178,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task UpsertUserProfile(UserDto user)
         {
             var key = string.Format(FlowStateConstants.USER_INFO_KEY, user.Id);
-            await SetAsync(key,user);
+            await SetAsync(key, user);
         }
 
         public async Task<string> GetUserInfoAsync(string userId)
@@ -209,7 +239,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return -1;
             }
         }
-        public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(string workspaceId,int pageNumber,int pageSize)
+        public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(string workspaceId, int pageNumber, int pageSize)
         {
             // Calculate index boundaries for pagination
             int start = (pageNumber - 1) * pageSize;
@@ -325,7 +355,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
 
-        
+
         #endregion
 
         #region Previous Week Metric
@@ -339,7 +369,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-                
+
                 var key = string.Format(FlowStateConstants.PREVIOUS_WEEK_RANKING_KEY, workspaceId);
                 var rank = await _db.SortedSetRankAsync(key, userId, Order.Descending);
 
@@ -433,6 +463,34 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             throw new NotImplementedException();
         }
         #endregion
+
+        #region Role Cache
+
+        public async Task<string> GetUserRoleAsync(string userId, string workspaceId)
+        {
+            var key = string.Format(FlowStateConstants.USER_ROLE, userId, workspaceId);
+            return await GetStringAsync(key);
+        }
+
+        public async Task SetUserRoleAsync(string userId, string workspaceId, string roleName)
+        {
+            var key = string.Format(FlowStateConstants.USER_ROLE, userId, workspaceId);
+
+            await SetStringAsync(
+                key,
+                roleName,
+                TimeSpan.FromMinutes(30) // adjust as needed
+            );
+        }
+
+        public async Task InvalidateUserRoleAsync(string userId, string workspaceId)
+        {
+            var key = string.Format(FlowStateConstants.USER_ROLE, userId, workspaceId);
+            await DeleteAsync(key);
+        }
+
+        #endregion
+
 
         #region Project Metric
 
