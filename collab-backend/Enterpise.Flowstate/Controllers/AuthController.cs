@@ -4,6 +4,7 @@ using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Supabase.Gotrue;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -245,16 +246,92 @@ namespace Enterpise.Flowstate.Controllers
 
         }
 
-        [HttpPost("oauth-signin")]
-        public async Task<ApiResponseModel<object>> OAuthSignin()
+        [HttpPost("oauth/callback")]
+        public async Task<ApiResponseModel<object>> OAuthCallback([FromBody] OAuthCallbackDto request)
         {
-            await _supabaseClient.Auth.SignIn(Supabase.Gotrue.Constants.Provider.Google);
-            return new ApiResponseModel<object>
+            try
             {
-                Message = "",
-                StatusCode = StatusCodes.Status200OK,
-                Success = true
-            };
+                // Validate tokens from Supabase
+                var session = await _supabaseClient.Auth.SetSession(
+                    request.AccessToken,
+                    request.RefreshToken
+                );
+
+                if (session?.User == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Message = "Invalid OAuth session",
+                        Success = false
+                    };
+                }
+
+                var user = session.User;
+
+                // Check if profile exists
+                var profileExists = await _omniService.ProfileService.ProfileExists(user.Id);
+
+                if (!profileExists)
+                {
+                    // First time login - create profile
+                    var displayName = user.Email.Split('@')[0];
+
+                    // Try to get name from Google metadata
+                    if (user.UserMetadata.ContainsKey("full_name"))
+                        displayName = user.UserMetadata["full_name"].ToString();
+                    else if (user.UserMetadata.ContainsKey("name"))
+                        displayName = user.UserMetadata["name"].ToString();
+
+                    await _omniService.ProfileService.CreateProfile(user, displayName);
+                }
+
+                // Get workspace & role
+                var workspaceId = await _omniService.ProfileService.GetCurrentWorkspaceId(user.Id);
+                int userRole = 0;
+
+                if (!string.IsNullOrEmpty(workspaceId))
+                {
+                    userRole = await _omniService.WorkspaceService.GetUserWorkspaceInfo(workspaceId, user.Id);
+                }
+
+                // Set cookie
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None, // Required for OAuth
+                    Path = "/",
+                    Expires = DateTime.UtcNow.AddDays(2)
+                };
+                Response.Cookies.Append("authToken", request.AccessToken, cookieOptions);
+
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Data = new
+                    {
+                        userId = user.Id,
+                        workspaceId = workspaceId ?? "",
+                        userRole = userRole,
+                        email = user.Email,
+                        displayName = user.UserMetadata.ContainsKey("full_name")
+                            ? user.UserMetadata["full_name"].ToString()
+                            : user.Email.Split('@')[0]
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Message = $"OAuth failed: {ex.Message}",
+                    Success = false
+                };
+            }
         }
     }
 }
+    
