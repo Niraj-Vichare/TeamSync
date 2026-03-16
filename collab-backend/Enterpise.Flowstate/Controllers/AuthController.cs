@@ -1,10 +1,7 @@
-﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
-using Enterprise.Flowstate.DAL.DTOs;
+﻿using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using Supabase.Gotrue;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -36,7 +33,6 @@ namespace Enterpise.Flowstate.Controllers
                     };
                 }
 
-                loginData.Password = EncryptionService.EncryptData(loginData.Password);
                 var response = await _omniService.AuthService.SupabaseSiginWithPassword(loginData.Email, loginData.Password);
                 if (response == null) // If signin failed
                 {
@@ -75,7 +71,7 @@ namespace Enterpise.Flowstate.Controllers
                 {
                     var cookieOptions = new CookieOptions
                     {
-                        HttpOnly = false,
+                        HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.None,
                         Path = "/",
@@ -85,7 +81,10 @@ namespace Enterpise.Flowstate.Controllers
                     // Append the JWT token to the cookies
                     Response.Cookies.Append("authToken", accessToken, cookieOptions);
 
-                    // Return success response with workspace ID
+                    // Return success response with workspace ID.
+                    // accessToken is also returned in the body so the frontend
+                    // can pass it to SignalR (which cannot read HttpOnly cookies).
+                    // Store it in memory only — never in localStorage.
                     return new ApiResponseModel<object>
                     {
                         StatusCode = StatusCodes.Status200OK,
@@ -95,7 +94,8 @@ namespace Enterpise.Flowstate.Controllers
                         {
                             workspaceId = currentWorkspaceId,
                             userId = response.User.Id,
-                            userRole = userRole
+                            userRole = userRole,
+                            accessToken = accessToken   // for SignalR hub only
                         }
                     };
                 }
@@ -151,9 +151,7 @@ namespace Enterpise.Flowstate.Controllers
                         Success = false
                     };
                 }
-                var encryptedPassword = EncryptionService.EncryptData(signupData.Password);
-                // Create user with Supabase
-                var response = await _omniService.AuthService.SupabaseSignupWithPassword(signupData.Email, encryptedPassword);
+                var response = await _omniService.AuthService.SupabaseSignupWithPassword(signupData.Email, signupData.Password);
 
                 if (response == null)
                 {
@@ -176,7 +174,7 @@ namespace Enterpise.Flowstate.Controllers
                 {
                     var cookieOptions = new CookieOptions
                     {
-                        HttpOnly = false,
+                        HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.None,
                         Path = "/",
@@ -334,4 +332,3 @@ namespace Enterpise.Flowstate.Controllers
         }
     }
 }
-    
