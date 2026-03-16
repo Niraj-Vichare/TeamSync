@@ -10,7 +10,12 @@ using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using Supabase;
 using System.Text;
+using DotNetEnv;
 
+Env.Load();
+
+var SUPABASE_KEY = Environment.GetEnvironmentVariable("Supabase_SUPABASE_KEY");
+var JWT_KEY = Environment.GetEnvironmentVariable("JwtSetting_SecretKey");
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -26,7 +31,7 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
 {
     return new Supabase.Client(
         builder.Configuration["Supabase:SUPABASE_URL"],
-        builder.Configuration["Supabase:SUPABASE_KEY"],
+        SUPABASE_KEY,
         new SupabaseOptions
         {
             AutoConnectRealtime = true,
@@ -57,6 +62,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
 builder.Services.AddScoped<IOmniRepository, OmniRepository>();
+builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IOmniService, OmniService>();
 builder.Services.AddSingleton<ICache,CacheService>();
 builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
@@ -92,13 +98,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 ValidIssuer = JwtToken.Issuer,
                 ValidAudience = JwtToken.Audience,
                 // Remember the sign that we need to have to know authenticity when visiting bank again?
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtToken.SecretKey))
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JWT_KEY))
             };
             options.Events = new JwtBearerEvents
             {
                 OnMessageReceived = context =>
                 {
-                    context.Token = context.Request.Cookies["authToken"];
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+
+                    // If the request is for our SignalR hub AND there's a token in query string
+                    if (!string.IsNullOrEmpty(accessToken) &&
+                        path.StartsWithSegments("/hubs/leaderboard"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    else
+                    {
+                        // Fall back to cookie for regular API requests
+                        context.Token = context.Request.Cookies["authToken"];
+                    }
+
                     return System.Threading.Tasks.Task.CompletedTask;
                 }
             };
