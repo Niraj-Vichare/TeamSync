@@ -1,4 +1,5 @@
 import authService from '@/services/auth';
+import { oauthService } from '@/services/oauth';
 import projectService from '@/services/project';
 import workspaceService from '@/services/workspace';
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -13,10 +14,12 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [userPermissions, setUserPermissions] = useState([]); // NEW
   const [loading, setLoading] = useState(true);
   const [ongoingProjects, setOngoingProjects] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   // Check authentication status on app load
   useEffect(() => {
@@ -31,6 +34,7 @@ export function AuthProvider({ children }) {
     if (isAuthenticated && workspaceId) {
       getUserWorkspaces();
       getUserProjects();
+      loadUserPermissions(); // NEW
     }
   }, [isAuthenticated, workspaceId]);
 
@@ -42,23 +46,79 @@ export function AuthProvider({ children }) {
       if (isAuth) {
         const user = authService.getCurrentUser();
         const storedWorkspaceId = authService.getCurrentWorkspaceId();
+        const storedRole = authService.getUserRole();
+        const storedPermissions = authService.getUserPermissions(); // NEW
         
         setCurrentUser(user);
         setWorkspaceId(storedWorkspaceId);
+        setUserRole(storedRole);
+        setUserPermissions(storedPermissions || []); // NEW
         setIsAuthenticated(true);
       } else {
         setCurrentUser(null);
         setWorkspaceId(null);
+        setUserRole(null);
+        setUserPermissions([]); // NEW
         setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
       setCurrentUser(null);
       setWorkspaceId(null);
+      setUserRole(null);
+      setUserPermissions([]); // NEW
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
+  };
+  const handleGoogleSignin = async () => {
+        setOauthLoading(true);
+        const result = await oauthService.signInWithGoogle();
+        if (!result.success) {
+            toast.error('Failed to start Google sign in');
+            setOauthLoading(false);
+        }
+        // Will redirect to Google automatically
+    };
+
+  // NEW: Load user permissions from backend
+  const loadUserPermissions = async () => {
+    try {
+      const permissions = await authService.getUserPermissions();
+      setUserPermissions(permissions);
+    } catch (error) {
+      console.error('Error loading permissions:', error);
+      setUserPermissions([]);
+    }
+  };
+
+  // NEW: Check if user has a specific permission
+  const hasPermission = (permission) => {
+    if (!userPermissions || userPermissions.length === 0) return false;
+    return userPermissions.includes(permission);
+  };
+
+  // NEW: Check if user has any of the specified permissions
+  const hasAnyPermission = (permissions) => {
+    if (!userPermissions || userPermissions.length === 0) return false;
+    return permissions.some(p => userPermissions.includes(p));
+  };
+
+  // NEW: Check if user has all of the specified permissions
+  const hasAllPermissions = (permissions) => {
+    if (!userPermissions || userPermissions.length === 0) return false;
+    return permissions.every(p => userPermissions.includes(p));
+  };
+
+  // NEW: Check if user has a specific role
+  const hasRole = (role) => {
+    return userRole === role;
+  };
+
+  // NEW: Check if user has any of the specified roles
+  const hasAnyRole = (roles) => {
+    return roles.includes(userRole);
   };
 
   const signup = async (signupData) => {
@@ -66,6 +126,8 @@ export function AuthProvider({ children }) {
       const result = await authService.signUpWithEmail(signupData);
       setCurrentUser(result.user);
       setWorkspaceId(result.workspaceId);
+      setUserRole(result.userRole); // NEW
+      setUserPermissions(result.permissions || []); // NEW
       setIsAuthenticated(true);
       return result;
     } catch (error) {
@@ -81,6 +143,7 @@ export function AuthProvider({ children }) {
         setCurrentUser(result.user);
         setWorkspaceId(result.workspaceId);
         setUserRole(result.userRole);
+        setUserPermissions(result.permissions || []); // NEW
         setIsAuthenticated(true);
       }
       
@@ -98,13 +161,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithGitHub = async () => {
-    try {
-      await authService.signInWithGitHub();
-    } catch (error) {
-      throw error;
-    }
-  };
 
   const logout = async () => {
     try {
@@ -112,6 +168,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       setWorkspaceId(null);
       setUserRole(null);
+      setUserPermissions([]); // NEW
       setWorkspaces([]);
       setOngoingProjects([]);
       setIsAuthenticated(false);
@@ -120,6 +177,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       setWorkspaceId(null);
       setUserRole(null);
+      setUserPermissions([]); // NEW
       setWorkspaces([]);
       setOngoingProjects([]);
       setIsAuthenticated(false);
@@ -135,6 +193,7 @@ export function AuthProvider({ children }) {
     try {
       const { profile, userData } = await authService.refreshUserData();
       setCurrentUser(profile.data);
+      await loadUserPermissions(); // NEW: Reload permissions
       return { user: profile.data, profile: profile.data, userData };
     } catch (error) {
       console.error('Error refreshing user data:', error);
@@ -151,6 +210,7 @@ export function AuthProvider({ children }) {
   const setCurrentWorkspaceId = (newWorkspaceId) => {
     authService.setCurrentWorkspaceId(newWorkspaceId);
     setWorkspaceId(newWorkspaceId);
+    loadUserPermissions(); // NEW: Reload permissions for new workspace
   };
   
   const getUserWorkspaces = async () => {
@@ -190,13 +250,13 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     userRole,
+    userPermissions, // NEW
     workspaceId,
     loading,
     isAuthenticated,
     signup,
     login,
     loginWithGoogle,
-    loginWithGitHub,
     logout,
     resetPassword,
     refreshUserData,
@@ -205,7 +265,15 @@ export function AuthProvider({ children }) {
     setCurrentWorkspaceId,
     workspaces,
     ongoingProjects,
-    getUserWorkspaces, // Export this so components can refresh workspaces
+    getUserWorkspaces,
+    // NEW: Permission checking functions
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    hasRole,
+    hasAnyRole,
+    loadUserPermissions,
+    setUserRole
   };
 
   return (

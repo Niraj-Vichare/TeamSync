@@ -10,29 +10,42 @@ function CreateWorkspace() {
 
   const [workspaceName,setWorkspaceName] = useState('');
   const [workspaceDesc,setWorkspaceDesc] = useState('');
+  const [workspaceLoading,setWorkspaceLoading] = useState(false); 
   const navigate = useNavigate();
 
-  const handleCreateWorkspace=async ()=>{
-    try{
-      if(workspaceName == ''){
+  const handleCreateWorkspace = async () => {
+    try {
+      setWorkspaceLoading(true);
+
+      if (!workspaceName.trim()) {
         toast.error("Workspace name is required");
+        setWorkspaceLoading(false);
         return;
       }
-      var workspaceRequestModel = {
-        workspaceName:workspaceName,
-        workspaceDescription:workspaceDesc
-      }
-      var response = await workspaceService.createWorkspace(workspaceRequestModel);
-      const { success,data,message,statusCode } = response.data;
-      if(success || statusCode == 200){
+
+      const workspaceRequestModel = {
+        workspaceName: workspaceName,
+        workspaceDescription: workspaceDesc
+      };
+
+      const response = await workspaceService.createWorkspace(workspaceRequestModel);
+      const { success, data, message, statusCode } = response.data;
+
+      console.log(response.data);
+
+      if (success && statusCode === 200) {
         toast.success(message || "Workspace created successfully");
-        navigate('/workspace/invite-workspace')
+        navigate('/dashboard');
+      } else {
+        toast.error(message || "Failed to create workspace");
       }
 
-    }catch(error){
-      toast.error("Something went wrong while creating workspace");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Something went wrong while creating workspace");
+    } finally {
+      setWorkspaceLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -60,7 +73,9 @@ function CreateWorkspace() {
             <Input id="workspace-description" placeholder="e.g., Marketing team collaboration space" value={workspaceDesc} onChange={(e)=>setWorkspaceDesc(e.target.value)}/>
           </div>
 
-          <Button className="w-full" onClick={handleCreateWorkspace}>Next</Button>
+          <Button className="w-full" onClick={handleCreateWorkspace} disabled={workspaceLoading}>
+            {workspaceLoading ? 'Creating...' : 'Next'}
+          </Button>
         </div>
       </div>
     </div>

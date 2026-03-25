@@ -1,5 +1,6 @@
 import axios from "axios";
 import axiosInstance from "./axiosInstance";
+import { oauthService } from "./oauth";
 
 const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL;
 
@@ -9,6 +10,7 @@ class AuthService {
     this.currentUser = null;
     this.currentWorkspaceId = null;
     this.userRole = null;
+    this.userPermissions = [];
   }
 
   // Sign up with email and password
@@ -54,9 +56,11 @@ class AuthService {
         if (response.data.data?.workspaceId) {
           this.setCurrentWorkspaceId(response.data.data.workspaceId);
         }
-        
+
         if (response.data.data?.userRole) {
-          this.setUserRole(response.data.data.userRole);
+          // this.setUserRole(response.data.data.userRole);
+          const role = response.data.data?.userRole || response.data.user?.userRole;
+          this.setUserRole(role);
         }
 
         const profile = await this.getProfile();
@@ -81,23 +85,12 @@ class AuthService {
   // Sign in with Google
   async signInWithGoogle() {
     try {
-      window.location.href = `${this.baseURL}/auth/google`;
+      return await oauthService.signInWithGoogle();
     } catch (error) {
       console.error('Google signin error:', error);
       throw new Error('Google signin failed');
     }
   }
-
-  // Sign in with GitHub
-  async signInWithGitHub() {
-    try {
-      window.location.href = `${this.baseURL}/auth/github`;
-    } catch (error) {
-      console.error('GitHub signin error:', error);
-      throw new Error('GitHub signin failed');
-    }
-  }
-
   // Password Reset
   async resetPassword(email) {
     try {
@@ -123,13 +116,13 @@ class AuthService {
   async signOut() {
     try {
       await axiosInstance.post('/auth/signout');
-      
+
       // Clear local data
       this.currentUser = null;
       this.currentWorkspaceId = null;
       this.userRole = null;
       localStorage.removeItem('currentWorkspaceId');
-      
+
       return { success: true };
     } catch (error) {
       console.error('Signout error:', error);
@@ -138,7 +131,7 @@ class AuthService {
       this.currentWorkspaceId = null;
       this.userRole = null;
       localStorage.removeItem('currentWorkspaceId');
-      
+
       throw new Error('Signout failed');
     }
   }
@@ -186,16 +179,17 @@ class AuthService {
     try {
       const profile = await this.getProfile();
       this.currentUser = profile.data;
-      
+
       // Load workspace ID from localStorage if not in memory
       if (!this.currentWorkspaceId) {
         const storedWorkspaceId = localStorage.getItem('currentWorkspaceId');
         if (storedWorkspaceId) {
           this.currentWorkspaceId = storedWorkspaceId;
         }
+        return true;
       }
-      
-      return true;
+      return false;
+
     } catch (error) {
       this.currentUser = null;
       this.currentWorkspaceId = null;
@@ -219,13 +213,13 @@ class AuthService {
     if (this.currentWorkspaceId) {
       return this.currentWorkspaceId;
     }
-    
+
     const stored = localStorage.getItem('currentWorkspaceId');
     if (stored) {
       this.currentWorkspaceId = stored;
       return stored;
     }
-    
+
     return null;
   }
 
@@ -249,6 +243,39 @@ class AuthService {
   getUserRole() {
     return this.userRole;
   }
+
+  async getUserPermissions() {
+    try {
+      const workspaceId = this.getCurrentWorkspaceId();
+      if (!workspaceId) return [];
+
+      const response = await axiosInstance.get('/user/permissions', {
+        params: { workspaceId }
+      });
+
+      if (response.data.success) {
+        // Store in memory only — never localStorage (security risk per audit)
+        this.userPermissions = response.data.data || [];
+        return this.userPermissions;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get permissions error:', error);
+      return [];
+    }
+  }
+  setUserPermissions(permissions) {
+    // Memory only — no localStorage (security risk)
+    this.userPermissions = permissions || [];
+  }
+
+  // NEW: Clear permissions cache
+  clearPermissions() {
+    this.userPermissions = [];
+    localStorage.removeItem('userPermissions');
+  }
+
+
 }
 
 const authService = new AuthService();

@@ -669,6 +669,63 @@ export const WorkspacePosition = {
 };
 
 
+export const DepartmentPositions = {
+  [Department.Technical]: [
+    WorkspacePosition.CTO,
+    WorkspacePosition.Developer,
+    WorkspacePosition.Tester,
+    WorkspacePosition.DevOps,
+  ],
+  [Department.Sales]: [
+    WorkspacePosition.SalesManager,
+  ],
+  [Department.Marketing]: [
+    WorkspacePosition.BusinessAnalyst,
+    WorkspacePosition.Designer,
+  ],
+  [Department.HumanResources]: [
+    WorkspacePosition.Admin,
+  ],
+  [Department.Finance]: [
+    WorkspacePosition.Admin,
+  ],
+  [Department.Operations]: [
+    WorkspacePosition.ProjectManager,
+  ],
+  [Department.CustomerSupport]: [
+    WorkspacePosition.Support,
+  ],
+  [Department.IT]: [
+    WorkspacePosition.CTO,
+    WorkspacePosition.DevOps,
+    WorkspacePosition.Developer,
+  ],
+  [Department.ResearchAndDevelopment]: [
+    WorkspacePosition.ProductManager,
+    WorkspacePosition.Developer,
+  ],
+  [Department.Administration]: [
+    WorkspacePosition.Admin,
+  ],
+};
+
+export const WorkspacePositionLabels = {
+  [WorkspacePosition.Admin]: "Admin",
+  [WorkspacePosition.CEO]: "CEO",
+  [WorkspacePosition.CTO]: "CTO",
+  [WorkspacePosition.ProductManager]: "Product Manager",
+  [WorkspacePosition.ProjectManager]: "Project Manager",
+  [WorkspacePosition.Developer]: "Developer",
+  [WorkspacePosition.Tester]: "Tester",
+  [WorkspacePosition.Designer]: "Designer",
+  [WorkspacePosition.BusinessAnalyst]: "Business Analyst",
+  [WorkspacePosition.DevOps]: "DevOps",
+  [WorkspacePosition.Support]: "Support",
+  [WorkspacePosition.Guest]: "Guest",
+  [WorkspacePosition.SalesManager]: "Sales Manager",
+};
+
+
 
 
 // const [tasks, setTasks] = useState([//   {

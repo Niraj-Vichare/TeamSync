@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Plus, Folder, Target, Tag, FileText, Calendar, Clock, Image } from "lucide-react";
-// import { ProjectCard } from "@/components/projectComponents/projectCard";
+import React, { useEffect, useState, useCallback } from "react";
+import { Plus, Folder, Target, Tag, FileText, Calendar, Clock, Image, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,
@@ -22,212 +20,132 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+
+const INITIAL_FORM = {
+  projectTitle: "",
+  projectDescription: "",
+  projectTagline: "",
+  projectLogo: "",
+  status: ProjectStatus.Ongoing,
+  category: ProjectCategory.INFORMATION_TECHNOLOGY,
+  startDate: "",
+  endDate: "",
+  dueDate: "",
+};
+
+const PROJECTS_PER_PAGE = 6;
+
+const formatEnumName = (name) =>
+  name.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+
+const today = new Date().toISOString().split("T")[0];
 
 export default function Projects() {
-  const navigate = useNavigate(); 
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const { getCurrentWorkspaceId } = useAuth();
+
+  // ── Data ─────────────────────────────────────────────────────────────
   const [projects, setProjects] = useState([]);
-  const [filteredProjects, setFilteredProjects] = useState([]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [loading, setLoading] = useState(false);
   const [apiData, setApiData] = useState({ totalCount: 0 });
-  const [formData, setFormData] = useState({
-    projectTitle: '',
-    projectDescription: '',
-    projectTagline: '',
-    projectLogo: '',
-    status: ProjectStatus.Ongoing,
-    category: ProjectCategory.INFORMATION_TECHNOLOGY,
-    startDate: '',
-    endDate: '',
-    dueDate: ''
-  });
-  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // Pagination state
+  // ── Filters ───────────────────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const projectsPerPage = 6;
 
-  // Form state
-  const [newProject, setNewProject] = useState({
-    name: "",
-    description: "",
-    status: "active",
-  });
+  // ── Modal ─────────────────────────────────────────────────────────────
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  const { getCurrentWorkspaceId } = useAuth();
-  // Fetch projects
-  const fetchProjects = async () => {
+  // ── Fetch ─────────────────────────────────────────────────────────────
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
       const workspaceGuid = getCurrentWorkspaceId();
-      console.log("Current Workspace ID:", workspaceGuid);
       const response = await projectService.getUserProjects({
         workspaceGuid,
         search: search.trim() || null,
-        status: status !== "all" ? status : null,
+        status: statusFilter !== "all" ? statusFilter : null,
         pageNumber: currentPage,
-        pageSize: projectsPerPage
+        pageSize: PROJECTS_PER_PAGE,
       });
-
       const { statusCode, data, message, success } = response.data;
-
       if (statusCode !== 200 || !success) {
         console.error("Error fetching projects:", message);
         return;
       }
-
-      const projectsArray = Array.isArray(data?.items) ? data.items : [];
-      setProjects(projectsArray);
-      setFilteredProjects(projectsArray);
-      setApiData(data); // contains totalCount, pageNumber, pageSize
-    } catch (error) {
-      console.error("Error fetching projects:", error);
+      setProjects(Array.isArray(data?.items) ? data.items : []);
+      setApiData(data);
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+      toast.error("Failed to load projects.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [getCurrentWorkspaceId, search, statusFilter, currentPage]);
 
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  // ── Validation ────────────────────────────────────────────────────────
   const validateForm = () => {
     const newErrors = {};
+    if (!formData.projectTitle.trim())
+      newErrors.projectTitle = "Project title is required";
+    else if (formData.projectTitle.length > 100)
+      newErrors.projectTitle = "Max 100 characters";
 
-    // Required fields
-    if (!formData.projectTitle.trim()) {
-      newErrors.projectTitle = 'Project title is required';
-    } else if (formData.projectTitle.length > 100) {
-      newErrors.projectTitle = 'Project title must be less than 100 characters';
-    }
+    if (!formData.projectDescription.trim())
+      newErrors.projectDescription = "Project description is required";
+    else if (formData.projectDescription.length > 1000)
+      newErrors.projectDescription = "Max 1000 characters";
 
-    if (!formData.projectDescription.trim()) {
-      newErrors.projectDescription = 'Project description is required';
-    } else if (formData.projectDescription.length > 1000) {
-      newErrors.projectDescription = 'Project description must be less than 1000 characters';
-    }
+    if (formData.projectTagline && formData.projectTagline.length > 200)
+      newErrors.projectTagline = "Max 200 characters";
 
-    if (formData.projectTagline && formData.projectTagline.length > 200) {
-      newErrors.projectTagline = 'Project tagline must be less than 200 characters';
-    }
-
-    // Date validation
     if (formData.startDate && formData.endDate) {
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
-
-      if (startDate >= endDate) {
-        newErrors.endDate = 'End date must be after start date';
-      }
+      if (new Date(formData.startDate) >= new Date(formData.endDate))
+        newErrors.endDate = "End date must be after start date";
     }
-
     if (formData.startDate && formData.dueDate) {
-      const startDate = new Date(formData.startDate);
-      const dueDate = new Date(formData.dueDate);
-
-      if (startDate >= dueDate) {
-        newErrors.dueDate = 'Due date must be after start date';
-      }
+      if (new Date(formData.startDate) >= new Date(formData.dueDate))
+        newErrors.dueDate = "Due date must be after start date";
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle modal close
+  // ── Handlers ──────────────────────────────────────────────────────────
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const resetForm = () => {
+    setFormData(INITIAL_FORM);
+    setErrors({});
+  };
+
   const handleOpenChange = (isOpen) => {
     setOpen(isOpen);
-    if (!isOpen) {
-      resetForm();
-    }
+    if (!isOpen) resetForm();
   };
 
-  const handleDeleteProject = async (projectGuid) => {
-    try {
-      setLoading(true);
-      const workspaceGuid = getCurrentWorkspaceId();
-      const response = await projectService.deleteProject(workspaceGuid, projectGuid);
-      const { statusCode, success, message } = response.data;
-      if (statusCode === 200 && success) {
-        toast.success('Project deleted successfully!');
-        fetchProjects(); // Refresh the project list
-      } else {
-        toast.error('Failed to delete project.');
-        console.error('Failed to delete project:', message);
-        // You can add error handling here (e.g., show toast notification)
-      }
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      // You can add error handling here (e.g., show toast notification)
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditProject = async (projectGuid, updatedProject) => {
-    try {
-      setLoading(true);
-      const response = await projectService.updateProject(projectGuid, updatedProject);
-      const { statusCode, success, message } = response.data;
-      if (statusCode === 200 && success) {
-        toast.success('Project updated successfully!');
-        fetchProjects(); // Refresh the project list
-      } else {
-        toast.error('Failed to update project.');
-        console.error('Failed to update project:', message);
-        // You can add error handling here (e.g., show toast notification)
-      }
-    } catch (error) {
-      console.error('Error updating project:', error);
-      // You can add error handling here (e.g., show toast notification)
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOnViewProject = (projectGuid) => {
-    // Navigate to project details page
-    navigate(`/projects/${projectGuid}`);
-  };
-
-
-
-  // Format enum names for display
-  const formatEnumName = (name) => {
-    return name.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  // Get today's date for date inputs
-  const today = new Date().toISOString().split('T')[0];
-
-  // Handle input changes
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
-  };
-
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
+    if (!validateForm()) return;
+    setSubmitting(true);
     try {
-      debugger;
-      // Prepare data in the format expected by your API
       const projectData = {
         projectTitle: formData.projectTitle.trim(),
         projectDescription: formData.projectDescription.trim(),
@@ -240,414 +158,449 @@ export default function Projects() {
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
         createAt: new Date().toISOString(),
       };
-
-      // Call the parent function to create project
       const workspaceGuid = getCurrentWorkspaceId();
-      const response = await projectService.createProject(workspaceGuid,projectData);
+      const response = await projectService.createProject(workspaceGuid, projectData);
       const { statusCode, success, message } = response.data;
       if (statusCode === 201 && success) {
-        toast.success('Project created successfully!');
-        fetchProjects(); // Refresh the project list
+        toast.success("Project created successfully!");
+        resetForm();           // ✅ clear form
+        setOpen(false);        // ✅ close modal
+        fetchProjects();       // ✅ refresh list
       } else {
-        toast.error('Failed to create project.');
-        console.error('Failed to create project:', message);
-        // You can add error handling here (e.g., show toast notification)
+        toast.error(message || "Failed to create project.");
       }
-
-
-    } catch (error) {
-      console.error('Error creating project:', error);
-      // You can add error handling here (e.g., show toast notification)
-    } finally {
-      setLoading(false);
-      //resetForm();
-      setOpen(false);
-    }
-  };
-
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      projectTitle: '',
-      projectDescription: '',
-      projectTagline: '',
-      projectLogo: '',
-      status: ProjectStatus.DRAFT,
-      category: ProjectCategory.GENERAL,
-      startDate: '',
-      endDate: '',
-      dueDate: ''
-    });
-    setErrors({});
-  };
-
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  // Filtering
-  useEffect(() => {
-    let filtered = projects;
-
-    if (search.trim() !== "") {
-      filtered = filtered.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (status !== "all") {
-      filtered = filtered.filter((p) => p.status === status);
-    }
-
-    setFilteredProjects(filtered);
-    setCurrentPage(1); // reset page when filters change
-  }, [search, status, projects]);
-
-  // Pagination calculation
-  const startIndex = (currentPage - 1) * projectsPerPage;
-  const endIndex = startIndex + projectsPerPage;
-  const currentProjects = Array.isArray(filteredProjects)
-    ? filteredProjects.slice(startIndex, endIndex)
-    : [];
-
-  const totalPages = Math.ceil(
-    (apiData?.totalCount || filteredProjects.length) / projectsPerPage
-  );
-
-  // Handle project creation
-  const handleCreateProject = async () => {
-    if (!newProject.name.trim()) {
-      alert("Project name is required.");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const response = await projectService.createProject(newProject);
-      const { statusCode, success } = response.data;
-
-      if (statusCode === 201 && success) {
-        setOpen(false);
-        setNewProject({ name: "", description: "", status: "active" });
-        fetchProjects(); // Refresh the list
-      } else {
-        alert("Failed to create project.");
-      }
-    } catch (error) {
-      console.error("Error creating project:", error);
+    } catch (err) {
+      console.error("Error creating project:", err);
+      toast.error("Something went wrong.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleDeleteProject = async (projectGuid) => {
+    try {
+      const workspaceGuid = getCurrentWorkspaceId();
+      const response = await projectService.deleteProject(workspaceGuid, projectGuid);
+      const { statusCode, success, message } = response.data;
+      if (statusCode === 200 && success) {
+        toast.success("Project deleted.");
+        fetchProjects();
+      } else {
+        toast.error(message || "Failed to delete project.");
+      }
+    } catch (err) {
+      console.error("Error deleting project:", err);
+      toast.error("Something went wrong.");
+    }
+  };
+
+  const handleEditProject = async (projectGuid, updatedProject) => {
+    try {
+      const response = await projectService.updateProject(projectGuid, updatedProject);
+      const { statusCode, success, message } = response.data;
+      if (statusCode === 200 && success) {
+        toast.success("Project updated.");
+        fetchProjects();
+      } else {
+        toast.error(message || "Failed to update project.");
+      }
+    } catch (err) {
+      console.error("Error updating project:", err);
+      toast.error("Something went wrong.");
+    }
+  };
+
+  const handleOnViewProject = (projectGuid) => navigate(`/projects/${projectGuid}`);
+
+  // ── Pagination ────────────────────────────────────────────────────────
+  const totalPages = Math.ceil((apiData?.totalCount || 0) / PROJECTS_PER_PAGE);
+
+  // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
-          <p className="text-sm text-muted-foreground">
-            Group related tasks, goals, and timelines under one strategic initiative.
-          </p>
+    <div className="flex flex-col h-full min-h-screen bg-background">
+
+      {/* ── Page Header ── */}
+      <div className="border-border px-6 py-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Projects</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {apiData?.totalCount ?? 0} project{apiData?.totalCount !== 1 ? "s" : ""} in this workspace
+            </p>
+          </div>
+          <Button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            New Project
+          </Button>
         </div>
       </div>
 
-      {/* Filters + Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-6">
+      {/* ── Filters Bar ── */}
+      <div className="border-border px-6 py-3 flex items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search projects..."
+            className="pl-8 h-8 text-sm"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
 
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="w-4 h-4" />
-              Add New Project
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold flex items-center text-center gap-2">
-                Create New Project
+        {/* Status Filter */}
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-8 w-[160px] text-sm">
+            <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {Object.entries(ProjectStatus).map(([key, value]) => (
+              <SelectItem key={value} value={value.toString()}>
+                {formatEnumName(key)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-              </DialogTitle>
-              <Separator/>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] ">
-              <div className="space-y-5 pt-3 px-4">
-                {/* Project Title */}
-                <div className="space-y-2">
-                  <Label htmlFor="projectTitle" className="flex items-center gap-2">
-                    <Tag className="w-4 h-4" />
-                    Project Title *
-                  </Label>
-                  <Input
-                    id="projectTitle"
-                    value={formData.projectTitle}
-                    onChange={(e) => handleInputChange('projectTitle', e.target.value)}
-                    placeholder="Enter project title"
-                    className={errors.projectTitle ? 'border-red-500' : ''}
-                    maxLength={100}
-                  />
+        <div className="ml-auto text-xs text-muted-foreground">
+          {loading ? "Loading..." : `${projects.length} shown`}
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className="flex-1 px-4 sm:px-6 py-6">
+        {loading ? (
+          // Skeleton
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-48 rounded-lg border border-border bg-muted/30 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : projects.length === 0 ? (
+          // Empty state
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <Folder className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-base font-semibold mb-1">No projects yet</h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              {search || statusFilter !== "all"
+                ? "No projects match your current filters."
+                : "Create your first project to start organising work into focused initiatives."}
+            </p>
+            {search || statusFilter !== "all" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setSearch(""); setStatusFilter("all"); }}
+              >
+                Clear filters
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => setOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create project
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {projects.map((project, index) => (
+                <ProjectCard
+                  key={project.projectGuid ?? index}
+                  project={project}
+                  onDelete={handleDeleteProject}
+                  onEdit={handleEditProject}
+                  onView={handleOnViewProject}
+                />
+              ))}
+            </div>
+
+            {/* ── Pagination ── */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-8 pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const page = i + 1;
+                    return (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-8 w-8 p-0 text-xs ${currentPage === page ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" : ""}`}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
-                {/* Project Tagline */}
-                <div className="space-y-2">
-                  <Label htmlFor="projectTagline" className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Project Tagline
-                  </Label>
-                  <Input
-                    id="projectTagline"
-                    value={formData.projectTagline}
-                    onChange={(e) => handleInputChange('projectTagline', e.target.value)}
-                    placeholder="Enter a catchy tagline"
-                    className={errors.projectTagline ? 'border-red-500' : ''}
-                    maxLength={200}
-                  />
-                  {errors.projectTagline && (
-                    <p className="text-sm text-red-500">{errors.projectTagline}</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    {formData.projectTagline.length}/200 characters
-                  </p>
-                </div>
+      {/* ── Create Project Modal ── */}
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[580px] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b border-border">
+            <DialogTitle className="text-base font-semibold">Create new project</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Fill in the details below to set up your project.
+            </p>
+          </DialogHeader>
 
-                {/* Project Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="projectDescription" className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Project Description *
-                  </Label>
-                  <Textarea
-                    id="projectDescription"
-                    value={formData.projectDescription}
-                    onChange={(e) => handleInputChange('projectDescription', e.target.value)}
-                    placeholder="Describe your project in detail"
-                    rows={4}
-                    className={errors.projectDescription ? 'border-red-500' : ''}
-                    maxLength={1000}
-                  />
-                  {errors.projectDescription && (
-                    <p className="text-sm text-red-500">{errors.projectDescription}</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    {formData.projectDescription.length}/1000 characters
-                  </p>
-                </div>
+          <ScrollArea className="max-h-[65vh]">
+            <div className="px-6 py-5 space-y-5">
 
-                {/* Project Logo URL */}
-                <div className="space-y-2">
-                  <Label htmlFor="projectLogo" className="flex items-center gap-2">
-                    <Image className="w-4 h-4" />
-                    Project Logo URL
-                  </Label>
-                  <Input
-                    id="projectLogo"
-                    type="url"
-                    value={formData.projectLogo}
-                    onChange={(e) => handleInputChange('projectLogo', e.target.value)}
-                    placeholder=""
-                  />
-                  <p className="text-xs text-gray-500">
-                    Optional: Enter a URL for your project logo
-                  </p>
-                </div>
-
-                {/* Status and Category Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Project Status */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      Project Status
-                    </Label>
-                    <Select
-                      value={formData.status.toString()}
-                      onValueChange={(value) => handleInputChange('status', parseInt(value))}
-                    >
-                      <SelectTrigger className={'w-full'}>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ProjectStatus).map(([key, value]) => (
-                          <SelectItem key={value} value={value.toString()}>
-                            {formatEnumName(key)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Project Category */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Tag className="w-4 h-4" />
-                      Project Category
-                    </Label>
-                    <Select
-                      value={formData.category.toString()}
-                      onValueChange={(value) => handleInputChange('category', parseInt(value))}
-                    >
-                      <SelectTrigger className={'w-full'}>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ProjectCategory).map(([key, value]) => (
-                          <SelectItem key={value} value={value.toString()}>
-                            {formatEnumName(key)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Dates Section */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Project Timeline
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Start Date */}
-                    <div className="space-y-2">
-                      <Label htmlFor="startDate">Start Date</Label>
-                      <Input
-                        id="startDate"
-                        type="date"
-                        value={formData.startDate}
-                        onChange={(e) => handleInputChange('startDate', e.target.value)}
-                        min={today}
-                      />
-                    </div>
-
-                    {/* End Date */}
-                    <div className="space-y-2">
-                      <Label htmlFor="endDate">End Date</Label>
-                      <Input
-                        id="endDate"
-                        type="date"
-                        value={formData.endDate}
-                        onChange={(e) => handleInputChange('endDate', e.target.value)}
-                        min={formData.startDate || today}
-                        className={errors.endDate ? 'border-red-500' : ''}
-                      />
-                      {errors.endDate && (
-                        <p className="text-sm text-red-500">{errors.endDate}</p>
-                      )}
-                    </div>
-
-                    {/* Due Date */}
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate" className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Due Date
-                      </Label>
-                      <Input
-                        id="dueDate"
-                        type="date"
-                        value={formData.dueDate}
-                        onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                        min={formData.startDate || today}
-                        className={errors.dueDate ? 'border-red-500' : ''}
-                      />
-                      {errors.dueDate && (
-                        <p className="text-sm text-red-500">{errors.dueDate}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
+              {/* Title */}
+              <div className="space-y-1.5">
+                <Label htmlFor="projectTitle" className="text-sm font-medium">
+                  Project title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="projectTitle"
+                  value={formData.projectTitle}
+                  onChange={(e) => handleInputChange("projectTitle", e.target.value)}
+                  placeholder="e.g. Customer Portal Redesign"
+                  className={`h-9 text-sm ${errors.projectTitle ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  maxLength={100}
+                />
+                {errors.projectTitle && (
+                  <p className="text-xs text-red-500">{errors.projectTitle}</p>
+                )}
+                <p className="text-xs text-muted-foreground text-right">
+                  {formData.projectTitle.length}/100
+                </p>
               </div>
 
-            </ScrollArea>
-
-            <DialogFooter className="flex gap-2 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={loading || !formData.projectTitle.trim() || !formData.projectDescription.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Project
-                  </>
+              {/* Tagline */}
+              <div className="space-y-1.5">
+                <Label htmlFor="projectTagline" className="text-sm font-medium">
+                  Tagline <span className="text-muted-foreground font-normal">(optional)</span>
+                </Label>
+                <Input
+                  id="projectTagline"
+                  value={formData.projectTagline}
+                  onChange={(e) => handleInputChange("projectTagline", e.target.value)}
+                  placeholder="A short, catchy description"
+                  className={`h-9 text-sm ${errors.projectTagline ? "border-red-500" : ""}`}
+                  maxLength={200}
+                />
+                {errors.projectTagline && (
+                  <p className="text-xs text-red-500">{errors.projectTagline}</p>
                 )}
-              </Button>
-            </DialogFooter>
+              </div>
 
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label htmlFor="projectDescription" className="text-sm font-medium">
+                  Description <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="projectDescription"
+                  value={formData.projectDescription}
+                  onChange={(e) => handleInputChange("projectDescription", e.target.value)}
+                  placeholder="What is this project about? What problem does it solve?"
+                  rows={3}
+                  className={`text-sm resize-none ${errors.projectDescription ? "border-red-500" : ""}`}
+                  maxLength={1000}
+                />
+                {errors.projectDescription && (
+                  <p className="text-xs text-red-500">{errors.projectDescription}</p>
+                )}
+                <p className="text-xs text-muted-foreground text-right">
+                  {formData.projectDescription.length}/1000
+                </p>
+              </div>
 
-          </DialogContent>
-        </Dialog>
-      </div>
+              {/* Status + Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Select
+                    value={formData.status.toString()}
+                    onValueChange={(v) => handleInputChange("status", parseInt(v))}
+                  >
+                    <SelectTrigger className="h-9 text-sm w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ProjectStatus).map(([key, value]) => (
+                        <SelectItem key={value} value={value.toString()} className="text-sm">
+                          {formatEnumName(key)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-      {/* Loading State */}
-      {loading ? (
-        <div className="text-center text-gray-400 py-10">Loading projects...</div>
-      ) : filteredProjects.length === 0 ? (
-        // Empty State
-        <div className="flex flex-col items-center justify-center text-center py-16">
-          <div className="bg-gray-800 rounded-full p-6 mb-4">
-            <Folder className="w-12 h-12 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">
-            No Projects Found
-          </h3>
-          <p className="mb-4">
-            It looks like you haven’t created any projects yet.
-          </p>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                Create Your First Project
-              </Button>
-            </DialogTrigger>
-          </Dialog>
-        </div>
-      ) : (
-        // Project List
-        <div className="grid grid-cols-2 gap-5">
-          {currentProjects.map((project, index) => (
-            <ProjectCard key={index} project={project} onDelete={handleDeleteProject} onEdit={handleEditProject} onView={handleOnViewProject}/>
-          ))}
-        </div>
-      )}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Category</Label>
+                  <Select
+                    value={formData.category.toString()}
+                    onValueChange={(v) => handleInputChange("category", parseInt(v))}
+                  >
+                    <SelectTrigger className="h-9 text-sm w-full">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ProjectCategory).map(([key, value]) => (
+                        <SelectItem key={value} value={value.toString()} className="text-sm">
+                          {formatEnumName(key)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-6">
-          <Button
-            variant="outline"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((prev) => prev - 1)}
-          >
-            Prev
-          </Button>
-          <span className="">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((prev) => prev + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+              {/* Logo URL */}
+              <div className="space-y-1.5">
+                <Label htmlFor="projectLogo" className="text-sm font-medium">
+                  Logo URL <span className="text-muted-foreground font-normal">(optional)</span>
+                </Label>
+                <Input
+                  id="projectLogo"
+                  type="url"
+                  value={formData.projectLogo}
+                  onChange={(e) => handleInputChange("projectLogo", e.target.value)}
+                  placeholder="https://example.com/logo.png"
+                  className="h-9 text-sm"
+                />
+              </div>
+
+              {/* Dates */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Timeline <span className="text-muted-foreground font-normal">(optional)</span>
+                </Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="startDate" className="text-xs text-muted-foreground">Start</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleInputChange("startDate", e.target.value)}
+                      min={today}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="endDate" className="text-xs text-muted-foreground">End</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleInputChange("endDate", e.target.value)}
+                      min={formData.startDate || today}
+                      className={`h-9 text-sm ${errors.endDate ? "border-red-500" : ""}`}
+                    />
+                    {errors.endDate && (
+                      <p className="text-xs text-red-500">{errors.endDate}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dueDate" className="text-xs text-muted-foreground">Due</Label>
+                    <Input
+                      id="dueDate"
+                      type="date"
+                      value={formData.dueDate}
+                      onChange={(e) => handleInputChange("dueDate", e.target.value)}
+                      min={formData.startDate || today}
+                      className={`h-9 text-sm ${errors.dueDate ? "border-red-500" : ""}`}
+                    />
+                    {errors.dueDate && (
+                      <p className="text-xs text-red-500">{errors.dueDate}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="px-6 py-4 border-t border-border flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenChange(false)}
+              disabled={submitting}
+              className="h-9"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                submitting ||
+                !formData.projectTitle.trim() ||
+                !formData.projectDescription.trim()
+              }
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white h-9 min-w-[120px]"
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Creating...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create project
+                </span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

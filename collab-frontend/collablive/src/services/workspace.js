@@ -21,7 +21,7 @@ class WorkspaceService {
                 this.activeWorkspace = response.data.data;
             }
             
-            return response.data;
+            return response;
         } catch (error) {
             console.error('Error while creating the workspace:', error);
             throw handleWorkspaceError(error);

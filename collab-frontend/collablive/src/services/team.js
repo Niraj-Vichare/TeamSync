@@ -8,7 +8,7 @@ class TeamService{
         const response = await axiosInstance.get("/teams/members",{
             params: { workspaceGuid, search, filter, pageNumber, pageSize }
         })
-        return response.data;
+        return response;
     }catch(error){
         console.error("Error while getting the team members",error);
         throw handleTeamError(error);
@@ -25,10 +25,10 @@ class TeamService{
     }
   }
 
-  async updateMember(memberId, memberData) 
+  async updateMember(workspaceGuid, memberData) 
   {
         try {
-            const response = await axiosInstance.put(`/projects/?memberId=${memberId}`, memberData);
+            const response = await axiosInstance.put(`/teams/member?workspaceGuid=${workspaceGuid}`, memberData);
             return response;
         } catch (error) {
             console.error('Error while updating project:', error);
@@ -43,7 +43,7 @@ class TeamService{
         const response = await axiosInstance.post(`/teams/member/create?workspaceGuid=${workspaceGuid}`,
             member
         );
-        return response.data;
+        return response;
     }catch(error){
         console.error("Error while adding the team member",error);
         throw handleTeamError(error);
@@ -78,6 +78,33 @@ class TeamService{
         throw handleTeamError(error);
     }
   }
+
+  async createProjectTeam(workspaceGuid,team)
+  {
+    try{
+        const response = await axiosInstance.post(`/teams/create?workspaceGuid=${workspaceGuid}`,
+            team
+        );
+        return response;
+    }catch(error){
+        console.error("Error while creating the team",error);
+        throw handleTeamError(error);
+    }
+  }
+
+  async updateProjectTeam(teamId, teamData)
+  {
+    try{
+        const response = await axiosInstance.put(`/teams/update?teamId=${teamId}`,
+            teamData
+        );
+        return response;
+    }catch(error){
+        console.error("Error while updating the team",error);
+        throw handleTeamError(error);
+    }
+  }
+
 }
 
 

@@ -4,479 +4,519 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import projectService from '@/services/project';
-import { ArrowLeft, BarChart3, Calendar, Calendar1Icon, CalendarIcon, CheckCircle, ChevronDown, ChevronRight, Clock, DollarSign, FileText, TrendingUp, UserCheck } from 'lucide-react';
-import React, { useEffect, useState } from 'react'
+import sprintService from '@/services/sprint';
+import ticketService from '@/services/ticket';
+import teamService from '@/services/team';
+import {
+  ArrowLeft, BarChart3, Calendar, CheckCircle, ChevronDown,
+  ChevronRight, Clock, FileText, TrendingUp, UserCheck, Folder
+} from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 
 function Project() {
   const navigate = useNavigate();
+  const { projectId: projectGuid } = useParams(); // ✅ useParams at top level
+  const { getCurrentWorkspaceId } = useAuth();
 
-  const sprintData = [
-    {
-      id: 1,
-      name: "Sprint 1 - Foundation",
-      status: "Completed",
-      startDate: "2024-07-01",
-      endDate: "2024-07-14",
-      tasks: [
-        {
-          id: 1,
-          title: "Set up project structure",
-          status: "Completed",
-          assignee: "John Doe",
-          assigneeId: "JD",
-          priority: "High",
-          dueDate: "2024-07-05",
-          timeSpent: "8h",
-          estimatedTime: "6h",
-          description: "Initialize the project with proper folder structure, configuration files, and development environment setup.",
-          section: "Completed"
-        },
-        {
-          id: 2,
-          title: "Database schema design",
-          status: "Completed",
-          assignee: "Jane Smith",
-          assigneeId: "JS",
-          priority: "High",
-          dueDate: "2024-07-07",
-          timeSpent: "12h",
-          estimatedTime: "10h",
-          description: "Design and implement the database schema for user management, product catalog, and order processing.",
-          section: "Completed"
-        },
-        {
-          id: 3,
-          title: "API endpoint planning",
-          status: "Completed",
-          assignee: "Mike Johnson",
-          assigneeId: "MJ",
-          priority: "Medium",
-          dueDate: "2024-07-10",
-          timeSpent: "6h",
-          estimatedTime: "8h",
-          description: "Plan and document all required API endpoints for the application including authentication, CRUD operations, and business logic.",
-          section: "Completed"
-        },
-        {
-          id: 4,
-          title: "UI/UX wireframes",
-          status: "Completed",
-          assignee: "John Doe",
-          assigneeId: "JD",
-          priority: "Medium",
-          dueDate: "2024-07-12",
-          timeSpent: "10h",
-          estimatedTime: "12h",
-          description: "Create detailed wireframes and user flow diagrams for all major application screens and user interactions.",
-          section: "Completed"
-        },
-        {
-          id: 5,
-          title: "Authentication setup",
-          status: "Completed",
-          assignee: "Jane Smith",
-          assigneeId: "JS",
-          priority: "High",
-          dueDate: "2024-07-14",
-          timeSpent: "15h",
-          estimatedTime: "12h",
-          description: "Implement secure user authentication system with JWT tokens, password hashing, and session management.",
-          section: "Completed"
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: "Sprint 2 - Core Features",
-      status: "Completed",
-      startDate: "2024-07-15",
-      endDate: "2024-07-28",
-      tasks: [
-        {
-          id: 6,
-          title: "Product catalog implementation",
-          status: "Completed",
-          assignee: "Mike Johnson",
-          assigneeId: "MJ",
-          priority: "High",
-          dueDate: "2024-07-22",
-          timeSpent: "20h",
-          estimatedTime: "18h",
-          description: "Build the product catalog with search, filtering, and categorization features.",
-          section: "Completed"
-        },
-        {
-          id: 7,
-          title: "Shopping cart functionality",
-          status: "Completed",
-          assignee: "John Doe",
-          assigneeId: "JD",
-          priority: "High",
-          dueDate: "2024-07-25",
-          timeSpent: "16h",
-          estimatedTime: "14h",
-          description: "Implement shopping cart with add/remove items, quantity management, and persistent storage.",
-          section: "Completed"
-        },
-        {
-          id: 8,
-          title: "User authentication UI",
-          status: "Completed",
-          assignee: "Jane Smith",
-          assigneeId: "JS",
-          priority: "Medium",
-          dueDate: "2024-07-20",
-          timeSpent: "8h",
-          estimatedTime: "10h",
-          description: "Create user-friendly login, registration, and profile management interfaces.",
-          section: "Completed"
-        },
-        {
-          id: 9,
-          title: "Payment gateway setup",
-          status: "Completed",
-          assignee: "Mike Johnson",
-          assigneeId: "MJ",
-          priority: "High",
-          dueDate: "2024-07-28",
-          timeSpent: "18h",
-          estimatedTime: "16h",
-          description: "Integrate secure payment processing with multiple payment methods and fraud protection.",
-          section: "Completed"
-        }
-      ]
-    },
-    {
-      id: 3,
-      name: "Sprint 3 - Advanced Features",
-      status: "In Progress",
-      startDate: "2024-07-29",
-      endDate: "2024-08-11",
-      tasks: [
-        {
-          id: 10,
-          title: "Order management system",
-          status: "Completed",
-          assignee: "John Doe",
-          assigneeId: "JD",
-          priority: "High",
-          dueDate: "2024-08-05",
-          timeSpent: "14h",
-          estimatedTime: "12h",
-          description: "Build comprehensive order management with tracking, status updates, and customer notifications.",
-          section: "Completed"
-        },
-        {
-          id: 11,
-          title: "Email notifications",
-          status: "In Progress",
-          assignee: "Jane Smith",
-          assigneeId: "JS",
-          priority: "Medium",
-          dueDate: "2024-08-08",
-          timeSpent: "6h",
-          estimatedTime: "10h",
-          description: "Implement automated email notifications for order confirmations, shipping updates, and promotional content.",
-          section: "In Progress"
-        },
-        {
-          id: 12,
-          title: "Analytics integration",
-          status: "To Do",
-          assignee: "Mike Johnson",
-          assigneeId: "MJ",
-          priority: "Low",
-          dueDate: "2024-08-10",
-          timeSpent: "0h",
-          estimatedTime: "8h",
-          description: "Integrate Google Analytics and custom event tracking for user behavior analysis.",
-          section: "To Do"
-        },
-        {
-          id: 13,
-          title: "Mobile responsiveness",
-          status: "In Progress",
-          assignee: "John Doe",
-          assigneeId: "JD",
-          priority: "High",
-          dueDate: "2024-08-11",
-          timeSpent: "8h",
-          estimatedTime: "16h",
-          description: "Ensure full mobile responsiveness across all devices with touch-friendly interactions.",
-          section: "In Progress"
-        }
-      ]
-    }
-  ];
+  // ── State ────────────────────────────────────────────────────────────
+  const [activeModule, setActiveModule] = useState('overview');
+  const [project,      setProject]      = useState(null);
+  const [sprints,      setSprints]      = useState([]);
+  const [allTasks,     setAllTasks]     = useState([]);
+  const [teamMembers,  setTeamMembers]  = useState([]);
+  const [expandedSprints, setExpandedSprints] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const getProjectById=async()=>{
-    try{
-      const {id} = useParams();
-      const response = await projectService.getProjectById(id);
-      if(response!=null){
-        const {data,success,statusCode,message} = response.data;
-        if(statusCode==200 || success){
-          setProject()
-        }
+  // ── Derived metrics ───────────────────────────────────────────────────
+  const completedSprints = sprints.filter(s => s.sprintStatus === 'Completed' || s.status === 2).length;
+  const completedTasks   = allTasks.filter(t => t.status === 'Completed' || t.ticketStatus === 2).length;
+  const totalHours       = allTasks.reduce((acc, t) => acc + (t.hoursSpent ?? 0), 0);
+
+  // ── Fetch project ─────────────────────────────────────────────────────
+  const fetchProject = useCallback(async () => {
+    try {
+      const workspaceGuid = getCurrentWorkspaceId();
+      console.log('Fetching project with workspaceGuid:', workspaceGuid, 'and projectGuid:', projectGuid);  
+      const response = await projectService.getProjectById(workspaceGuid, projectGuid);
+      const { data, success, statusCode } = response.data;
+      if (statusCode === 200 && success) {
+        setProject(data); // ✅ pass data
+      } else {
+        toast.error('Failed to load project.');
       }
-
-    }catch(error){
-      console.error("");
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      toast.error('Failed to load project.');
     }
-  }
+  }, [projectGuid, getCurrentWorkspaceId]);
 
-  useEffect(()=>{
-    getProjectById();
+  // ── Fetch sprints + tasks ─────────────────────────────────────────────
+  const fetchSprintsAndTasks = useCallback(async () => {
+    try {
+      const workspaceGuid = getCurrentWorkspaceId();
+      const sprintResponse = await sprintService.getSprintsByProject(workspaceGuid, projectGuid);
+      const { data: sprintData, success, statusCode } = sprintResponse.data;
 
-  },[])
-    const getStatusColor = (status) => {
-    switch (status) {
-      case 'Completed': return 'bg-green-500';
-      case 'In Progress': return 'bg-blue-500';
-      case 'Planning': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+      if (statusCode === 200 && success) {
+        const sprintList = Array.isArray(sprintData?.items) ? sprintData.items : (Array.isArray(sprintData) ? sprintData : []);
+        setSprints(sprintList);
+
+        // Fetch tasks for all sprints in parallel
+        const taskResults = await Promise.all(
+          sprintList.map(sprint =>
+            sprintService.getSprintTickets(sprint.sprintGuid)
+              .then(r => {
+                const items = r.data?.data?.items ?? r.data?.data ?? [];
+                return (Array.isArray(items) ? items : []).map(t => ({
+                  ...t,
+                  sprintName: sprint.sprintName ?? sprint.name,
+                  sprintGuid: sprint.sprintGuid ?? sprint.id,
+                }));
+              })
+              .catch(() => [])
+          )
+        );
+        setAllTasks(taskResults.flat());
+      }
+    } catch (err) {
+      console.error('Error fetching sprints/tasks:', err);
     }
-  };
+  }, [projectGuid, getCurrentWorkspaceId]);
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'Service': return 'bg-purple-100 text-purple-800';
-      case 'Product': return 'bg-blue-100 text-blue-800';
-      case 'Sold': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // ── Fetch team ────────────────────────────────────────────────────────
+  const fetchTeam = useCallback(async () => {
+    try {
+      const workspaceGuid = getCurrentWorkspaceId();
+      const response = await teamService.getMembers(workspaceGuid);
+      const { data, success, statusCode } = response.data;
+      if (statusCode === 200 && success) {
+        setTeamMembers(Array.isArray(data) ? data : (data?.items ?? []));
+      }
+    } catch (err) {
+      console.error('Error fetching team:', err);
     }
+  }, [getCurrentWorkspaceId]);
+
+  // ── Mount ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await Promise.all([fetchProject(), fetchSprintsAndTasks(), fetchTeam()]);
+      setLoading(false);
+    };
+    load();
+  }, [fetchProject, fetchSprintsAndTasks, fetchTeam]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  const toggleSprint = (sprintId) =>
+    setExpandedSprints(prev => ({ ...prev, [sprintId]: !prev[sprintId] }));
+
+  const getTasksForSprint = (sprintGuid) =>
+    allTasks.filter(t => t.sprintGuid === sprintGuid);
+
+  const getStatusDot = (status) => {
+    if (status === 'Completed' || status === 2) return 'bg-green-500';
+    if (status === 'In Progress' || status === 1) return 'bg-blue-500';
+    return 'bg-muted-foreground';
   };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'High': return 'text-red-600 bg-red-50 border-red-200';
-      case 'Medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'Low': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'High':   return 'text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:text-red-400';
+      case 'Medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-400';
+      case 'Low':    return 'text-green-600 bg-green-50 border-green-200 dark:bg-green-950/30 dark:text-green-400';
+      default:       return 'text-muted-foreground bg-muted';
     }
   };
-  const handleBack=()=>{
-    navigate("/projects");
-    
-  }
 
-  const getAllTasks = () => {
-    return sprintData.flatMap(sprint => 
-      sprint.tasks.map(task => ({ ...task, sprintName: sprint.name, sprintId: sprint.id }))
-    );
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === '0001-01-01T00:00:00') return '—';
+    const d = new Date(dateStr);
+    if (d.getFullYear() - new Date().getFullYear() > 20) return '—';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
-  const getTasksBySection = () => {
-    const allTasks = getAllTasks();
-    return taskSections.reduce((acc, section) => {
-      acc[section] = allTasks.filter(task => task.section === section);
-      return acc;
-    }, {});
-  };
-
-  const toggleSprint = (sprintId) => {
-    setExpandedSprints(prev => ({
-      ...prev,
-      [sprintId]: !prev[sprintId]
-    }));
-  };
-  const [activeModule, setActiveModule] = useState('overview');
-  const [sprints, setSprints] = useState(sprintData);
-  const [expandedSprints, setExpandedSprints] = useState({});
-  const [project, setProject] = useState({});
-
-  const getProject = () => {
-    try {
-      // api call for the project details
-
-    } catch (error) {
-      toast.error("");
-    }
-  }
-
-  useEffect(() => {
-    getProject();
-  }, [])
-  return (
-    <div className="w-full overflow-x-hidden px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">Project Name</h1>
-          <p className="text-gray-500">Project Description</p>
+  // ── Render ────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-4">
+          <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-28 bg-muted rounded-lg animate-pulse" />
+            ))}
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          onClick={handleBack}
-          className="flex items-center gap-2 self-start sm:self-center"
-        >
-          <ArrowLeft className="h-4 w-4" />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center">
+        <Folder className="w-12 h-12 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">Project not found.</p>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/projects')}>
           Back to Projects
         </Button>
       </div>
+    );
+  }
 
-      {/* Metrics in a grid (no min-width, no overflow) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  return (
+    <div className="w-full overflow-x-hidden px-4 sm:px-6 lg:px-8 pb-10">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row justify-between gap-3 py-5 border-b border-border mb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold truncate">{project.projectTitle}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{project.projectTagline || project.projectDescription}</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/projects')}
+          className="flex items-center gap-2 self-start sm:self-center h-9 flex-shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
+      {/* ── Metric Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Sprints Completed</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Sprints</CardTitle>
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{project.completedSprints}/{project.sprints}</div>
-            <Progress value={(project.completedSprints / project.sprints) * 100} className="mt-2" />
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-semibold">{completedSprints}/{sprints.length}</div>
+            <Progress
+              value={sprints.length ? (completedSprints / sprints.length) * 100 : 0}
+              className="mt-2 h-1.5"
+            />
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Tasks done</CardTitle>
+            <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{project.completedTasks}/{project.totalTasks}</div>
-            <Progress value={(project.completedTasks / project.totalTasks) * 100} className="mt-2" />
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-semibold">{completedTasks}/{allTasks.length}</div>
+            <Progress
+              value={allTasks.length ? (completedTasks / allTasks.length) * 100 : 0}
+              className="mt-2 h-1.5"
+            />
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Hours Worked</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Hours logged</CardTitle>
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{project.hoursWorked}h</div>
-            <p className="text-xs text-muted-foreground mt-1">Across all team members</p>
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-semibold">{totalHours}h</div>
+            <p className="text-xs text-muted-foreground mt-1">Across {teamMembers.length} members</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Budget vs Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Timeline</CardTitle>
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">${project.revenue?.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Spent: ${project.budgetSpent?.toLocaleString()}</p>
+          <CardContent className="px-4 pb-4">
+            <div className="text-sm font-medium">{formatDate(project.startDate)}</div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {project.dueDate ? `Due ${formatDate(project.dueDate)}` : 'No due date'}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* ── Tabs ── */}
       <Tabs value={activeModule} onValueChange={setActiveModule} className="w-full">
-        <TabsList className="flex overflow-x-auto gap-2 pb-2 w-full">
-          <TabsTrigger value="overview" className="flex items-center gap-2 whitespace-nowrap">
-            <BarChart3 className="w-4 h-4" /> Overview
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="flex items-center gap-2 whitespace-nowrap">
-            <CheckCircle className="w-4 h-4" /> Task
-          </TabsTrigger>
-          <TabsTrigger value="sprints" className="flex items-center gap-2 whitespace-nowrap">
-            <Calendar className="w-4 h-4" /> Sprints
-          </TabsTrigger>
-          <TabsTrigger value="analysis" className="flex items-center gap-2 whitespace-nowrap">
-            <TrendingUp className="w-4 h-4" /> Analysis
-          </TabsTrigger>
-          <TabsTrigger value="reports" className="flex items-center gap-2 whitespace-nowrap">
-            <FileText className="w-4 h-4" /> Report
-          </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-2 whitespace-nowrap">
-            <UserCheck className="w-4 h-4" /> Team
-          </TabsTrigger>
+        <TabsList className="flex overflow-x-auto w-full justify-start h-auto p-1 gap-1">
+          {[
+            { value: 'overview', icon: BarChart3,   label: 'Overview' },
+            { value: 'tasks',    icon: CheckCircle,  label: 'Tasks' },
+            { value: 'sprints',  icon: Calendar,     label: 'Sprints' },
+            { value: 'analysis', icon: TrendingUp,   label: 'Analysis' },
+            { value: 'reports',  icon: FileText,     label: 'Report' },
+            { value: 'team',     icon: UserCheck,    label: 'Team' },
+          ].map(({ value, icon: Icon, label }) => (
+            <TabsTrigger key={value} value={value} className="flex items-center gap-1.5 text-sm whitespace-nowrap">
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
+        {/* ── Overview tab ── */}
+        <TabsContent value="overview" className="mt-5">
           <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Sprint Overview
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Calendar className="h-4 w-4" /> Sprint overview
                   </CardTitle>
-                  <CardDescription>Track progress across all sprints</CardDescription>
+                  <CardDescription className="text-sm mt-0.5">Progress across all sprints</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setActiveModule("sprints")}>
-                  View All Sprints
+                <Button variant="outline" size="sm" className="h-8" onClick={() => setActiveModule('sprints')}>
+                  View all sprints
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                      {sprintData.map((sprint) => (
-                        <div key={sprint.id} className="border rounded-lg p-4">
-                          <div 
-                            className="flex items-center justify-between cursor-pointer"
-                            onClick={() => toggleSprint(sprint.id)}
-                          >
-                            <div className="flex items-center gap-3">
-                              {expandedSprints[sprint.id] ? 
-                                <ChevronDown className="h-4 w-4" /> : 
-                                <ChevronRight className="h-4 w-4" />
-                              }
-                              <h3 className="font-semibold">{sprint.name}</h3>
-                              <Badge variant={sprint.status === 'Completed' ? 'default' : 'secondary'}>
-                                {sprint.status}
-                              </Badge>
-                            </div>
-                            <span className="text-sm text-gray-500">
-                              {sprint.tasks.filter(t => t.status === 'Completed').length}/{sprint.tasks.length} tasks
-                            </span>
+              {sprints.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No sprints yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {sprints.map((sprint) => {
+                    const sprintTasks = getTasksForSprint(sprint.sprintGuid ?? sprint.id);
+                    const done = sprintTasks.filter(t => t.status === 'Completed' || t.ticketStatus === 2).length;
+                    const expanded = expandedSprints[sprint.sprintGuid ?? sprint.id];
+                    return (
+                      <div key={sprint.sprintGuid ?? sprint.id} className="border border-border rounded-lg overflow-hidden">
+                        <div
+                          className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                          onClick={() => toggleSprint(sprint.sprintGuid ?? sprint.id)}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            <span className="text-sm font-medium">{sprint.sprintName ?? sprint.name}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {sprint.sprintStatus ?? sprint.status ?? 'Active'}
+                            </Badge>
                           </div>
-                          
-                          {expandedSprints[sprint.id] && (
-                            <div className="mt-4 pl-7">
-                              <div className="space-y-2">
-                                {sprint.tasks.slice(0, 5).map((task) => (
-                                  <div key={task.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-2 h-2 rounded-full ${
-                                        task.status === 'Completed' ? 'bg-green-500' :
-                                        task.status === 'In Progress' ? 'bg-blue-500' : 'bg-gray-300'
-                                      }`} />
-                                      <span className="text-sm">{task.title}</span>
+                          <span className="text-xs text-muted-foreground">{done}/{sprintTasks.length} tasks</span>
+                        </div>
+
+                        {expanded && (
+                          <div className="border-t border-border px-4 py-3">
+                            {sprintTasks.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2">No tasks in this sprint.</p>
+                            ) : (
+                              <div className="space-y-1">
+                                {sprintTasks.slice(0, 5).map((task) => (
+                                  <div key={task.ticketGuid ?? task.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-b-0">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusDot(task.ticketStatus ?? task.status)}`} />
+                                      <span className="text-sm truncate">{task.ticketTitle ?? task.title}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      {task.priority && (
+                                        <span className={`text-xs px-1.5 py-0.5 rounded border ${getPriorityColor(task.priority)}`}>
+                                          {task.priority}
+                                        </span>
+                                      )}
                                       <Badge variant="outline" className="text-xs">
-                                        {task.assignee}
-                                      </Badge>
-                                      <Badge variant={
-                                        task.status === 'Completed' ? 'default' :
-                                        task.status === 'In Progress' ? 'secondary' : 'outline'
-                                      } className="text-xs">
-                                        {task.status}
+                                        {task.ticketStatus ?? task.status ?? 'Open'}
                                       </Badge>
                                     </div>
                                   </div>
                                 ))}
+                                {sprintTasks.length > 5 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 text-blue-600 h-8 text-xs"
+                                    onClick={(e) => { e.stopPropagation(); setActiveModule('tasks'); }}
+                                  >
+                                    View all {sprintTasks.length} tasks →
+                                  </Button>
+                                )}
                               </div>
-                              {sprint.tasks.length > 5 && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="mt-2 text-blue-600"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveModule('tasks');
-                                  }}
-                                >
-                                  View all {sprint.tasks.length} tasks →
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Tasks tab ── */}
+        <TabsContent value="tasks" className="mt-5">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" /> All tasks
+              </CardTitle>
+              <CardDescription>{allTasks.length} tasks across {sprints.length} sprints</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {allTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No tasks found.</p>
+              ) : (
+                <div className="space-y-1">
+                  {allTasks.map((task) => (
+                    <div key={task.ticketGuid ?? task.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/40 transition-colors">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusDot(task.ticketStatus ?? task.status)}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm truncate">{task.ticketTitle ?? task.title}</p>
+                          <p className="text-xs text-muted-foreground">{task.sprintName}</p>
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {task.priority && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded border ${getPriorityColor(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {task.ticketStatus ?? task.status ?? 'Open'}
+                        </Badge>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Sprints tab ── */}
+        <TabsContent value="sprints" className="mt-5">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> Sprints
+              </CardTitle>
+              <CardDescription>{sprints.length} sprint{sprints.length !== 1 ? 's' : ''} in this project</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sprints.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No sprints created yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {sprints.map((sprint) => {
+                    const sprintTasks = getTasksForSprint(sprint.sprintGuid ?? sprint.id);
+                    const done = sprintTasks.filter(t => t.status === 'Completed' || t.ticketStatus === 2).length;
+                    return (
+                      <div key={sprint.sprintGuid ?? sprint.id} className="border border-border rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">{sprint.sprintName ?? sprint.name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {formatDate(sprint.startDate)} → {formatDate(sprint.endDate)}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
+                            {sprint.sprintStatus ?? sprint.status ?? 'Active'}
+                          </Badge>
+                        </div>
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                            <span>{done}/{sprintTasks.length} tasks done</span>
+                            <span>{sprintTasks.length ? Math.round((done / sprintTasks.length) * 100) : 0}%</span>
+                          </div>
+                          <Progress
+                            value={sprintTasks.length ? (done / sprintTasks.length) * 100 : 0}
+                            className="h-1.5"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Analysis tab — API missing, placeholder ── */}
+        <TabsContent value="analysis" className="mt-5">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" /> Analysis
+              </CardTitle>
+              <CardDescription>Sprint breakdown and velocity charts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <TrendingUp className="w-10 h-10 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">Analysis coming soon</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                  Requires <code className="text-xs bg-muted px-1 rounded">GET /dashboard/sprint-breakdown</code> endpoint — not yet implemented in the backend.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Reports tab — API missing, placeholder ── */}
+        <TabsContent value="reports" className="mt-5">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4" /> Reports
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <FileText className="w-10 h-10 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">Reports coming soon</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                  Export and summary endpoints are not yet implemented.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Team tab ── */}
+        <TabsContent value="team" className="mt-5">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserCheck className="h-4 w-4" /> Team
+              </CardTitle>
+              <CardDescription>{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''} in this workspace</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {teamMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No team members found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {teamMembers.map((member) => (
+                    <div key={member.profileGuid ?? member.id} className="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-muted/40 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 text-sm font-medium">
+                        {(member.displayName ?? member.name ?? '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{member.displayName ?? member.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                      </div>
+                      {member.roleName && (
+                        <Badge variant="outline" className="ml-auto text-xs flex-shrink-0">
+                          {member.roleName}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-
-  )
+  );
 }
 
-export default Project
+export default Project;

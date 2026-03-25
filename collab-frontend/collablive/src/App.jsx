@@ -20,6 +20,7 @@ import "./App.css";
 import { LoginForm } from './pages/login-form';
 import Sprint from './pages/sprint';
 import Leaderboard from './pages/leaderboard';
+import { OAuthCallback } from './pages/oauth-callback';
 
 function App() {
   const { isAuthenticated,workspaceId,loading } = useAuth();
@@ -50,6 +51,8 @@ function InnerApp({ isAuthenticated,workspaceId,loading }) {
         <Route element={<PlainLayout />}>
           <Route path="/auth/signin" element={<LoginForm />} />
           <Route path="/auth/signup" element={<Signup />} />
+          <Route path="/auth/callback" element={<OAuthCallback />} />
+
         </Route>
         <Route path="*" element={<Navigate to="/auth/signin" replace />} />
       </Routes>

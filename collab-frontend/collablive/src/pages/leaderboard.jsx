@@ -63,7 +63,7 @@ function Leaderboard() {
                 name: r.userName,
                 avatar: getInitials(r.userName),
                 score: Math.round(r.currentScore),
-                tasksCompleted: r.currentMetrics.tasksCompleted,
+                ticketsCompleted: r.currentMetrics.ticketsCompleted,  // was tasksCompleted
                 efficiency: Math.round(r.currentMetrics.efficiency * 100),
                 change: r.comparison.rankChange,
                 trend: getTrendType(r.comparison.rankChangeType),
@@ -97,13 +97,12 @@ function Leaderboard() {
             console.log('📊 Full leaderboard update received');
 
             if (!leaderboard || !leaderboard.rankings) return;
-
             const transformed = leaderboard.rankings.map(r => ({
                 rank: r.currentRank,
                 name: r.userName,
                 avatar: getInitials(r.userName),
                 score: Math.round(r.currentScore),
-                ticketCompleted: r.currentMetrics.ticketCompleted,
+                ticketsCompleted: r.currentMetrics.ticketsCompleted,  // was ticketCompleted
                 efficiency: Math.round(r.currentMetrics.efficiency * 100),
                 change: r.comparison.rankChange,
                 trend: getTrendType(r.comparison.rankChangeType),
@@ -276,8 +275,9 @@ function Leaderboard() {
                                                     bounce: 0.2
                                                 }
                                             }}
-                                            className={`grid grid-cols-12 gap-4 items-center py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors ${member.name.includes('You') ? 'bg-muted/50 border-2 border-primary' : ''
-                                                }`}
+                                            className={`grid grid-cols-12 gap-4 items-center py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors ${
+    member.name?.includes('You') ? 'bg-muted/50 border-2 border-primary' : ''
+}`}
                                         >
                                             <div className="col-span-1">
                                                 <motion.div

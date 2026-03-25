@@ -39,7 +39,6 @@ class ProjectService {
 
     // Update a project by ID
     async updateProject(projectGuid, projectData) {
-        debugger;
         try {
             const response = await axiosInstance.put(`/projects/?projectGuid=${projectGuid}`, projectData);
             return response;
@@ -50,9 +49,11 @@ class ProjectService {
     }
 
     // Get a project by ID
-    async getProjectById(projectGuid) {
+    async getProjectById(workspaceGuid, projectGuid) {
         try {
-            const response = await axiosInstance.get(`/projects/${projectGuid}`);
+            const response = await axiosInstance.get(`/projects/${projectGuid}`, {
+                params: { workspaceGuid }
+            });
             return response;
         } catch (error) {
             console.error('Error while loading project by ID:', error);
