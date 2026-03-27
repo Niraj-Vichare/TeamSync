@@ -15,7 +15,7 @@ namespace Enterprise.Flowstate.DAL.Models
         public int TotalTicketCompleted { get;set; }
         public int TotalHours { get; set; }
         public float Efficiency { get; set; }
-        public int ContributionPoint { get; set; }
+        public float? ContributionPoint { get; set; }
         public long Ranking { get; set; }
 
     }

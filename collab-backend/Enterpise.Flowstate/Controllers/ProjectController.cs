@@ -6,10 +6,13 @@ using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
+using Enterprise.Flowstate.BAL.Filters;
+using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("projects")]
+    //[RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager)]
     public class ProjectController : OwnerAuthorizedControllerBase
     {
         private readonly IOmniService _omniService;
@@ -171,7 +174,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpGet("{projectGuid}")]
-        public async Task<ApiResponseModel<object>> GetProject(string workspaceGuid,[FromRoute] string projectGuid)
+        public async Task<ApiResponseModel<object>> GetProject([FromQuery] string workspaceGuid,[FromRoute] string projectGuid)
         {
             try
             {
@@ -419,6 +422,65 @@ namespace Enterpise.Flowstate.Controllers
             {
                 return null;
             }
-        } 
+        }
+
+        [HttpGet("{projectGuid}/sprints")]
+        public async Task<ApiResponseModel<object>> GetProjectSprints([FromQuery] string projectGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+
+                if (string.IsNullOrEmpty(projectGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Not a valid project id",
+                        StatusCode = StatusCodes.Status404NotFound
+                    };
+                }
+
+                var result = await _omniService.ProjectService.GetProjectSprints(projectGuid);
+                if(result == null || !result.Any())
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "No sprints found for the project",
+                        StatusCode = StatusCodes.Status404NotFound
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully retrieved sprints for the project.",
+                    Data = result
+                };
+            }
+            catch(Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Status = ErrorStatus.FAILURE.ToString(),
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                };
+            }
+        }
     }
 }

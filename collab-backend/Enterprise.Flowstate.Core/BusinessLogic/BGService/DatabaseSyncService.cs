@@ -117,7 +117,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceId}",
             pendingUserIds.Count, workspaceIdInString);
 
-            var (currentWeekStart,currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriod();
+            var (currentWeekStart,currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
             int syncedCount = 0;
             foreach(var userId in pendingUserIds)
             {

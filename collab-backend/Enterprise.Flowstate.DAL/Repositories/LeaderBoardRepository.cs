@@ -1,11 +1,14 @@
 ﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Supabase.Gotrue;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Supabase.Postgrest.Constants;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
@@ -27,8 +30,11 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var organizationId = workspaceResponse.Models.FirstOrDefault().Id;
             var userIdInt = userResponse.Models.FirstOrDefault().Id;
             var rankingResponse = await _supabaseClient.From<WeeklyUserStats>()
-                .Where(ranking => ranking.WorkspaceId == organizationId && ranking.UserId == userIdInt && ranking.StartPeriod == startPeriod && ranking.EndPeriod == endPeriod)
-                .Get();
+                .Filter("workspace_id", Operator.Equals, organizationId.ToString())
+        .Filter("user_id", Operator.Equals, userIdInt.ToString())
+        .Filter("start_period", Operator.Equals, startPeriod.ToString("yyyy-MM-dd"))
+        .Filter("end_period", Operator.Equals, endPeriod.ToString("yyyy-MM-dd"))
+        .Get();
 
             return rankingResponse.Models.Any() ? rankingResponse.Models.FirstOrDefault() :null;
         }
@@ -83,8 +89,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             // 2️. Pull weekly user stats (ranking + metrics)
             var statsResponse = await _supabaseClient.From<WeeklyUserStats>().Where(s => s.WorkspaceId == workspaceId)
-                .Filter(s => s.StartPeriod, Supabase.Postgrest.Constants.Operator.Equals, startPeriod.Date.ToString("MM-dd-yyyy"))
-                .Filter(s => s.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, endPeriod.Date.ToString("MM-dd-yyyy")).Order("rank", Supabase.Postgrest.Constants.Ordering.Ascending).Get();
+                .Filter(s => s.StartPeriod, Supabase.Postgrest.Constants.Operator.Equals, startPeriod.Date.ToString("yyyy-MM-dd"))
+                .Filter(s => s.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, endPeriod.Date.ToString("yyyy-MM-dd")).Order("rank", Supabase.Postgrest.Constants.Ordering.Ascending).Get();
 
             var stats = statsResponse.Models;
             if (!stats.Any())
@@ -128,8 +134,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             try
             {
-                var result= await _supabaseClient.From<WeeklyUserStats>().Filter(stat=>stat.StartPeriod,Supabase.Postgrest.Constants.Operator.Equals,startDate.ToString("MM-dd-yyyy"))
-                    .Filter(stat => stat.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, endDate.ToString("MM-dd-yyyy")).Get();
+                var result= await _supabaseClient.From<WeeklyUserStats>().Filter(stat=>stat.StartPeriod,Supabase.Postgrest.Constants.Operator.Equals,startDate.ToString("yyyy-MM-dd"))
+                    .Filter(stat => stat.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, endDate.ToString("yyyy-MM-dd")).Get();
 
                 return result.Models.Any();
             }catch(Exception ex)

@@ -1,14 +1,12 @@
-﻿using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services.CacheSystem;
+using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Constants;
 using Enterprise.Flowstate.DAL.DTOs;
-using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
@@ -19,6 +17,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private readonly ILogger<CacheService> _logger;
         private IConnectionMultiplexer _redis;
         internal IDatabase _db;
+
         public CacheService(IConnectionMultiplexer redis, IConfiguration config, ILogger<CacheService> logger)
         {
             _logger = logger;
@@ -27,37 +26,18 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             _db = _redis.GetDatabase();
         }
 
-
-        private void InitializeRedisConnection()
-        {
-            var hostname = _config.GetSection("RedisConnection:HostName").Value;
-            var port = _config.GetSection("RedisConnection:Port").Value;
-            var redisConfig = ConfigurationOptions.Parse(hostname + ":" + port);
-            redisConfig.ConnectTimeout = 5000;
-            redisConfig.SyncTimeout = 5000;
-
-            _redis = ConnectionMultiplexer.Connect(redisConfig);
-            _db = _redis.GetDatabase();
-        }
-
-        #region User Info
-        public async Task<string> GetUserInfo(string userId)
-        {
-            return string.Empty;
-        }
+        #region Fluent Entry Points
+        public WorkspaceCacheContext Workspace(string workspaceId) => new(workspaceId, this);
+        public GlobalUserCacheContext User(string userId) => new(userId, this);
         #endregion
 
-        #region Basic Operation
+        #region Basic Operations
         public async Task<T> GetAsync<T>(string key)
         {
             try
             {
                 var value = await _db.StringGetAsync(key);
-                if (value.IsNullOrEmpty)
-                {
-                    return default;
-                }
-
+                if (value.IsNullOrEmpty) return default;
                 return JsonSerializer.Deserialize<T>(value);
             }
             catch (Exception ex)
@@ -66,15 +46,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return default;
             }
         }
+
         public async Task<bool> SetAsync<T>(string key, T value, TimeSpan? expiry = null)
         {
             try
             {
-                var db = _redis.GetDatabase();
-                if (db == null) return false;
-
                 var json = JsonSerializer.Serialize(value);
-                return await db.StringSetAsync(key, json, expiry);
+                return await _db.StringSetAsync(key, json, expiry);
             }
             catch (Exception ex)
             {
@@ -87,10 +65,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                if (db == null) return false;
-
-                return await db.KeyDeleteAsync(key);
+                return await _db.KeyDeleteAsync(key);
             }
             catch (Exception ex)
             {
@@ -117,10 +92,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-                var db = _redis.GetDatabase();
-                if (db == null) return false;
-
-                return await db.StringSetAsync(key, value, expiry);
+                return await _db.StringSetAsync(key, value, expiry);
             }
             catch (Exception ex)
             {
@@ -128,35 +100,32 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return false;
             }
         }
-
         #endregion
 
         #region User Metric
-        // User Metric Operations
         public async Task<bool> DeleteUserMetricAsync(string userId, string workspaceId)
         {
             try
             {
-                var key = string.Format(FlowStateConstants.USER_METRIC_KEY, workspaceId, userId);
+                var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, userId);
                 return await _db.KeyDeleteAsync(key);
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex, "Error deleting user metric for user {UserId} in workspace {WorkspaceId}", userId, workspaceId);
+                _logger.LogError(ex, "Error deleting user metric");
                 return false;
             }
         }
 
         public async Task UpsertUserMetricAsync(string workspaceId, string userId, RankingCacheModel metric)
         {
-            var key = string.Format(FlowStateConstants.USER_METRIC_KEY, workspaceId, userId);
-            // Pass the object directly - SetAsync will handle serialization
+            var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, userId);
             await SetAsync(key, metric, TimeSpan.FromDays(7));
         }
 
         public async Task<RankingCacheModel?> GetUserMetricAsync(string workspaceId, string userId)
         {
-            var key = string.Format(FlowStateConstants.USER_METRIC_KEY, workspaceId, userId);
+            var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, userId);
             return await GetAsync<RankingCacheModel>(key);
         }
 
@@ -164,131 +133,110 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-                // FIX: Read from workspace ranking sorted set, NOT user metric key
-                var rankingKey = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
-                var score = await _db.SortedSetScoreAsync(rankingKey, userId);
-                return score.HasValue ? score.Value : 0;
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceId);
+                var score = await _db.SortedSetScoreAsync(key, userId);
+                return score ?? 0;
             }
-            catch
-            {
-                return 0;
-            }
+            catch { return 0; }
         }
+        #endregion
 
+        #region User Info
         public async Task UpsertUserProfile(UserDto user)
         {
-            var key = string.Format(FlowStateConstants.USER_INFO_KEY, user.Id);
+            var key = string.Format(FlowStateConstants.Cache.UserInfo, user.Id);
             await SetAsync(key, user);
         }
 
-        public async Task<string> GetUserInfoAsync(string userId)
+        public async Task<string> GetUserInfo(string userId)
         {
-            var key = string.Format(FlowStateConstants.USER_INFO_KEY, userId);
+            var key = string.Format(FlowStateConstants.Cache.UserInfo, userId);
             return await GetAsync<string>(key);
         }
-
-
         #endregion
 
-        #region Ranking Operation
-
-        // Use Redis transaction for atomicity
+        #region Ranking
         public async Task<(long rank, double score)> UpdateWorkspaceRankingAtomicAsync(
             string workspaceId, string userId, double score)
         {
             try
             {
-                var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
-
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceId);
                 var transaction = _db.CreateTransaction();
-
                 var addTask = transaction.SortedSetAddAsync(key, userId, score);
                 var rankTask = transaction.SortedSetRankAsync(key, userId, Order.Descending);
 
                 if (await transaction.ExecuteAsync())
                 {
                     var rank = await rankTask;
-                    return (rank.HasValue ? rank.Value + 1 : -1, score);
+                    return (rank.Value + 1, score);
                 }
 
-                _logger.LogError("Transaction failed for workspace {WorkspaceId}, user {UserId}",
-                    workspaceId, userId);
+                _logger.LogError("Transaction failed for workspace {WorkspaceId}, user {UserId}", workspaceId, userId);
                 return (-1, score);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in atomic ranking update for user {UserId} in workspace {WorkspaceId}",
-                    userId, workspaceId);
+                _logger.LogError(ex, "Error in atomic ranking update");
                 return (-1, score);
             }
         }
-        // Need to update
-        public async Task<long> UpdateWorkspaceRankingAsync(string workspaceId, string userId, double score)
+
+        public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(
+     string workspaceId, int pageNumber, int pageSize)
         {
-            try
-            {
-                var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
-                await _db.SortedSetAddAsync(key, userId, score);
-                var rank = await _db.SortedSetRankAsync(key, userId, Order.Descending);
-                return rank.HasValue ? (int)rank.Value + 1 : -1;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating ranking for user {UserId} in workspace {WorkspaceId}",
-                    userId, workspaceId);
-                return -1;
-            }
-        }
-        public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(string workspaceId, int pageNumber, int pageSize)
-        {
-            // Calculate index boundaries for pagination
             int start = (pageNumber - 1) * pageSize;
             int stop = start + pageSize - 1;
 
-            var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
+            var rankingKey = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceId);
 
-            long totalCount = await _db.SortedSetLengthAsync(key);
+            var userIds = await _db.SortedSetRangeByRankAsync(rankingKey, start, stop, Order.Descending);
+            if (userIds.Length == 0) return new Dictionary<string, RankingCacheModel>();
 
-            var userIds = await _db.SortedSetRangeByRankAsync(
-                key,
-                start,
-                stop,
-                Order.Descending
-            );
+            var batch = _db.CreateBatch();
+
+            var metricTasks = userIds
+                .Select(id => (
+                    userId: id.ToString(),
+                    task: batch.StringGetAsync(
+                        string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, id.ToString()))
+                ))
+                .ToList();
+
+            batch.Execute();
+
+            await Task.WhenAll(metricTasks.Select(x => x.task));
 
             var result = new Dictionary<string, RankingCacheModel>();
 
-            foreach (var id in userIds)
+            foreach (var (userId, task) in metricTasks)
             {
-                string userId = id!;
+                var val = task.Result;
 
-                string userKey = string.Format(
-                    FlowStateConstants.USER_METRIC_KEY,
-                    workspaceId,
-                    userId
-                );
-
-                var metric = await GetAsync<RankingCacheModel>(userKey);
-
-                if (metric != null)
+                if (!val.IsNullOrEmpty)
                 {
-                    result.Add(userId, metric);
+                    try
+                    {
+                        var metric = JsonSerializer.Deserialize<RankingCacheModel>(val);
+                        if (metric != null)
+                            result[userId] = metric;
+                    }
+                    catch
+                    {
+                        // log if needed
+                    }
                 }
             }
+
             return result;
         }
-
 
         public async Task<int?> GetUserRankAsync(string workspaceId, string userId)
         {
             try
             {
-                var db = _redis.GetDatabase();
-                if (db == null) return null;
-
-                var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
-                var rank = await db.SortedSetRankAsync(key, userId, Order.Descending);
-
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceId);
+                var rank = await _db.SortedSetRankAsync(key, userId, Order.Descending);
                 return rank.HasValue ? (int)rank.Value + 1 : null;
             }
             catch (Exception ex)
@@ -298,70 +246,25 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        #endregion
-
-        #region Bulk Operations
-
-        public async Task AddPendingUpdateAsync(string workspaceId, string userId)
+        public async Task<bool> ClearWorkspaceRankingsAsync(string workspaceId)
         {
             try
             {
-                var key = string.Format(FlowStateConstants.PENDING_DB_UPDATES, workspaceId);
-                await _db.SetAddAsync(key, userId);
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceId);
+                return await _db.KeyDeleteAsync(key);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding pending update");
+                _logger.LogError(ex, "Error clearing workspace rankings");
+                return false;
             }
         }
-
-        public async Task<List<string>> GetAndClearPendingUpdatesAsync(string workspaceId)
-        {
-            try
-            {
-                var key = string.Format(FlowStateConstants.PENDING_DB_UPDATES, workspaceId);
-                var processingKey = $"{key}:processing:{Guid.NewGuid():N}";
-
-                // Check if key exists first
-                if (!await _db.KeyExistsAsync(key))
-                {
-                    return new List<string>();
-                }
-
-                // Atomic snapshot using RENAME
-                try
-                {
-                    await _db.KeyRenameAsync(key, processingKey);
-                }
-                catch (RedisServerException ex) when (ex.Message.Contains("no such key"))
-                {
-                    _logger.LogDebug("Key {Key} already processed by another instance", key);
-                    return new List<string>();
-                }
-
-                // Get all members from the snapshot
-                var members = await _db.SetMembersAsync(processingKey);
-
-                // Delete the processing key
-                await _db.KeyDeleteAsync(processingKey);
-
-                return members.Select(m => m.ToString()).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting pending updates");
-                return new List<string>();
-            }
-        }
-
-
-
         #endregion
 
-        #region Previous Week Metric
+        #region Previous Week
         public async Task<RankingCacheModel> GetPreviousWeekMetricAsync(string workspaceId, string userId)
         {
-            var key = string.Format(FlowStateConstants.PREVIOUS_WEEK_METRIC_KEY, workspaceId, userId);
+            var key = string.Format(FlowStateConstants.Cache.UserMetricPrevious, workspaceId, userId);
             return await GetAsync<RankingCacheModel>(key);
         }
 
@@ -369,10 +272,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-
-                var key = string.Format(FlowStateConstants.PREVIOUS_WEEK_RANKING_KEY, workspaceId);
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRankingPrevious, workspaceId);
                 var rank = await _db.SortedSetRankAsync(key, userId, Order.Descending);
-
                 return rank.HasValue ? (int)rank.Value + 1 : null;
             }
             catch (Exception ex)
@@ -386,10 +287,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             try
             {
-                var key = string.Format(FlowStateConstants.PREVIOUS_WEEK_RANKING_KEY, workspaceId);
-                var score = await _db.SortedSetScoreAsync(key, userId);
-
-                return score;
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRankingPrevious, workspaceId);
+                return await _db.SortedSetScoreAsync(key, userId);
             }
             catch (Exception ex)
             {
@@ -397,112 +296,135 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return null;
             }
         }
-        public async Task<bool> ClearWorkspaceRankingsAsync(string workspaceId)
+        #endregion
+
+        #region Bulk Operations
+        public async Task AddPendingUpdateAsync(string workspaceId, string userId)
         {
             try
             {
-                var key = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
-                return await _db.KeyDeleteAsync(key);
+                var key = string.Format(FlowStateConstants.Cache.WorkspacePendingUpdates, workspaceId);
+                await _db.SetAddAsync(key, userId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing workspace rankings for {WorkspaceId}", workspaceId);
-                return false;
+                _logger.LogError(ex, "Error adding pending update");
             }
         }
-        // Added method to expose sorted set copy operation (encapsulation fix)
+
+        public async Task<List<string>> GetAndClearPendingUpdatesAsync(string workspaceId)
+        {
+            try
+            {
+                var key = string.Format(FlowStateConstants.Cache.WorkspacePendingUpdates, workspaceId);
+                var processingKey = $"{key}:processing:{Guid.NewGuid():N}";
+
+                if (!await _db.KeyExistsAsync(key)) return [];
+
+                try { await _db.KeyRenameAsync(key, processingKey); }
+                catch (RedisServerException ex) when (ex.Message.Contains("no such key"))
+                {
+                    _logger.LogDebug("Key {Key} already processed", key);
+                    return [];
+                }
+
+                var members = await _db.SetMembersAsync(processingKey);
+                await _db.KeyDeleteAsync(processingKey);
+                return members.Select(m => m.ToString()).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending updates");
+                return [];
+            }
+        }
+        #endregion
+
+        #region Sorted Set
         public async Task CopySortedSetAsync(string sourceKey, string destinationKey, TimeSpan? expiry = null)
         {
             try
             {
-                var db = _redis.GetDatabase();
-
-                // Delete old destination
-                await db.KeyDeleteAsync(destinationKey);
-
-                // Copy using ZUNIONSTORE
-                await db.SortedSetCombineAndStoreAsync(
-                    SetOperation.Union,
-                    destinationKey,
-                    new RedisKey[] { sourceKey });
-
-                // Set expiry if provided
-                if (expiry.HasValue)
-                {
-                    await db.KeyExpireAsync(destinationKey, expiry.Value);
-                }
-
-                _logger.LogInformation("Successfully copied sorted set from {Source} to {Dest}",
-                    sourceKey, destinationKey);
+                await _db.KeyDeleteAsync(destinationKey);
+                await _db.SortedSetCombineAndStoreAsync(SetOperation.Union, destinationKey, new RedisKey[] { sourceKey });
+                if (expiry.HasValue) await _db.KeyExpireAsync(destinationKey, expiry.Value);
+                _logger.LogInformation("Copied sorted set {Source} → {Dest}", sourceKey, destinationKey);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error copying sorted set from {Source} to {Dest}",
-                    sourceKey, destinationKey);
+                _logger.LogError(ex, "Error copying sorted set {Source} → {Dest}", sourceKey, destinationKey);
                 throw;
             }
         }
-
-        public Task<List<string>> GetUserPermissionsAsync(string userId, int workspaceId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<string> GetUserRoleAsync(string userId, int workspaceId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task InvalidateUserCacheAsync(string userId, int workspaceId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task CacheUserPermissionsAsync(string userId, int workspaceId, List<string> permissions, string roleName)
-        {
-            throw new NotImplementedException();
-        }
         #endregion
 
-        #region Role Cache
-
+        #region Role & Permissions
         public async Task<string> GetUserRoleAsync(string userId, string workspaceId)
         {
-            var key = string.Format(FlowStateConstants.USER_ROLE, userId, workspaceId);
+            var key = string.Format(FlowStateConstants.Cache.UserRole, workspaceId, userId);
             return await GetStringAsync(key);
         }
 
+        public async Task<string> GetUserRoleAsync(string userId, int workspaceId)
+            => await GetUserRoleAsync(userId, workspaceId.ToString());
+
         public async Task SetUserRoleAsync(string userId, string workspaceId, string roleName)
         {
-            var key = string.Format(FlowStateConstants.USER_ROLE, userId, workspaceId);
-
-            await SetStringAsync(
-                key,
-                roleName,
-                TimeSpan.FromMinutes(30) // adjust as needed
-            );
+            var key = string.Format(FlowStateConstants.Cache.UserRole, workspaceId, userId);
+            await SetStringAsync(key, roleName);
         }
 
         public async Task InvalidateUserRoleAsync(string userId, string workspaceId)
         {
-            var key = string.Format(FlowStateConstants.USER_ROLE, userId, workspaceId);
+            var key = string.Format(FlowStateConstants.Cache.UserRole, workspaceId, userId);
             await DeleteAsync(key);
         }
 
-        #endregion
+        public async Task InvalidateUserCacheAsync(string userId, int workspaceId)
+        {
+            try
+            {
+                var roleKey = string.Format(FlowStateConstants.Cache.UserRole, workspaceId.ToString(), userId);
+                var permKey = string.Format(FlowStateConstants.Cache.UserPermissions, workspaceId.ToString(), userId);
+                await _db.KeyDeleteAsync(roleKey);
+                await _db.KeyDeleteAsync(permKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invalidating cache for user {UserId}", userId);
+            }
+        }
 
+        public async Task<List<string>> GetUserPermissionsAsync(string userId, int workspaceId)
+        {
+            try
+            {
+                var key = string.Format(FlowStateConstants.Cache.UserPermissions, workspaceId.ToString(), userId);
+                var value = await GetStringAsync(key);
+                if (string.IsNullOrEmpty(value)) return [];
+                return JsonSerializer.Deserialize<List<string>>(value) ?? [];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting user permissions for user {UserId}", userId);
+                return [];
+            }
+        }
 
-        #region Project Metric
-
-
-        #endregion
-
-        #region Sprint Metric
-
-        #endregion
-
-        #region Tickets Metric
-
+        public async Task CacheUserPermissionsAsync(string userId, int workspaceId, List<string> permissions, string roleName)
+        {
+            try
+            {
+                var permKey = string.Format(FlowStateConstants.Cache.UserPermissions, workspaceId.ToString(), userId);
+                var roleKey = string.Format(FlowStateConstants.Cache.UserRole, workspaceId.ToString(), userId);
+                await SetStringAsync(permKey, JsonSerializer.Serialize(permissions));
+                await SetStringAsync(roleKey, roleName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error caching permissions for user {UserId}", userId);
+            }
+        }
         #endregion
     }
 }

@@ -1,13 +1,17 @@
-﻿using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.Filters;
+using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 
 namespace Enterprise.Flowstate.Controllers
 {
     [Route("dashboard")]
+    [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member)]
     public class DashboardController : AuthBaseController
     {
         public IOmniService _omniService;
@@ -17,6 +21,7 @@ namespace Enterprise.Flowstate.Controllers
         }
         [HttpGet]
         [Route("metrics")]
+        
         public async Task<ApiResponseModel<object>> GetDashboardCards([FromQuery] string workspaceGuid)
         {
             try

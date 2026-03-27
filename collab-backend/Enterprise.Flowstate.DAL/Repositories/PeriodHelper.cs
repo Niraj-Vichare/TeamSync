@@ -19,6 +19,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return (startOfWeek, endOfWeek);
         }
 
+        public static (DateOnly startPeriod, DateOnly endPeriod) GetCurrentWeekPeriodDateOnly()
+        {
+            var today = DateTime.UtcNow.Date;
+
+            int diff = (7 + (today.DayOfWeek - DayOfWeek.Monday)) % 7;
+            var startOfWeek = today.AddDays(-diff);
+            var endOfWeek = startOfWeek.AddDays(6);
+
+            return (DateOnly.FromDateTime(startOfWeek),DateOnly.FromDateTime(endOfWeek));
+        }
+
         public static bool IsInCurrentWeek(DateTime? startPeriod, DateTime? endPeriod)
         {
             if (!startPeriod.HasValue || !endPeriod.HasValue)

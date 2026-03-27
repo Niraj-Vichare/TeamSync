@@ -12,6 +12,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
     public class TeamMemberDto
     {
         public int MemberId { get; set; }   
+
         public DateTime? CreateAt { get; set; }
         public int StatusId { get; set; }
         public int PositionId { get; set; }

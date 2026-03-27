@@ -18,5 +18,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<int>> GetAllActiveWorkspaceIds();
         Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId);
         Task<int> GetUserWorkspaceInfo(string workspaceGuid,string userId);
+        Task<bool> UpdateUserRole(string workspaceGuid, int profileId, int roleId);
+        Task<bool> RemoveUserFromWorkspace(string workspaceGuid, int profileId);
     }
 }

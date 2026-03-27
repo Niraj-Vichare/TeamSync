@@ -59,9 +59,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return isCreated;
         }
 
-        public async Task<bool> DeleteTask(string taskId)
+        public async Task<bool> DeleteTask(string taskGuid)
         {
-            var isDeleted = await _omniRepository.TaskRepository.DeleteTask(taskId);
+            var isDeleted = await _omniRepository.TaskRepository.DeleteTask(taskGuid);
             if (isDeleted)
             {
                 EventsLog eventsLog = new EventsLog
@@ -70,7 +70,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     EventGuid = Guid.NewGuid().ToString(),
                     EventDescription = "Task.Deleted",
                     EventTypeId = (int)GeneralEnums.EventType.TaskDeleted,
-                    TaskGuid = taskId.ToString(),
+                    TaskGuid = taskGuid,
                 };
                 await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
             }

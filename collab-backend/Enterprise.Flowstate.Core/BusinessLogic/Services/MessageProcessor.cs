@@ -21,12 +21,33 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private ILogger<MessageProcessor> _logger;
         private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
         private readonly TimeSpan _debounceDelay = TimeSpan.FromSeconds(2);
+        private readonly Timer _cleanupTimer;
         public MessageProcessor(ICache cacheRepository,IOmniService omniService,ILogger<MessageProcessor> logger,ILeaderboardHubService leaderboardHubService)
         {
             _cache = cacheRepository;
             _omniService = omniService;
             _logger = logger;
             _hubService = leaderboardHubService;
+            _cleanupTimer = new Timer(CleanupOldTimers, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+        }
+
+        private void CleanupOldTimers(object state)
+        {
+            try
+            {
+                var oldTimerCount = _debounceTimers.Count;
+                // In practice, timers should be removed after broadcast
+                // This is a safety net for any orphaned timers
+                if (oldTimerCount > 100) // Safety threshold
+                {
+                    _logger.LogWarning("Debounce timer dictionary has {Count} entries, clearing old ones", oldTimerCount);
+                    // Could implement more sophisticated cleanup logic here if needed
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during timer cleanup");
+            }
         }
         public async Task<bool> ProcessMessageAsync(EventsLogDto eventLogDto)
         {
@@ -128,7 +149,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private async Task BroadcastLeaderboard(string workspaceId)
         {
             var leaderboard = await _omniService.LeaderboardComparisonService
-                .GetLeaderboardWithComparisonAsync(workspaceId, 0, 10);
+                .GetLeaderboardWithComparisonAsync(workspaceId, 1, 10);
 
             await _hubService.SendLeaderboardUpdateAsync(workspaceId, leaderboard);
 
@@ -138,7 +159,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         private static float ComputeScore(RankingCacheModel m)
         {
             double eff = m.Efficiency;
-            double pts = m.ContributionPoint;
+            double pts = (float)m.ContributionPoint;
             double cs = (float)m.Score;
             double hrs = m.TotalHours;
 

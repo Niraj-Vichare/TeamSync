@@ -4,6 +4,7 @@ using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Constants;
+using System.Collections.Concurrent;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -20,9 +21,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
         public async Task<bool> AddMember(string workspaceGuid,TeamMemberDto teamMemberDto)
         {
-            var encryptedPassword = EncryptionService.EncryptData(teamMemberDto.Profile.Password);
+            //var encryptedPassword = EncryptionService.EncryptData(teamMemberDto.Profile.Password);
             
-            var user = await _supabaseClient.Auth.SignUp(teamMemberDto.Profile.Email, encryptedPassword);
+            var user = await _supabaseClient.Auth.SignUp(teamMemberDto.Profile.Email, teamMemberDto.Profile.Password);
             if(user.User == null)
             {
                 return false;
@@ -50,7 +51,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 return false;
             }
+            await _omniRepository.ProfileRepository.UpdateCurrentWorkspace(user.User.Id, workspaceGuid);
+
             int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
+
 
             RankingCacheModel rankingCacheMetric = new RankingCacheModel
             {
@@ -64,8 +68,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 UserId = (int)profileId
             };
             await _cache.UpsertUserMetricAsync(workspaceGuid,user.User.Id,rankingCacheMetric);
+            await _cache.UpdateWorkspaceRankingAtomicAsync(workspaceGuid, user.User.Id, 0);
 
-            var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriod();
+            var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
             WeeklyUserStats weeklyUserStats = new WeeklyUserStats
             {
                 ContributionPoints = 0,
@@ -92,7 +97,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             var result = await _omniRepository.TeamRepository.AddMember(workspaceGuid, members);
             await _cache.SetUserRoleAsync(user.User.Id, workspaceGuid,((AuthEnums.RoleEnum)teamMemberDto.RoleId).ToString());
 
-            string workspaceCacheKey = string.Format(FlowStateConstants.USER_WORKSPACE,user.User.Id.ToString());
+            string workspaceCacheKey = string.Format(FlowStateConstants.Cache.UserWorkspace, user.User.Id.ToString());
 
             await _cache.SetStringAsync(workspaceCacheKey,workspaceGuid,TimeSpan.FromMinutes(30));
             if (result)
@@ -118,11 +123,18 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (result == null || result.Count == 0)
                 return new List<TeamMemberDto>();
 
+            List<int> profileIds = result.Select(team => team.ProfileId).ToList();   
+            ConcurrentDictionary<int,int> roleProfileMapping = await _omniRepository.TeamRepository.GetRoleProfileMapping(profileIds);
+
+
             var mapped = result.Select(team => new TeamMemberDto
             {
+                MemberId = team.Id,
+                RoleId = roleProfileMapping.TryGetValue(team.ProfileId, out int roleId) ? roleId : 0,
                 PositionId = team.PositionId,
                 StatusId = team.Status,
                 CreateAt = team.Profile.CreatedAt,
+                DepartmentId = team.DepartmentId,
                 Profile = new ProfileDto
                 {
                     Id = team.ProfileId,
@@ -199,6 +211,52 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return await _omniRepository.TeamRepository.GetDepartmentWiseMembers(workspaceGuid);  
         }
 
+        public async Task<bool> UpdateMember(string workspaceGuid,TeamMemberDto teamMemberDto)
+        {
+            if (teamMemberDto.MemberId <= 0) return false;
+
+            var members = new Members
+            {
+                Id = teamMemberDto.MemberId,
+                DepartmentId = teamMemberDto.DepartmentId,
+                PositionId = teamMemberDto.PositionId, 
+                Status = teamMemberDto.StatusId,
+                WorkspaceGuid = workspaceGuid,
+                ProfileId = teamMemberDto.Profile.Id
+            };
+            var result = await _omniRepository.TeamRepository.EditMember(workspaceGuid,members);
+
+            if (result && teamMemberDto.RoleId > 0 && teamMemberDto.Profile?.Id > 0)
+            {
+                await _omniRepository.WorkspaceRepository.UpdateUserRole(
+                    workspaceGuid,
+                    teamMemberDto.Profile.Id,
+                    teamMemberDto.RoleId);
+
+                if (!string.IsNullOrEmpty(teamMemberDto.Profile?.Guid))
+                {
+                    await _cache.SetUserRoleAsync(
+                        teamMemberDto.Profile.Guid,
+                        workspaceGuid,
+                        ((AuthEnums.RoleEnum)teamMemberDto.RoleId).ToString());
+                }
+            }
+
+            if (result)
+            {
+                await _omniRepository.ProfileRepository.AddEventLog(new EventsLog
+                {
+                    EventGuid = Guid.NewGuid().ToString(),          
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Team.MemberUpdated",
+                    EventTypeId = (int)GeneralEnums.EventType.UpdateMember,
+                    WorkspaceGuid = workspaceGuid,
+                    Metadata = $"{teamMemberDto?.Profile?.Id}" 
+                });
+            }
+
+            return result;
+        }
         public async Task<bool> AddCustomTeam(TeamDto team)
         {
             var workspaceId = await _omniRepository.WorkspaceRepository.GetWorkspaceId(team.WorkspaceGuid);
@@ -299,24 +357,65 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         }
 
-        public async Task<bool> DeleteMember(string workspaceGuid, int memberId)
+        public async Task<bool> DeleteMember(string workspaceGuid, int profileId)
         {
-            bool isDeleted = await _omniRepository.TeamRepository.DeleteMember(workspaceGuid, memberId);
+
+            var profileGuid = await _omniRepository.ProfileRepository.GetProfileGuid(profileId);
+            if (string.IsNullOrEmpty(profileGuid))
+            {
+                return false;
+            }
+
+            bool deletedMember = await _omniRepository.TeamRepository.DeleteMember(workspaceGuid, profileId);
+
+            bool deletedMapping = await _omniRepository.WorkspaceRepository.RemoveUserFromWorkspace(workspaceGuid, profileId);
+
+            bool isDeleted = deletedMember && deletedMapping;
+
             if (isDeleted)
             {
-                EventsLog eventsLog = new EventsLog
+                var ws = _cache.Workspace(workspaceGuid);
+                await ws.User(profileGuid).Role.DeleteAsync();
+                await ws.User(profileGuid).Metric.DeleteAsync();
+
+                await _omniRepository.ProfileRepository.AddEventLog(new EventsLog
                 {
                     EventGuid = Guid.NewGuid().ToString(),
                     CreatedAt = DateTime.UtcNow,
-                    EventDescription = "Member.Remove",
+                    EventDescription = "Member.Removed",
                     EventTypeId = (int)GeneralEnums.EventType.RemoveMember,
                     WorkspaceGuid = workspaceGuid,
-                    Metadata = $"Deleted member id: ${memberId}"
-                };
-                await _omniRepository.ProfileRepository.AddEventLog(eventsLog);
+                    UserGuid = profileGuid, 
+                    Metadata = $"ProfileId is {profileId}"
+                });
             }
+
             return isDeleted;
         }
+
+        public async System.Threading.Tasks.Task AddTeamMemberMapping(int memberId, int teamId, bool isLeader)
+        {
+            TeamMemberMapping teamMemberMapping = new TeamMemberMapping()
+            {
+                MemberId = memberId,
+                TeamId = teamId,
+                IsLeader = isLeader
+            };
+            await _omniRepository.TeamRepository.AddTeamMemberMapping(teamMemberMapping);
+
+        }
+        public async System.Threading.Tasks.Task DeleteTeamMemberMapping(int memberId, int teamId, bool isLeader)
+        {
+            TeamMemberMapping teamMemberMapping = new TeamMemberMapping()
+            {
+                MemberId = memberId,
+                TeamId = teamId,
+                IsLeader = isLeader
+            };
+            await _omniRepository.TeamRepository.RemoveTeamMemberMapping(teamMemberMapping);
+        }
+
+
 
         public async Task<bool> UpdateTeam(string workspaceGuid,TeamDto teamDto)
         {
@@ -348,5 +447,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
             return isEdited;
         }
+
     }
 }

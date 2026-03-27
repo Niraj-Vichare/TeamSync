@@ -52,6 +52,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Title = ticketDto.Title,
                 TypeId = (int)ticketDto.TypeId,
                 TicketGuid = ticketGuid,
+                AssignedTo = ticketDto?.AssignedTo,
                 Tags = ticketDto.Tags,
                 CreatedAt = DateTime.UtcNow
             };
@@ -444,6 +445,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
 
             return true;
+        }
+
+        public async Task<bool> AddTicketToSprint(string ticketGuid, string sprintId)
+        {
+            return await _omniRepository.TicketRepository.AddTicketToSprint(ticketGuid, sprintId);
         }
     }
 }

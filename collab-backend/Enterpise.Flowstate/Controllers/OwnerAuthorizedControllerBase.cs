@@ -6,7 +6,6 @@ namespace Enterprise.Flowstate.Controllers
 {
     [Authorize]
     [ApiController]
-    //[Authorize(Roles = "Admin,Owner,Manager")]
     public class OwnerAuthorizedControllerBase : ControllerBase
     {
         

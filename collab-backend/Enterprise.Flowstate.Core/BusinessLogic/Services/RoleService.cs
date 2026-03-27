@@ -65,10 +65,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<string> GetUserWorkspaceId(string userId)
         {
-            var cacheKey = string.Format(
-                FlowStateConstants.USER_WORKSPACE,
-                userId
-            );
+            var cacheKey = string.Format(FlowStateConstants.Cache.UserWorkspace, userId); 
 
             // 1️⃣ Try cache
             var cachedWorkspace = await _cache.GetStringAsync(cacheKey);

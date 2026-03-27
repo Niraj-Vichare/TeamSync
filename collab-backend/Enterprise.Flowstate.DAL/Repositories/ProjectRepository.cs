@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Enums;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 
@@ -11,12 +12,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             this.client = client;
         }
-        public async Task<(List<Project> Projects, int TotalCount)> GetUserProjectsAsync(
-    string workspaceGuid,
-    string search,
-    string status,
-    int pageNumber,
-    int pageSize)
+        public async Task<(List<Project> Projects, int TotalCount)> GetUserProjectsAsync(string workspaceGuid,string search,string status,int pageNumber,int pageSize)
         {
             // Step 1: Get Workspace ID
             var workspace = await client
@@ -52,10 +48,10 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Range(from, to);
 
             if (!string.IsNullOrEmpty(search))
-                query = query.Filter("name", Supabase.Postgrest.Constants.Operator.ILike, $"%{search}%");
+                query = query.Filter("project_name", Supabase.Postgrest.Constants.Operator.ILike, $"%{search}%");
 
             if (!string.IsNullOrEmpty(status))
-                query = query.Filter("status", Supabase.Postgrest.Constants.Operator.Equals, status);
+                query = query.Filter("project_status", Supabase.Postgrest.Constants.Operator.Equals, status);
 
             // Step 5: Execute query
             var result = await query.Get();
@@ -64,6 +60,31 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var totalCount = result.Models.Count; // Use count from response header
 
             return (projects, totalCount);
+        }
+
+        public async Task<List<SprintDto>> GetProjectSprintsAsync(string projectGuid)
+        {
+            var project = await client.From<Project>().Where(p => p.ProjectGuid == projectGuid).Single();
+            if (project == null)
+            {
+                return new List<SprintDto>();
+            }
+            var sprints = await client.From<Sprint>().Where(s => s.ProjectId == project.ProjectId).Get();
+            var sprintDtos = sprints.Models.Select(s => new SprintDto
+            {
+                SprintGuid = s.SprintGuid,
+                Title = s.Title,
+                Tagline = s.Tagline,
+                ProjectId = s.ProjectId,                
+                StartDate = s.StartDate,
+                EndDate = s.EndDate,
+                Status = (SprintEnums.SprintStatus)s.StatusId,
+                Tags = s.Tags,
+                UpdateDate = s.UpdateDate,
+                Goal = s.Description
+            }).ToList();
+
+            return sprintDtos;
         }
 
         public async Task<List<Project>> GetProjectDropdown(string workspaceGuid)

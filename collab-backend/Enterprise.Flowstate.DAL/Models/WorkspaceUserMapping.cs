@@ -9,20 +9,21 @@ using System.Threading.Tasks;
 namespace Enterprise.Flowstate.DAL.Models
 {
     [Table("workspace_user_mapping")]
-    public class WorkspaceUserMapping:BaseModel
+    public class WorkspaceUserMapping : BaseModel
     {
-        [Column("workspace_id")]
+        [PrimaryKey("workspace_id", false)] 
         public int WorkspaceId { get; set; }
-        [Column("profile_id")]
+
+        [PrimaryKey("profile_id", false)]   
         public int UserId { get; set; }
+
         [Column("role_id")]
-        public int RoleId { get; set; } 
+        public long RoleId { get; set; }
 
         [Reference(typeof(Workspace))]
         public Workspace? Workspace { get; set; }
 
         [Reference(typeof(Profile))]
         public Profile? Profile { get; set; }
-
     }
 }

@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Enums;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -56,6 +57,13 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         /// Retrieves a lightweight list of projects intended for dropdown selection.
         /// </summary>
         Task<List<Project>> GetProjectDropdown(string workspaceGuid);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="workspaceId"></param>
+        /// <param name="projectGuid"></param>
+        /// <returns></returns>
+        Task<List<SprintDto>> GetProjectSprintsAsync(string projectGuid);
     }
 
 }

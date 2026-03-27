@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Supabase.Postgrest.Constants;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.DAL.Interfaces
@@ -72,6 +73,10 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         public async Task<string> GetCurrentWorkspaceId(string userGuid)
         {
             var result = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            if(result.Models.Count<=0)
+            {
+                return string.Empty;
+            }
             return result.Models.FirstOrDefault().WorkspaceId;
         }
         public async Task<int> GetProfileId(string userGuid)
@@ -107,7 +112,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             return new List<WorkspaceUserMapping>();
         }
 
-        public async Task<bool> InializeUserConfiguration(int userId,DateTime startDate,DateTime endDate)
+        public async Task<bool> InializeUserConfiguration(int userId,DateOnly startDate,DateOnly endDate)
         {
 
             
@@ -118,7 +123,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
                 StartPeriod = startDate,
                 ContributionPoints = 0,
                 Score = 0,
-                RankPosition = -1,
+                RankPosition = 1,
                 Efficiency = 0,
                 TotalHours = 0,
                 CreatedAt = DateTime.Now,
@@ -141,10 +146,10 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         {
             var isExist = await _supabaseClient.From<WeeklyUserStats>().
                 Where(userStatus => userStatus.UserId == weeklyUserStats.UserId).
-                Filter(userStats=>userStats.StartPeriod,Supabase.Postgrest.Constants.Operator.Equals,weeklyUserStats.StartPeriod).
-                Filter(userStats=>userStats.EndPeriod,Supabase.Postgrest.Constants.Operator.Equals,weeklyUserStats.EndPeriod)
+                Filter(userStats => userStats.StartPeriod, Supabase.Postgrest.Constants.Operator.Equals, weeklyUserStats.StartPeriod?.ToString("yyyy-MM-dd")).
+                Filter(userStats => userStats.EndPeriod, Supabase.Postgrest.Constants.Operator.Equals, weeklyUserStats.EndPeriod?.ToString("yyyy-MM-dd"))
                 .Get();
-            if(isExist.Models.Any())
+            if (isExist.Models.Any())
             {
                 _supabaseClient.From<WeeklyUserStats>().Update(weeklyUserStats);
             }
@@ -154,33 +159,66 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             }
             return true;
         }
-        public async Task<string> UpdateUserConfiguration(string userGuid, string workspaceGuid, int memberCount)
+        public async Task<Profile> UpdateUserConfiguration(string userGuid, string workspaceGuid, int memberCount)
         {
             var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
             var profileResponse = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
             
             if(workspace == null && profileResponse == null)
             {
-                return string.Empty;
+                return null;
             }
             int profileId = profileResponse.Models.FirstOrDefault().Id;
             int workspaceId = workspace.Models.FirstOrDefault().Id;
 
             var profile = profileResponse.Models.FirstOrDefault();
-            profile.WorkspaceId = workspaceGuid;
+            if (profile == null)
+                return null;
 
+            profile.WorkspaceId = workspaceGuid;
             await _supabaseClient.From<Profile>().Update(profile);
-            var userMetricResponse = await _supabaseClient.From<WeeklyUserStats>().Where(userMetric => userMetric.Id == profileId).Get();
-            if (userMetricResponse.Models.Count <= 0)
-            {
-                return string.Empty;
-            }
-            WeeklyUserStats userMetric = userMetricResponse.Models.FirstOrDefault();
+
+            
+            var metrics = await _supabaseClient
+                .From<WeeklyUserStats>()
+                .Filter("user_id", Operator.Equals, profile.Id.ToString())
+                .Get();
+
+            if (!metrics.Models.Any())
+                return null;
+
+            WeeklyUserStats userMetric = metrics.Models.FirstOrDefault();
 
             userMetric.WorkspaceId = workspaceId;
             
             _supabaseClient.From<WeeklyUserStats>().Update(userMetric);
-            return profileId.ToString();
+            return profile;
+        }
+
+
+        public async Task UpdateCurrentWorkspace(string userGuid, string workspaceGuid)
+        {
+            var profileResponse = await _supabaseClient
+                .From<Profile>()
+                .Where(profile => profile.Guid == userGuid)
+                .Get();
+
+            var profile = profileResponse.Models.FirstOrDefault();
+
+            if (profile == null)
+            {
+                throw new Exception("Profile not found.");
+            }
+
+            profile.WorkspaceId = workspaceGuid;
+
+            await _supabaseClient.From<Profile>().Update(profile);
+        }
+
+        public async Task<string> GetProfileGuid(int profileId)
+        {
+            var profileResponse = await _supabaseClient.From<Profile>().Where(profile=>profile.Id == profileId).Get();
+            return profileResponse.Models.FirstOrDefault()?.Guid;
         }
     }
 }

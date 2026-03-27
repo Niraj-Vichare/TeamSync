@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using Supabase.Gotrue;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
@@ -191,33 +192,31 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
         private async Task FreezeRankingsToRedisAsync(int workspaceId, ICache cache)
         {
             _logger.LogInformation("❄️ Freezing rankings for workspace {WorkspaceId}", workspaceId);
-
             try
             {
-                var currentRankingKey = string.Format(FlowStateConstants.WORKSPACE_RANKING_KEY, workspaceId);
-                var previousRankingKey = string.Format(FlowStateConstants.PREVIOUS_WEEK_RANKING_KEY, workspaceId);
+                var ws = cache.Workspace(workspaceId.ToString());
 
-                // Copy the sorted set from current to previous week
-                await cache.CopySortedSetAsync(currentRankingKey, previousRankingKey, TimeSpan.FromDays(8));
+                // Snapshot current ranking → previous week before clearing
+                await ws.Ranking.SnapshotToPreviousWeekAsync(TimeSpan.FromDays(8));
 
-                // Also freeze user metrics
-                var currentRankings = await cache.GetWorkspaceRankingsAsync(workspaceId.ToString(), 1, 1000);
-
+                // Freeze user metrics
+                var currentRankings = await ws.Ranking.GetPageAsync(1, 1000);
                 if (currentRankings.Any())
                 {
                     foreach (var (userId, metric) in currentRankings)
                     {
                         var previousMetricKey = string.Format(
-                            FlowStateConstants.PREVIOUS_WEEK_METRIC_KEY,
+                            FlowStateConstants.Cache.UserMetricPrevious,
                             workspaceId,
                             userId);
-
                         await cache.SetAsync(previousMetricKey, metric, TimeSpan.FromDays(8));
                     }
-
-                    _logger.LogInformation("✅ Froze {Count} user rankings for workspace {WorkspaceId}",
+                    _logger.LogInformation("Froze {Count} user rankings for workspace {WorkspaceId}",
                         currentRankings.Count, workspaceId);
                 }
+
+                // Clear current week ready for new period
+                await ws.Ranking.ClearAsync();
             }
             catch (Exception ex)
             {
@@ -246,7 +245,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                 _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceId}",
                     pendingUserIds.Count, workspaceIdInString);
 
-                var (currentWeekStart, currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriod();
+                var (currentWeekStart, currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
                 int syncedCount = 0;
 
                 foreach (var userId in pendingUserIds)

@@ -45,11 +45,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 EventsLog eventLog = new EventsLog
                 {
                     SprintGuid = sprint.SprintGuid,
-                    ProjectGuid = sprint.Project.ProjectGuid,
+                    ProjectGuid = sprint?.Project?.ProjectId.ToString(),
                     EventDescription = "Sprint.Created",
                     CreatedAt = DateTime.UtcNow,
                     EventGuid = Guid.NewGuid().ToString(),
                     UserGuid = userId,
+                    EventTypeId = (int)GeneralEnums.EventType.SprintCreated
                 };
                 await _omniRepository.ProfileRepository.AddEventLog(eventLog);
             }

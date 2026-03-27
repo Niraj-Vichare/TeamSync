@@ -276,7 +276,7 @@ namespace Enterprise.Flowstate.Controllers
                         StatusCode = StatusCodes.Status401Unauthorized,
                     };
                 }
-                await _omniService.TicketService.DeleteTicket(ticketGuid);
+                await _omniService.TicketService.AddTicketToSprint(ticketGuid, sprint);
                 return new ApiResponseModel<object>
                 {
                     Message = "",

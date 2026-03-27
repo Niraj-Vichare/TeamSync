@@ -18,7 +18,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public double ScoreChangePercentage { get; set; }
 
         // Metric Changes
-        public int PointsChange { get; set; }
+        public float PointsChange { get; set; }
         public int TicketsCompletedChange { get; set; }
         public int HoursChange { get; set; }
         public double EfficiencyChange { get; set; }

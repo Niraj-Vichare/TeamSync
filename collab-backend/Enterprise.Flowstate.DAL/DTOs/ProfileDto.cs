@@ -10,15 +10,15 @@ namespace Enterprise.Flowstate.DAL.DTOs
     public class ProfileDto
     {
         public int Id { get; set; }
-        public string DisplayName { get; set; }
-        public string Guid { get; set; }
-        public string Bio { get; set; }
+        public string? DisplayName { get; set; }
+        public string? Guid { get; set; }
+        public string? Bio { get; set; }
         public string? ProfileImageUrl { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-        public string WorkspaceId { get; set; }
-        public string Password { get; set; }
-        public string Email { get; set; }
+        public string? WorkspaceId { get; set; }
+        public string? Password { get; set; }
+        public string? Email { get; set; }
         public User? User { get; set; }
         public bool IsLeader { get; set; }
     }

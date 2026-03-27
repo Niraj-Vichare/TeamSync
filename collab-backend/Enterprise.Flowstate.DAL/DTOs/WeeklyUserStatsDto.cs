@@ -13,12 +13,12 @@ namespace Enterprise.Flowstate.DAL.DTO
         public int? TotalHours { get; set; }
         public int? TicketsCompleted { get; set; }
         public float? Score { get; set; }
-        public int ContributionPoint { get; set; }
+        public float? ContributionPoint { get; set; }
         public int? UserId { get; set; }
         public int? WorkspaceId { get; set; }
         public float Efficiency { get; set; }
         public int RankPosition { get; set; }
-        public DateTime? StartPeriod { get; set; }
-        public DateTime? EndPeriod { get; set; }    
+        public DateOnly? StartPeriod { get; set; }
+        public DateOnly? EndPeriod { get; set; }    
     }
 }

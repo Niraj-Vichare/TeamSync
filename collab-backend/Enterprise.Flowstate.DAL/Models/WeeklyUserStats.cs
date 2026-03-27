@@ -27,11 +27,13 @@ namespace Enterprise.Flowstate.DAL.Models
         public float? Score { get; set; }
 
         [Column("contribution_points")]
-        public int ContributionPoints { get; set; }
+        public float? ContributionPoints { get; set; }  
+
         [Column("start_period")]
-        public DateTime? StartPeriod { get; set; }
+        public DateOnly? StartPeriod { get; set; }      
+
         [Column("end_period")]
-        public DateTime? EndPeriod { get; set; }
+        public DateOnly? EndPeriod { get; set; }        
 
         [Column("user_id")]
         public int? UserId { get; set; }
@@ -41,13 +43,14 @@ namespace Enterprise.Flowstate.DAL.Models
 
         [Column("efficiency")]
         public float Efficiency { get; set; }
+
         [Column("rank")]
         public int RankPosition { get; set; }
 
-        [Reference(typeof(Profile))]
+        [Reference(typeof(Profile), useInnerJoin: false)]
         public Profile? User { get; set; }
 
-        [Reference(typeof(Workspace))]
+        [Reference(typeof(Workspace), useInnerJoin: false)]
         public Workspace? Workspace { get; set; }
     }
 }

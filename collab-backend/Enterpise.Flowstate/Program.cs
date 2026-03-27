@@ -16,6 +16,15 @@ Env.Load();
 
 var SUPABASE_KEY = Environment.GetEnvironmentVariable("Supabase_SUPABASE_KEY");
 var JWT_KEY = Environment.GetEnvironmentVariable("JwtSetting_SecretKey");
+
+if (string.IsNullOrEmpty(JWT_KEY))
+    throw new InvalidOperationException(
+        "JwtSetting_SecretKey is not set. Add it to your .env file.");
+
+if (string.IsNullOrEmpty(SUPABASE_KEY))
+    throw new InvalidOperationException(
+        "Supabase_SUPABASE_KEY is not set. Add it to your .env file.");
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

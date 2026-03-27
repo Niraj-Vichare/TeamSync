@@ -77,6 +77,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 return (false,ErrorStatus.PROJECT_DETAILS_NOT_FOUND);
             }
+
             var project = new Project
             {
                 DueDate = projectDto.DueDate,
@@ -215,6 +216,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 await _eventPublisher.PublishAsync(eventLogsDto, 0);
             }
             return isUpdated;
+        }
+
+        public async Task<List<SprintDto>> GetProjectSprints(string projectGuid)
+        {
+            var result = await _omniRepository.ProjectRepository.GetProjectSprintsAsync(projectGuid);
+            return result;
         }
 
         public async Task<List<ProjectDropdownModel>> GetProjectDropDown(string workspaceGuid)

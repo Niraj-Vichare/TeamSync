@@ -17,5 +17,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         public ITicketRepository TicketRepository { get; set; }
         public IDashboardRepository DashboardRepository { get; set; }
         public ILeaderBoardRepository LeaderBoardRepository { get; set; }
+
     }
 }

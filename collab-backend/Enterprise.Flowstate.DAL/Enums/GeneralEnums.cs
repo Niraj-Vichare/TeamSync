@@ -87,9 +87,7 @@ namespace Enterprise.Flowstate.DAL.Enums
             
             CreateWorkspace,
             DeleteWorkspace,
-
-            
-
+            UpdateMember,
         }
         public enum ClockActionResult
         {

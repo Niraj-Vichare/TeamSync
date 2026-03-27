@@ -15,11 +15,13 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<int?> CreateProfileAsync(Profile profile,int roleId);
         Task<string> GetCurrentWorkspaceId(string userGuid);
         Task<Profile> GetProfile(string userGuid);
+        Task<string> GetProfileGuid(int profileId);
         Task<int> GetProfileId(string userGuid);
         Task<List<WorkspaceUserMapping>> GetWorkspaceUsers(string workspaceGuid);
-        Task<bool> InializeUserConfiguration(int userId, DateTime startDate, DateTime endDate);
-        Task<string> UpdateUserConfiguration(string userGuid,string workspaceGuid,int memberCount);
+        Task<bool> InializeUserConfiguration(int userId, DateOnly startDate, DateOnly endDate);
+        Task<Profile> UpdateUserConfiguration(string userGuid,string workspaceGuid,int memberCount);
         Task AddEventLog(EventsLog eventsLog);
         Task<bool> UpertWeeklyUserMetric(WeeklyUserStats weeklyUserStats);
+        Task UpdateCurrentWorkspace(string userGuid, string workspaceGuid);
     }
 }

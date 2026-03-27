@@ -1,9 +1,11 @@
-﻿using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.Filters;
+using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -110,43 +112,16 @@ namespace Enterpise.Flowstate.Controllers
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
-                    Success = false,
+                    Success = false,    
                     Message = ex.Message,
                 };
             }
 
-        }
-
-        [HttpGet]
-        [Route("{workspaceId}")]
-        public async Task<ApiResponseModel<object>> GetWorkspace(string workspaceId)
-        {
-            try
-            {
-
-                return new ApiResponseModel<object>
-                {
-                    StatusCode = StatusCodes.Status200OK,
-                    Success = true,
-                    Message = "Successfully get an workspace user workspace",
-                    Data = null
-
-                };
-
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponseModel<object>
-                {
-                    StatusCode = StatusCodes.Status500InternalServerError,
-                    Success = false,
-                    Message = ex.Message,
-                };
-            }
         }
 
         [HttpDelete]
         [Route("delete-workspace/{workspaceId}")]
+        [RequireAuthorization(RoleEnum.Owner)]
         public async Task<ApiResponseModel<object>> DeleteWorkspace(string workspaceId)
         {
             try
@@ -202,6 +177,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpPost("update-workspace")]
+        [RequireAuthorization(RoleEnum.Owner)]
         public async Task<ApiResponseModel<object>> UpdateWorkspaceConfigs()
         {
             try

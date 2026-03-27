@@ -4,6 +4,8 @@ using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Constants;
+using static System.Formats.Asn1.AsnWriter;
+using Supabase.Gotrue;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -27,8 +29,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             if (!string.IsNullOrEmpty(workspaceGuid))
             {
                 int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
-                string profileId = await _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid, 0);
-                
+                Profile profile = await _omniRepository.ProfileRepository.UpdateUserConfiguration(userClaimsId, workspaceGuid, 0);
+
                 RankingCacheModel userMetric = new RankingCacheModel
                 {
                     ContributionPoint = 0,
@@ -37,28 +39,38 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Score = 0,
                     TotalHours = 0,
                     TotalTicketCompleted = 0,
+                    UserName = profile.DisplayName,
+                    UserId = profile.Id,
+                    UserProfilePic = profile.ProfileImageUrl
                 };
                 #region Cache Things
-                string roleKey = string.Format(FlowStateConstants.USER_ROLE, userClaimsId,workspaceGuid);
-                string workspaceKey = string.Format(FlowStateConstants.USER_WORKSPACE, userClaimsId);
-
-                await _cache.UpsertUserMetricAsync(workspaceGuid, userClaimsId,userMetric);
-                await _cache.SetStringAsync(roleKey, AuthEnums.RoleEnum.Owner.ToString());
-                
-                await _cache.SetStringAsync(workspaceKey, workspaceGuid, TimeSpan.FromHours(30));
+                var ws = _cache.Workspace(workspaceGuid);
+                await ws.User(userClaimsId).Metric.UpsertAsync(userMetric);
+                await ws.User(userClaimsId).Role.SetAsync(AuthEnums.RoleEnum.Owner.ToString());
+                await ws.Ranking.UpdateAsync(userClaimsId, 0); 
+                await _cache.SetStringAsync(
+                    string.Format(FlowStateConstants.Cache.UserWorkspace, userClaimsId),
+                    workspaceGuid,
+                    TimeSpan.FromHours(30));
+                //await _cache.UpdateWorkspaceRankingAtomicAsync(workspaceGuid,userClaimsId,0);
                 #endregion
 
                 Members members = new Members()
                 {
                     DepartmentId = (int)WorkspaceEnums.Department.Administration,
                     PositionId = (int)WorkspaceEnums.WorkspacePosition.Admin,
-                    ProfileId = Convert.ToInt32(profileId),
+                    ProfileId = Convert.ToInt32(profile.Id),
                     Status = (int)AuthEnums.UserStatus.Active,
                     WorkspaceGuid = workspaceGuid,
                 };
 
                 var result = await _omniRepository.TeamRepository.AddMember(workspaceGuid, members);
+                if (!result)
+                {
+                    return string.Empty;
+                }
 
+                await _omniRepository.ProfileRepository.UpdateCurrentWorkspace(userClaimsId, workspaceGuid);
 
                 EventsLog eventsLogs = new EventsLog
                 {

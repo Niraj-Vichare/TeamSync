@@ -2,6 +2,8 @@
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Supabase.Gotrue;
+using System.Collections.Concurrent;
+using static Supabase.Postgrest.Constants;
 
 
 namespace Enterprise.Flowstate.DAL.Repositories
@@ -235,23 +237,28 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return result.OrderBy(d => d.PositionId).ToList();
         }
 
-        public Task<bool> EditMember(string workspaceId, Members mapping)
+        public async Task<bool> EditMember(string workspaceGuid, Members mapping)
         {
-            throw new NotImplementedException();
-        }
-
-        public async Task<bool> DeleteMember(string workspaceGuid, int member)
-        {
-            var response = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
-            if (!response.Models.Any())
+            try
             {
+                var response = await _supabaseClient
+                    .From<Members>()
+                    .Where(x => x.WorkspaceGuid == workspaceGuid && x.ProfileId == mapping.ProfileId)
+                    .Set(x => x.DepartmentId, mapping.DepartmentId)
+                    .Set(x => x.Status, mapping.Status)
+                    .Set(x => x.PositionId, mapping.PositionId)
+                    .Update();
+
+                return response.Models.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                // log ex if you have a logger
                 return false;
             }
-            int workspaceId = response.Models.FirstOrDefault().Id;
-            _supabaseClient.From<WorkspaceUserMapping>().Where(WorkspaceUserMapping => WorkspaceUserMapping.WorkspaceId == workspaceId && WorkspaceUserMapping.UserId == member).Delete();
-            return true;
         }
 
+       
         public async Task<bool> RemoveTeamMember(string workspaceId, int teamId, int memberId)
         {
             
@@ -265,15 +272,129 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var deleteResponse = _supabaseClient.From<Team>().Where(t => t.TeamId == teamId).Delete();
             return true;
         }
-        public Task<bool> EditTeam(Team team)
+        public async Task<bool> EditTeam(Team team)
         {
-            return null;
+            try
+            {
+                var existing = await _supabaseClient
+                    .From<Team>()
+                    .Filter("team_id", Operator.Equals, team.TeamId.ToString())
+                    .Get();
+
+                if (!existing.Models.Any())
+                    return false;
+
+                var row = existing.Models.First();
+                row.TeamName = team.TeamName;
+                row.Tagline = team.Tagline;
+                row.UpdatedAt = DateTime.UtcNow;
+
+                var response = await _supabaseClient.From<Team>().Update(row);
+                return response.Models.Count > 0;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public async Task<bool> RemoveTeamMemberMapping(TeamMemberMapping mapping)
         {
             var deleteResponse = _supabaseClient.From<TeamMemberMapping>().Where(m=>m.TeamId == mapping.TeamId && m.MemberId == mapping.MemberId).Delete();
             return true;
+        }
+
+        public async Task<bool> UpdateMember(Members member)
+        {
+            var existing = await _supabaseClient.From<Members>()
+                .Filter("id", Operator.Equals, member.Id.ToString())
+                .Get();
+
+            if (!existing.Models.Any())
+                return false;
+
+            var row = existing.Models.First();
+            row.DepartmentId = member.DepartmentId;
+            row.PositionId = member.PositionId;   // maps to column "position"
+            row.Status = member.Status;
+
+            await _supabaseClient.From<Members>().Update(row);
+            return true;
+        }
+
+        public async Task<bool> DeleteMember(string workspaceGuid, int profileId)
+        {
+            // ✅ Step 1 — delete from members table
+            await _supabaseClient.From<Members>()
+                .Filter("workspace_guid", Operator.Equals, workspaceGuid)
+                .Filter("profile_id", Operator.Equals, profileId.ToString())
+                .Delete();
+
+            // ✅ Step 2 — resolve workspace int id for mapping table
+            var workspace = await _supabaseClient.From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
+
+            if (!workspace.Models.Any())
+                return false;
+
+            int workspaceId = workspace.Models.First().Id;
+
+            // ✅ Step 3 — delete from workspace_user_mapping
+            await _supabaseClient.From<WorkspaceUserMapping>()
+                .Filter("workspace_id", Operator.Equals, workspaceId.ToString())
+                .Filter("profile_id", Operator.Equals, profileId.ToString())
+                .Delete();
+
+            return true;
+        }
+
+        // ✅ Update role in workspace_user_mapping (separate from members)
+        public async Task<bool> UpdateUserRole(string workspaceGuid, int profileId, int roleId)
+        {
+            var workspace = await _supabaseClient.From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid)
+                .Get();
+
+            if (!workspace.Models.Any())
+                return false;
+
+            int workspaceId = workspace.Models.First().Id;
+
+            var mapping = await _supabaseClient.From<WorkspaceUserMapping>()
+                .Filter("workspace_id", Operator.Equals, workspaceId.ToString())
+                .Filter("profile_id", Operator.Equals, profileId.ToString())
+                .Get();
+
+            if (!mapping.Models.Any())
+                return false;
+
+            var row = mapping.Models.First();
+            row.RoleId = roleId;
+
+            await _supabaseClient.From<WorkspaceUserMapping>().Update(row);
+            return true;
+        }
+
+
+        public async Task<ConcurrentDictionary<int, int>> GetRoleProfileMapping(List<int> profileIds)
+        {
+            if (profileIds == null || !profileIds.Any())
+                return new ConcurrentDictionary<int, int>();
+
+            var response = await _supabaseClient
+                .From<WorkspaceUserMapping>()
+                .Select("profile_id, role_id")
+                .Filter("profile_id", Supabase.Postgrest.Constants.Operator.In, profileIds)
+                .Get();
+
+            var dictionary = new ConcurrentDictionary<int, int>(
+                response.Models.Where(x => x.RoleId != 0).ToDictionary(
+                        x => x.UserId,
+                        x => (int)x.RoleId
+                    ));
+
+            return dictionary;
         }
     }
 }

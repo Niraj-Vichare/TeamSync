@@ -13,6 +13,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public PeriodInfo CurrentPeriod { get; set; }
         public PeriodInfo PreviousPeriod { get; set; }
         public List<UserRankingWithComparison> Rankings { get; set; }
+        public int TotalCount { get; set; }
         public DateTime GeneratedAt { get; set; }
     }
 }

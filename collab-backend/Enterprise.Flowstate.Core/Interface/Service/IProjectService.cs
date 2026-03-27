@@ -86,6 +86,12 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         /// <param name="workspaceGuid">Unique identifier of the workspace.</param>
         /// <returns>List of projects formatted for dropdown usage.</returns>
         Task<List<ProjectDropdownModel>> GetProjectDropDown(string workspaceGuid);
+        /// <summary>
+        /// Get the project sprints
+        /// </summary>
+        /// <param name="projectGuid"></param>
+        /// <returns></returns>
+        Task<List<SprintDto>> GetProjectSprints(string projectGuid);
     }
 
 

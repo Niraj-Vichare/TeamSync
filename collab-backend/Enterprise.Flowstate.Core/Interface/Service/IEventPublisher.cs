@@ -10,6 +10,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IEventPublisher
     {
-        Task<bool> PublishAsync(EventsLog body,int initalizeRetryCount);
+        Task<bool> PublishAsync(EventsLogDto body,int initalizeRetryCount);
     }
 }

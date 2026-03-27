@@ -224,6 +224,13 @@ namespace Enterpise.Flowstate.Controllers
             try
             {   
                 await _supabaseClient.Auth.SignOut();
+                Response.Cookies.Delete("authToken", new CookieOptions
+                {
+                    Path = "/",                 
+                    HttpOnly = true,            
+                    Secure = true,              
+                    SameSite = SameSiteMode.Strict 
+                });
                 return new ApiResponseModel<object>
                 {
                     Message = "User signed out successfully.",

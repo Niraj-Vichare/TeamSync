@@ -10,71 +10,59 @@ namespace Enterprise.Flowstate.Controllers
     [Route("leaderboard")]
     public class LeaderboardController : AuthBaseController
     {
-        public IOmniService _omniService;
+        private readonly IOmniService _omniService;
+
         public LeaderboardController(IOmniService omniService)
         {
             _omniService = omniService;
         }
+
         [HttpGet]
-        public async Task<LeaderboardResponse> GetLeaderboardWithComparisonAsync([FromQuery]string workspaceId,[FromQuery]int pageNumber,[FromQuery]int pageSize)
-        {  
-            try
-            {
-                var identity = HttpContext.User.Identity as ClaimsIdentity;
-                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;    
-                if(string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId) || string.IsNullOrEmpty(workspaceId))
-                {
-                    return null;
-                }
-                var leaderboardResponse = await _omniService.LeaderboardComparisonService.GetLeaderboardWithComparisonAsync(workspaceId, pageNumber, pageSize);
-                return leaderboardResponse;
-            }
-            catch (Exception ex)
-            {
-                return null;
-            }
+        public async Task<IActionResult> GetLeaderboard(
+            [FromQuery] string workspaceId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var userId = GetAuthenticatedUserId();
+            if (userId == null || string.IsNullOrEmpty(workspaceId))
+                return Unauthorized();
+
+            var result = await _omniService.LeaderboardComparisonService
+                .GetLeaderboardWithComparisonAsync(workspaceId, pageNumber, pageSize);
+
+            if (result == null)
+                return StatusCode(500);
+
+            return Ok(result);
         }
 
         [HttpGet("ranking-history")]
-        public async Task<ApiResponseModel<object>> GetUserRankingHistory([FromQuery]string workspaceGuid)
+        public async Task<IActionResult> GetUserRankingHistory([FromQuery] string workspaceGuid)
         {
-            try
-            {
-                var identity = HttpContext.User.Identity as ClaimsIdentity;
-                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                {
-                    return new ApiResponseModel<object>
-                    {
-                        Data = null,
-                        Message = "Authentication failed.",
-                        Success = false,
-                    };
-                }
-                var leaderboardHistory = await _omniService.LeaderboardComparisonService.GetUserRankingHistory(workspaceGuid,userId.ToString());
-                if(leaderboardHistory == null)
-                {
-                    return new ApiResponseModel<object>
-                    {
-                        Success = false,
-                    };
-                }
-                return new ApiResponseModel<object>
-                {
-                    Data = leaderboardHistory,
-                    Message = "User ranking history retrieved successfully.",
-                    Success = true,
-                };
+            var userId = GetAuthenticatedUserId();
+            if (userId == null)
+                return Unauthorized();
 
-            }
-            catch (Exception ex)
+            var history = await _omniService.LeaderboardComparisonService
+                .GetUserRankingHistory(workspaceGuid, userId);
+
+            if (history == null)
+                return NotFound(new ApiResponseModel<object> { Success = false });
+
+            return Ok(new ApiResponseModel<object>
             {
-                return new ApiResponseModel<object>
-                {
-                    Success = false,
-                    Message = ex.Message
-                };
-            }
+                Data = history,
+                Message = "User ranking history retrieved successfully.",
+                Success = true
+            });
+        }
+
+        // Centralize claim extraction — not repeated in every action
+        private string GetAuthenticatedUserId()
+        {
+            var identity = HttpContext.User.Identity as ClaimsIdentity;
+            var claim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Guid.TryParse(claim, out _) ? claim : null;
         }
     }
 }

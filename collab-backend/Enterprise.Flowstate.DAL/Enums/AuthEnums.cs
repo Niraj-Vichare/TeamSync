@@ -30,6 +30,12 @@ namespace Enterprise.Flowstate.DAL.Enums
             Member = 4,
             Viewer = 5
         }
+        public enum ResourceType
+        {
+            Project,
+            TeamMember,
+            Sprint
+        }
 
         public enum RankChangeType
         {

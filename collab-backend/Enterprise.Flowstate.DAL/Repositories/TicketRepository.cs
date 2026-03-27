@@ -73,7 +73,6 @@ namespace Enterprise.Flowstate.DAL.Repositories
             existingTicket.Steps = ticket.Steps;
             existingTicket.UpdatedAt = DateTime.UtcNow;
             existingTicket.PriorityId = ticket.PriorityId;
-            existingTicket.ReportedBy = ticket.ReportedBy;
             existingTicket.StatusId = ticket.StatusId;
 
             // Perform the update
@@ -327,6 +326,32 @@ namespace Enterprise.Flowstate.DAL.Repositories
             int ticketId = ticket.Models.First().TicketId;
             var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketId == ticketId).Update(new Ticket { PriorityId = priority });
             return true;
+        }
+
+        public async Task<bool> AddTicketToSprint(string ticketGuid, string sprintId)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return false; // invalid ticketGuid
+
+            var sprintResponse = await _supabaseClient.From<Sprint>().Where(s => s.SprintGuid == sprintId).Get();
+            if (!sprintResponse.Models.Any())
+            {
+                return false; // sprint not found
+            }
+            var sprint = sprintResponse.Models.FirstOrDefault();
+
+            var ticketResponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Get();
+            if (!ticketResponse.Models.Any())
+            {
+                return false; // ticket not found
+            }
+            var ticket = ticketResponse.Models.FirstOrDefault();
+
+            ticket.SprintId = sprint.SprintId;
+
+            var updateResponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Update(ticket);
+
+            return updateResponse.Models.Any();
         }
     }
 }

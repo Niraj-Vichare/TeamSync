@@ -11,8 +11,9 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
     public interface ILeaderboardComparisonService
     {
         Task<LeaderboardResponse> GetLeaderboardWithComparisonAsync(string workspaceId, int pageNumber, int pageSize);
-        Task<UserRankingWithComparison> GetUserRankingWithComparisonAsync(string workspaceId, string userId);
+        //Task<UserRankingWithComparison> GetUserRankingWithComparisonAsync(string workspaceId, string userId);
         Task<List<RankingHistoryDto>> GetUserRankingHistory(string workspaceGuid, string userGuid);
         Task<bool> IsWeeklyUserStatsPresent(DateTime startDate, DateTime endDate);
+        Task<UserRankingWithComparison> GetUserRankingWithComparisonAsync(string workspaceId, string userId, RankingCacheModel currentMetric = null);
     }
 }

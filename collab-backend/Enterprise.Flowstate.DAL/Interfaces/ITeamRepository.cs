@@ -2,6 +2,7 @@
 using Enterprise.Flowstate.DAL.Models;
 using Supabase.Gotrue;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,5 +25,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> EditTeam(Team team);
         System.Threading.Tasks.Task AddTeamMemberMapping(TeamMemberMapping mapping);
         System.Threading.Tasks.Task<bool> RemoveTeamMemberMapping(TeamMemberMapping mapping);
+        System.Threading.Tasks.Task<ConcurrentDictionary<int,int>> GetRoleProfileMapping(List<int> profileIds);
     }
 }

@@ -106,7 +106,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var userResponse = await _supabaseClient.From<Profile>().Where(profile=>profile.Guid == userGuid).Get();
             int userId = userResponse.Models.FirstOrDefault().Id;
             var mappingResponse = await _supabaseClient.From<WorkspaceUserMapping>().Where(m => m.WorkspaceId == workspaceId && m.UserId == userId).Get();
-           return mappingResponse.Models.FirstOrDefault().RoleId;
+            return (int)mappingResponse.Models.FirstOrDefault().RoleId;
         }
         public async Task<int> GetWorkspaceMemberCount(string workspaceId)
         {
@@ -118,6 +118,39 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             var workspaceMappingResponse = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping=>mapping.WorkspaceId == workspaceDbId).Get();
             return workspaceMappingResponse.Models.Count;
+        }
+
+        public async Task<bool> UpdateUserRole(string workspaceGuid, int profileId, int roleId)
+        {
+            var workspace = await _supabaseClient.From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid).Get();
+            if (!workspace.Models.Any()) return false;
+
+            int workspaceId = workspace.Models.First().Id;
+
+            var mapping = await _supabaseClient.From<WorkspaceUserMapping>()
+                .Where(m => m.WorkspaceId == workspaceId && m.UserId == profileId)
+                .Get();
+            if (!mapping.Models.Any()) return false;
+
+            var row = mapping.Models.FirstOrDefault();
+            row.RoleId = (long)roleId;
+            await _supabaseClient.From<WorkspaceUserMapping>().Update(row);
+            return true;
+        }
+
+        public async Task<bool> RemoveUserFromWorkspace(string workspaceGuid, int profileId)
+        {
+            var workspace = await _supabaseClient.From<Workspace>()
+                .Where(w => w.WorkspaceGuid == workspaceGuid).Get();
+            if (!workspace.Models.Any()) return false;
+
+            int workspaceId = workspace.Models.First().Id;
+
+            await _supabaseClient.From<WorkspaceUserMapping>()
+                .Where(m => m.WorkspaceId == workspaceId && m.UserId == profileId)
+                .Delete();
+            return true;
         }
     }
 }
