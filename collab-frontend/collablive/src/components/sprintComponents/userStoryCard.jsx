@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 
 const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
+  console.log("Rendering StoryCard with story:", story);
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'open': return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -99,7 +100,7 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
             <Eye className="w-4 h-4 mr-1" />
             View Details
           </Button>
-          {!story.sprintName && (
+          {!story.sprintId && (
             console.log("Include in Sprint Button Rendered",story.ticketGuid),
             <Button 
               className="flex-1 text-white"

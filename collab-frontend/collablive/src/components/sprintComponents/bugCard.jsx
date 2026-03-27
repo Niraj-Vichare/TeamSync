@@ -10,6 +10,7 @@ const BugCard = ({
   onEditClick,
   onIncludeInSprint
 }) => {
+  {console.log("Rendering BugCard with bug:", bug)}
   const getStatusBadge = () => {
     switch (bug.statusInString.toLowerCase()) {
       case "open": return "bg-red-600 text-white";

@@ -2,6 +2,7 @@ import DepartmentCard from '@/components/teamComponents/DepartmentCard';
 import TeamDataTable from '@/components/teamComponents/TeamDataTable';
 import TeamProjectCard from '@/components/teamComponents/TeamProjectCard';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -9,25 +10,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/AuthContext';
-import { Department, RoleEnum, UserStatus, WorkspacePosition } from '@/data/general';
+import { Department, RoleEnum, UserStatus } from '@/data/general';
 import teamService from '@/services/team';
-import { FilterIcon, Plus, Search, Trash2 } from 'lucide-react';
+import { Crown, FilterIcon, Plus, Search, Trash2, UserMinus, UserPlus, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-// ── Department → allowed positions mapping (matches backend IDs) ──────────────
+// ── Department → allowed positions mapping ────────────────────────────────────
 const DEPARTMENT_POSITIONS = {
-  [Department.Technical]:             ["6","7","8","10","9","5","12"],
-  [Department.Sales]:                 ["13","9","12"],
-  [Department.Marketing]:             ["8","9","4","12"],
-  [Department.HumanResources]:        ["1","11","12"],
-  [Department.Finance]:               ["9","1","12"],
-  [Department.Operations]:            ["5","10","9","11","12"],
-  [Department.CustomerSupport]:       ["11","12"],
-  [Department.Legal]:                 ["1","12"],
-  [Department.ResearchAndDevelopment]:["8","12"],
-  [Department.IT]:                    ["11","12"],
-  [Department.Administration]:        ["1","2","3","4","5","12"],
+  [Department.Technical]:              ["6","7","8","10","9","5","12"],
+  [Department.Sales]:                  ["13","9","12"],
+  [Department.Marketing]:              ["8","9","4","12"],
+  [Department.HumanResources]:         ["1","11","12"],
+  [Department.Finance]:                ["9","1","12"],
+  [Department.Operations]:             ["5","10","9","11","12"],
+  [Department.CustomerSupport]:        ["11","12"],
+  [Department.Legal]:                  ["1","12"],
+  [Department.ResearchAndDevelopment]: ["8","12"],
+  [Department.IT]:                     ["11","12"],
+  [Department.Administration]:         ["1","2","3","4","5","12"],
 };
 
 const POSITION_LABELS = {
@@ -39,12 +40,14 @@ const POSITION_LABELS = {
 
 // ── Initial form states ───────────────────────────────────────────────────────
 const INITIAL_MEMBER_FORM = {
-  Id:0,memberName: '', memberRole: '', memberPassword: '',
+  Id: 0, memberName: '', memberRole: '', memberPassword: '',
   memberEmail: '', memberDepartment: '', memberPosition: '', memberStatus: ''
 };
 
 const INITIAL_CUSTOM_TEAM_FORM = {
-  teamId:0,teamName: '', teamDescription: '', tagline: '', teamMembers: []
+  teamId: 0, teamName: '', teamDescription: '', tagline: '',
+  teamLeaderId: '',   // ← new: the chosen leader's memberId
+  teamMembers: [],    // ← non-leader member IDs
 };
 
 function Team() {
@@ -76,30 +79,39 @@ function Team() {
   const [errors,           setErrors]           = useState({});
 
   // ── Edit member dialog ────────────────────────────────────────────────────
-  const [editDialogOpen,   setEditDialogOpen]   = useState(false);
-  const [editLoading,      setEditLoading]      = useState(false);
-  const [editFormData,     setEditFormData]     = useState(INITIAL_MEMBER_FORM);
-  const [editErrors,       setEditErrors]       = useState({});
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editLoading,    setEditLoading]    = useState(false);
+  const [editFormData,   setEditFormData]   = useState(INITIAL_MEMBER_FORM);
+  const [editErrors,     setEditErrors]     = useState({});
   const [editMemberId,   setEditMemberId]   = useState(null);
 
   // ── Delete member dialog ──────────────────────────────────────────────────
-  const [deleteDialogOpen,  setDeleteDialogOpen]  = useState(false);
-  const [deleteLoading,     setDeleteLoading]     = useState(false);
-  const [deleteMemberId,  setDeleteMemberId]  = useState(null);
-  const [deleteMemberName,  setDeleteMemberName]  = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading,    setDeleteLoading]    = useState(false);
+  const [deleteMemberId,   setDeleteMemberId]   = useState(null);
+  const [deleteMemberName, setDeleteMemberName] = useState('');
 
-  // ── Custom team dialog ────────────────────────────────────────────────────
+  // ── Create custom team dialog ─────────────────────────────────────────────
   const [customTeamDialogOpen, setCustomTeamDialogOpen] = useState(false);
   const [customTeamLoading,    setCustomTeamLoading]    = useState(false);
   const [customTeamFormData,   setCustomTeamFormData]   = useState(INITIAL_CUSTOM_TEAM_FORM);
   const [customTeamErrors,     setCustomTeamErrors]     = useState({});
 
   // ── Edit custom team dialog ───────────────────────────────────────────────
-  const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false);
-  const [editTeamLoading,    setEditTeamLoading]    = useState(false);
-  const [editTeamData,       setEditTeamData]       = useState({ teamName:'', teamDescription:'', tagline:'' });
-  const [editTeamErrors,     setEditTeamErrors]     = useState({});
-  const [editTeamId,         setEditTeamId]         = useState(null);
+  const [editTeamDialogOpen,  setEditTeamDialogOpen]  = useState(false);
+  const [editTeamLoading,     setEditTeamLoading]     = useState(false);
+  const [editTeamData,        setEditTeamData]        = useState({ teamName: '', teamDescription: '', tagline: '' });
+  const [editTeamErrors,      setEditTeamErrors]      = useState({});
+  const [editTeamId,          setEditTeamId]          = useState(null);
+  const [editTeamTab,         setEditTeamTab]         = useState('details'); // 'details' | 'members'
+  // current members shown in the Members tab
+  const [editTeamMembers,     setEditTeamMembers]     = useState([]); // [{ memberId, profileId, displayName, isLeader }]
+  // add-member sub-state inside edit dialog
+  const [addMemberSelectId,   setAddMemberSelectId]   = useState('');
+  const [addMemberIsLeader,   setAddMemberIsLeader]   = useState(false);
+  const [addMemberLoading,    setAddMemberLoading]    = useState(false);
+  // remove member inside edit dialog
+  const [removingMemberId,    setRemovingMemberId]    = useState(null);
 
   // ── Delete custom team dialog ─────────────────────────────────────────────
   const [deleteTeamDialogOpen, setDeleteTeamDialogOpen] = useState(false);
@@ -124,7 +136,7 @@ function Team() {
 
   const fetchProjectTeam = async () => {
     try {
-      const response = await teamService.getProjectTeam(workspaceGuid, searchTerm, pageNumber, pageSize);
+      const response = await teamService.getProjectTeam(workspaceGuid);
       if (response && response.data?.success) {
         setCustomTeam(response.data?.data ?? []);
       } else {
@@ -151,10 +163,16 @@ function Team() {
   };
 
   useEffect(() => {
-    if (activeTab === 'all-teams')      fetchWorkspaceMembers();
+    if (activeTab === 'all-teams')         fetchWorkspaceMembers();
     else if (activeTab === 'project-team') fetchProjectTeam();
     else if (activeTab === 'department')   fetchDepartmentTeams();
-  }, [activeTab]);
+  }, [activeTab, searchTerm]);
+
+  // ── Ensure workspace members are loaded when project-team tab is active
+  // (needed to populate the "add member" dropdown inside edit dialog)
+  useEffect(() => {
+    if (workspaceMembers.length === 0) fetchWorkspaceMembers();
+  }, []);
 
   // ── Input handlers ────────────────────────────────────────────────────────
   const handleInputChange = (key, value) => {
@@ -232,11 +250,11 @@ function Team() {
     }
   };
 
-  // ── Open edit member dialog ───────────────────────────────────────────────
+  // ── Open / submit edit member ─────────────────────────────────────────────
   const handleOpenEditMember = (memberId, member) => {
     setEditMemberId(memberId);
     setEditFormData({
-      Id:       member.profile?.id ?? 0,
+      Id:               member.profile?.id ?? 0,
       memberName:       member.profile?.displayName ?? '',
       memberEmail:      member.profile?.email ?? '',
       memberPassword:   '',
@@ -249,7 +267,6 @@ function Team() {
     setEditDialogOpen(true);
   };
 
-  // ── Edit member ───────────────────────────────────────────────────────────
   const handleEditMember = async () => {
     const errs = {};
     if (!editFormData.memberName)       errs.memberName       = 'Name is required';
@@ -264,7 +281,7 @@ function Team() {
     try {
       const updatedMember = {
         memberId: editMemberId,
-        profile: { Id:editFormData.Id,displayName: editFormData.memberName, email: editFormData.memberEmail },
+        profile: { Id: editFormData.Id, displayName: editFormData.memberName, email: editFormData.memberEmail },
         roleId:       parseInt(editFormData.memberRole),
         positionId:   parseInt(editFormData.memberPosition),
         departmentId: parseInt(editFormData.memberDepartment),
@@ -286,14 +303,13 @@ function Team() {
     }
   };
 
-  // ── Open delete member dialog ─────────────────────────────────────────────
+  // ── Open / submit delete member ───────────────────────────────────────────
   const handleOpenDeleteMember = (memberId, member) => {
     setDeleteMemberId(memberId);
     setDeleteMemberName(member.profile?.displayName ?? 'this member');
     setDeleteDialogOpen(true);
   };
 
-  // ── Delete member ─────────────────────────────────────────────────────────
   const handleDeleteMember = async () => {
     setDeleteLoading(true);
     try {
@@ -313,22 +329,30 @@ function Team() {
     }
   };
 
-  // ── Add custom team ───────────────────────────────────────────────────────
+  // ── Create custom team ────────────────────────────────────────────────────
   const handleAddCustomTeam = async () => {
     const errs = {};
-    if (!customTeamFormData.teamName) errs.teamName = 'Team name is required';
-    if (!customTeamFormData.tagline)  errs.tagline  = 'Tagline is required';
+    if (!customTeamFormData.teamName)     errs.teamName     = 'Team name is required';
+    if (!customTeamFormData.tagline)      errs.tagline      = 'Tagline is required';
+    if (!customTeamFormData.teamLeaderId) errs.teamLeaderId = 'Team leader is required';
     setCustomTeamErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setCustomTeamLoading(true);
     try {
+      // Build members array: leader gets isLeader=true, rest get false
+      const leaderEntry  = { memberId: parseInt(customTeamFormData.teamLeaderId), isLeader: true };
+      const memberEntries = customTeamFormData.teamMembers.map(id => ({
+        memberId: parseInt(id), isLeader: false,
+      }));
+
       const team = {
         name:        customTeamFormData.teamName,
         description: customTeamFormData.teamDescription,
         tagline:     customTeamFormData.tagline,
-        members:     customTeamFormData.teamMembers,
+        members:     [leaderEntry, ...memberEntries],
       };
+
       const response = await teamService.createProjectTeam(workspaceGuid, team);
       if (response && response.data?.success) {
         toast.success("Team created successfully");
@@ -347,15 +371,31 @@ function Team() {
     }
   };
 
-  // ── Open edit custom team dialog ──────────────────────────────────────────
+  // ── Open edit team dialog ─────────────────────────────────────────────────
   const handleOpenEditTeam = (team) => {
-    setEditTeamId(team.id);
-    setEditTeamData({ teamName: team.name ?? '', teamDescription: team.description ?? '', tagline: team.tagline ?? '' });
+    setEditTeamId(team.id ?? team.teamId);
+    setEditTeamData({
+      teamName:        team.name        ?? '',
+      teamDescription: team.description ?? '',
+      tagline:         team.tagline     ?? '',
+    });
+    // Flatten members from the team object
+    const members = (team.members ?? []).map(m => ({
+      memberId:    m.memberId ?? m.profile?.id,
+      profileId:   m.profile?.id,
+      displayName: m.profile?.displayName ?? 'Unknown',
+      avatarUrl:   m.profile?.profileImageUrl ?? '',
+      isLeader:    m.profile?.isLeader ?? false,
+    }));
+    setEditTeamMembers(members);
     setEditTeamErrors({});
+    setEditTeamTab('details');
+    setAddMemberSelectId('');
+    setAddMemberIsLeader(false);
     setEditTeamDialogOpen(true);
   };
 
-  // ── Edit custom team ──────────────────────────────────────────────────────
+  // ── Submit edit team details ──────────────────────────────────────────────
   const handleEditTeam = async () => {
     const errs = {};
     if (!editTeamData.teamName) errs.teamName = 'Team name is required';
@@ -365,7 +405,12 @@ function Team() {
 
     setEditTeamLoading(true);
     try {
-      const team = { id: editTeamId, name: editTeamData.teamName, description: editTeamData.teamDescription, tagline: editTeamData.tagline };
+      const team = {
+        id:          editTeamId,
+        name:        editTeamData.teamName,
+        description: editTeamData.teamDescription,
+        tagline:     editTeamData.tagline,
+      };
       const response = await teamService.updateProjectTeam(workspaceGuid, team);
       if (response && response.data?.success) {
         toast.success("Team updated successfully");
@@ -382,14 +427,92 @@ function Team() {
     }
   };
 
-  // ── Open delete custom team dialog ────────────────────────────────────────
+  // ── Add member to existing team (inside edit dialog) ──────────────────────
+  const handleAddMemberToTeam = async () => {
+    if (!addMemberSelectId) {
+      toast.error("Please select a member to add");
+      return;
+    }
+    // Prevent duplicates
+    const alreadyIn = editTeamMembers.some(
+      m => String(m.memberId) === String(addMemberSelectId)
+    );
+    if (alreadyIn) {
+      toast.error("Member is already in this team");
+      return;
+    }
+    // If setting a new leader, validate only one leader exists
+    if (addMemberIsLeader && editTeamMembers.some(m => m.isLeader)) {
+      toast.error("A team leader already exists. Remove the current leader first.");
+      return;
+    }
+
+    setAddMemberLoading(true);
+    try {
+      const payload = {
+        teamId:   editTeamId,
+        memberId: parseInt(addMemberSelectId),
+        isLeader: addMemberIsLeader,
+      };
+      const response = await teamService.addMemberToTeam(workspaceGuid, payload);
+      if (response && response.data?.success) {
+        // Optimistically update the local list
+        const selected = workspaceMembers.find(
+          m => String(m.memberId) === String(addMemberSelectId)
+        );
+        setEditTeamMembers(prev => [
+          ...prev,
+          {
+            memberId:    parseInt(addMemberSelectId),
+            profileId:   selected?.profile?.id,
+            displayName: selected?.profile?.displayName ?? 'Member',
+            avatarUrl:   selected?.profile?.profileImageUrl ?? '',
+            isLeader:    addMemberIsLeader,
+          },
+        ]);
+        setAddMemberSelectId('');
+        setAddMemberIsLeader(false);
+        toast.success("Member added to team");
+        fetchProjectTeam();
+      } else {
+        toast.error(response.data?.message || "Failed to add member");
+      }
+    } catch (error) {
+      console.error("Error adding member to team", error);
+      toast.error("Failed to add member");
+    } finally {
+      setAddMemberLoading(false);
+    }
+  };
+
+  // ── Remove member from existing team (inside edit dialog) ─────────────────
+  const handleRemoveMemberFromTeam = async (memberId) => {
+    setRemovingMemberId(memberId);
+    try {
+      const payload = { teamId: editTeamId, memberId };
+      const response = await teamService.removeMemberFromTeam(workspaceGuid, payload);
+      if (response && response.data?.success) {
+        setEditTeamMembers(prev => prev.filter(m => m.memberId !== memberId));
+        toast.success("Member removed from team");
+        fetchProjectTeam();
+      } else {
+        toast.error(response.data?.message || "Failed to remove member");
+      }
+    } catch (error) {
+      console.error("Error removing member from team", error);
+      toast.error("Failed to remove member");
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  // ── Open / submit delete team ─────────────────────────────────────────────
   const handleOpenDeleteTeam = (team) => {
-    setDeleteTeamId(team.id);
+    setDeleteTeamId(team.id ?? team.teamId);
     setDeleteTeamName(team.name ?? 'this team');
     setDeleteTeamDialogOpen(true);
   };
 
-  // ── Delete custom team ────────────────────────────────────────────────────
   const handleDeleteTeam = async () => {
     setDeleteTeamLoading(true);
     try {
@@ -408,6 +531,18 @@ function Team() {
       setDeleteTeamLoading(false);
     }
   };
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  // Members available for the "add member" select — exclude already-in-team members
+  const availableToAdd = workspaceMembers.filter(
+    m => !editTeamMembers.some(em => em.memberId === m.memberId)
+  );
+
+  // Members available as leader in Create dialog (all workspace members)
+  // Members available as non-leader in Create dialog (exclude chosen leader)
+  const nonLeaderMembers = workspaceMembers.filter(
+    m => String(m.memberId) !== String(customTeamFormData.teamLeaderId)
+  );
 
   // ── Reusable member form fields ───────────────────────────────────────────
   const MemberFormFields = ({ data, errs, onChange, hidePassword = false }) => (
@@ -495,7 +630,7 @@ function Team() {
           <Label>Position <span className="text-red-500">*</span></Label>
           <Select value={data.memberPosition} onValueChange={v => onChange('memberPosition', v)}
             disabled={!data.memberDepartment}>
-            <SelectTrigger className={errs.memberPosition ? 'border-red-500 w-full' : 'w-full '}>
+            <SelectTrigger className={errs.memberPosition ? 'border-red-500 w-full' : 'w-full'}>
               <SelectValue placeholder={data.memberDepartment ? "Select position" : "Select department first"} />
             </SelectTrigger>
             <SelectContent>
@@ -509,6 +644,17 @@ function Team() {
       </div>
     </div>
   );
+
+  // ── Avatar initials helper ────────────────────────────────────────────────
+  const Initials = ({ name, size = 'sm' }) => {
+    const letters = (name ?? '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const sz = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-8 h-8 text-xs';
+    return (
+      <span className={`${sz} rounded-full bg-primary/10 text-primary font-medium flex items-center justify-center shrink-0`}>
+        {letters}
+      </span>
+    );
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -554,8 +700,11 @@ function Team() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* ── Add Member Dialog ── */}
-                <Dialog open={memberDialogOpen} onOpenChange={(o) => { setMemberDialogOpen(o); if (!o) { setFormData(INITIAL_MEMBER_FORM); setErrors({}); } }}>
+                {/* Add Member Dialog */}
+                <Dialog open={memberDialogOpen} onOpenChange={(o) => {
+                  setMemberDialogOpen(o);
+                  if (!o) { setFormData(INITIAL_MEMBER_FORM); setErrors({}); }
+                }}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="h-9 text-white">
                       <Plus className="w-4 h-4 mr-1.5" /> Add Member
@@ -574,7 +723,9 @@ function Team() {
                         onClick={() => { setMemberDialogOpen(false); setFormData(INITIAL_MEMBER_FORM); setErrors({}); }}
                         disabled={memberLoading}>Cancel</Button>
                       <Button size="sm" className="h-9 min-w-[100px] text-white" onClick={handleAddMember} disabled={memberLoading}>
-                        {memberLoading ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</span> : 'Add Member'}
+                        {memberLoading
+                          ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</span>
+                          : 'Add Member'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -593,7 +744,11 @@ function Team() {
         {/* ── Project Teams tab ── */}
         <TabsContent value="project-team" className="mt-5">
           <div className="flex justify-end mb-4">
-            <Dialog open={customTeamDialogOpen} onOpenChange={(o) => { setCustomTeamDialogOpen(o); if (!o) { setCustomTeamFormData(INITIAL_CUSTOM_TEAM_FORM); setCustomTeamErrors({}); } }}>
+            {/* ── Create Team Dialog ── */}
+            <Dialog open={customTeamDialogOpen} onOpenChange={(o) => {
+              setCustomTeamDialogOpen(o);
+              if (!o) { setCustomTeamFormData(INITIAL_CUSTOM_TEAM_FORM); setCustomTeamErrors({}); }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-9 text-white">
                   <Plus className="w-4 h-4 mr-1.5" /> New Team
@@ -604,54 +759,184 @@ function Team() {
                   <DialogTitle className="text-base font-semibold">Create project team</DialogTitle>
                   <DialogDescription className="text-sm mt-0.5">Group members into a focused project team.</DialogDescription>
                 </DialogHeader>
-                <div className="px-6 py-5 space-y-4">
-                  <div className="space-y-2">
+
+                <div className="px-6 py-5 space-y-4 overflow-y-auto max-h-[65vh]">
+                  {/* Team name */}
+                  <div className="space-y-1.5">
                     <Label>Team name <span className="text-red-500">*</span></Label>
-                    <Input value={customTeamFormData.teamName} onChange={e => handleCustomTeamInputChange('teamName', e.target.value)}
-                      placeholder="Enter team name" className={customTeamErrors.teamName ? 'border-red-500' : ''} />
+                    <Input
+                      value={customTeamFormData.teamName}
+                      onChange={e => handleCustomTeamInputChange('teamName', e.target.value)}
+                      placeholder="Enter team name"
+                      className={customTeamErrors.teamName ? 'border-red-500' : ''}
+                    />
                     {customTeamErrors.teamName && <p className="text-xs text-red-500">{customTeamErrors.teamName}</p>}
                   </div>
-                  <div className="space-y-2">
+
+                  {/* Tagline */}
+                  <div className="space-y-1.5">
                     <Label>Tagline <span className="text-red-500">*</span></Label>
-                    <Input value={customTeamFormData.tagline} onChange={e => handleCustomTeamInputChange('tagline', e.target.value)}
-                      placeholder="Short catchy tagline" className={customTeamErrors.tagline ? 'border-red-500' : ''} />
+                    <Input
+                      value={customTeamFormData.tagline}
+                      onChange={e => handleCustomTeamInputChange('tagline', e.target.value)}
+                      placeholder="Short catchy tagline"
+                      className={customTeamErrors.tagline ? 'border-red-500' : ''}
+                    />
                     {customTeamErrors.tagline && <p className="text-xs text-red-500">{customTeamErrors.tagline}</p>}
                   </div>
-                  <div className="space-y-2">
+
+                  {/* Description */}
+                  <div className="space-y-1.5">
                     <Label>Description</Label>
-                    <Input value={customTeamFormData.teamDescription} onChange={e => handleCustomTeamInputChange('teamDescription', e.target.value)}
-                      placeholder="Brief description (optional)" />
+                    <Input
+                      value={customTeamFormData.teamDescription}
+                      onChange={e => handleCustomTeamInputChange('teamDescription', e.target.value)}
+                      placeholder="Brief description (optional)"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Members <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                    <Select onValueChange={v => {
-                      setCustomTeamFormData(prev => ({
-                        ...prev,
-                        teamMembers: prev.teamMembers.includes(v)
-                          ? prev.teamMembers.filter(id => id !== v)
-                          : [...prev.teamMembers, v]
-                      }));
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={customTeamFormData.teamMembers.length > 0 ? `${customTeamFormData.teamMembers.length} selected` : "Select members"} />
+
+                  {/* Team Leader — required */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5">
+                      <Crown className="w-3.5 h-3.5 text-amber-500" />
+                      Team Leader <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={customTeamFormData.teamLeaderId}
+                      onValueChange={v => {
+                        handleCustomTeamInputChange('teamLeaderId', v);
+                        // If leader was already in members list, remove them
+                        setCustomTeamFormData(prev => ({
+                          ...prev,
+                          teamLeaderId: v,
+                          teamMembers: prev.teamMembers.filter(id => id !== v),
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className={customTeamErrors.teamLeaderId ? 'border-red-500 w-full' : 'w-full'}>
+                        <SelectValue placeholder="Select team leader" />
                       </SelectTrigger>
                       <SelectContent>
                         {workspaceMembers.map(member => (
-                          <SelectItem key={member.profile?.id} value={String(member.profile?.id)}>
-                            {member.profile?.displayName}
-                            {customTeamFormData.teamMembers.includes(String(member.profile?.id)) ? ' ✓' : ''}
+                          <SelectItem key={member.memberId} value={String(member.memberId)}>
+                            <span className="flex items-center gap-2">
+                              <Crown className="w-3 h-3 text-amber-500" />
+                              {member.profile?.displayName}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {customTeamErrors.teamLeaderId && (
+                      <p className="text-xs text-red-500">{customTeamErrors.teamLeaderId}</p>
+                    )}
+                    {/* Show selected leader as a pill */}
+                    {customTeamFormData.teamLeaderId && (() => {
+                      const leader = workspaceMembers.find(
+                        m => String(m.memberId) === String(customTeamFormData.teamLeaderId)
+                      );
+                      return leader ? (
+                        <div className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 w-fit">
+                          <Crown className="w-3 h-3 text-amber-500 shrink-0" />
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                            {leader.profile?.displayName}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  {/* Other members — optional, leader excluded */}
+                  <div className="space-y-1.5">
+                    <Label>
+                      Members{' '}
+                      <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                    </Label>
+                    <Select
+                      value=""
+                      onValueChange={v => {
+                        setCustomTeamFormData(prev => ({
+                          ...prev,
+                          teamMembers: prev.teamMembers.includes(v)
+                            ? prev.teamMembers.filter(id => id !== v)
+                            : [...prev.teamMembers, v],
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={
+                            customTeamFormData.teamMembers.length > 0
+                              ? `${customTeamFormData.teamMembers.length} member${customTeamFormData.teamMembers.length > 1 ? 's' : ''} selected`
+                              : 'Add members'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {nonLeaderMembers.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground">
+                            {customTeamFormData.teamLeaderId
+                              ? 'No other members available'
+                              : 'Select a leader first'}
+                          </div>
+                        ) : (
+                          nonLeaderMembers.map(member => {
+                            const selected = customTeamFormData.teamMembers.includes(String(member.memberId));
+                            return (
+                              <SelectItem key={member.memberId} value={String(member.memberId)}>
+                                <span className="flex items-center gap-2">
+                                  {selected && <span className="w-2 h-2 rounded-full bg-primary inline-block" />}
+                                  {member.profile?.displayName}
+                                  {selected && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                                </span>
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Selected members pills */}
+                    {customTeamFormData.teamMembers.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {customTeamFormData.teamMembers.map(id => {
+                          const m = workspaceMembers.find(wm => String(wm.memberId) === String(id));
+                          return (
+                            <span
+                              key={id}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-secondary border border-border"
+                            >
+                              {m?.profile?.displayName ?? id}
+                              <button
+                                type="button"
+                                className="ml-0.5 hover:text-red-500 transition-colors"
+                                onClick={() =>
+                                  setCustomTeamFormData(prev => ({
+                                    ...prev,
+                                    teamMembers: prev.teamMembers.filter(mid => mid !== id),
+                                  }))
+                                }
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
+
                 <DialogFooter className="px-6 py-4 border-t border-border gap-2">
                   <Button variant="outline" size="sm" className="h-9"
                     onClick={() => { setCustomTeamDialogOpen(false); setCustomTeamFormData(INITIAL_CUSTOM_TEAM_FORM); setCustomTeamErrors({}); }}
-                    disabled={customTeamLoading}>Cancel</Button>
+                    disabled={customTeamLoading}>
+                    Cancel
+                  </Button>
                   <Button size="sm" className="h-9 min-w-[110px] text-white" onClick={handleAddCustomTeam} disabled={customTeamLoading}>
-                    {customTeamLoading ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating...</span> : 'Create Team'}
+                    {customTeamLoading
+                      ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating...</span>
+                      : 'Create Team'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -666,8 +951,12 @@ function Team() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {customTeam.map(team => (
-                <TeamProjectCard key={team.id} team={team}
-                  onEdit={handleOpenEditTeam} onDelete={handleOpenDeleteTeam} />
+                <TeamProjectCard
+                  key={team.id ?? team.teamId}
+                  team={team}
+                  onEdit={handleOpenEditTeam}
+                  onDelete={handleOpenDeleteTeam}
+                />
               ))}
             </div>
           )}
@@ -689,7 +978,7 @@ function Team() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Edit Member Dialog ── */}
+      {/* ════════════════════ Edit Member Dialog ════════════════════ */}
       <Dialog open={editDialogOpen} onOpenChange={(o) => { setEditDialogOpen(o); if (!o) setEditErrors({}); }}>
         <DialogContent className="sm:max-w-[600px] p-0 gap-0">
           <DialogHeader className="px-6 py-4 border-b border-border">
@@ -702,13 +991,15 @@ function Team() {
           <DialogFooter className="px-6 py-4 border-t border-border gap-2">
             <Button variant="outline" size="sm" className="h-9" onClick={() => setEditDialogOpen(false)} disabled={editLoading}>Cancel</Button>
             <Button size="sm" className="h-9 min-w-[110px] text-white" onClick={handleEditMember} disabled={editLoading}>
-              {editLoading ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</span> : 'Save Changes'}
+              {editLoading
+                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</span>
+                : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Member Dialog ── */}
+      {/* ════════════════════ Delete Member Dialog ════════════════════ */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -723,46 +1014,191 @@ function Team() {
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" className="h-9" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>Cancel</Button>
             <Button variant="destructive" size="sm" className="h-9 min-w-[100px]" onClick={handleDeleteMember} disabled={deleteLoading}>
-              {deleteLoading ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Removing...</span> : 'Remove'}
+              {deleteLoading
+                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Removing...</span>
+                : 'Remove'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit Custom Team Dialog ── */}
-      <Dialog open={editTeamDialogOpen} onOpenChange={(o) => { setEditTeamDialogOpen(o); if (!o) setEditTeamErrors({}); }}>
-        <DialogContent className="sm:max-w-[480px] p-0 gap-0">
+      {/* ════════════════════ Edit Custom Team Dialog (tabbed) ════════════════════ */}
+      <Dialog open={editTeamDialogOpen} onOpenChange={(o) => {
+        setEditTeamDialogOpen(o);
+        if (!o) { setEditTeamErrors({}); setEditTeamTab('details'); }
+      }}>
+        <DialogContent className="sm:max-w-[520px] p-0 gap-0">
           <DialogHeader className="px-6 py-4 border-b border-border">
             <DialogTitle className="text-base font-semibold">Edit team</DialogTitle>
+            <DialogDescription className="text-sm mt-0.5">Update team info or manage its members.</DialogDescription>
           </DialogHeader>
-          <div className="px-6 py-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label>Team name <span className="text-red-500">*</span></Label>
-              <Input value={editTeamData.teamName} onChange={e => handleEditTeamInputChange('teamName', e.target.value)}
-                className={editTeamErrors.teamName ? 'border-red-500' : ''} />
-              {editTeamErrors.teamName && <p className="text-xs text-red-500">{editTeamErrors.teamName}</p>}
+
+          {/* Inner tabs */}
+          <Tabs value={editTeamTab} onValueChange={setEditTeamTab} className="w-full">
+            <div className="px-6 pt-3">
+              <TabsList className="grid w-full grid-cols-2 h-8">
+                <TabsTrigger value="details"  className="text-xs">Details</TabsTrigger>
+                <TabsTrigger value="members"  className="text-xs">
+                  Members
+                  {editTeamMembers.length > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-medium">
+                      {editTeamMembers.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
             </div>
-            <div className="space-y-1.5">
-              <Label>Tagline <span className="text-red-500">*</span></Label>
-              <Input value={editTeamData.tagline} onChange={e => handleEditTeamInputChange('tagline', e.target.value)}
-                className={editTeamErrors.tagline ? 'border-red-500' : ''} />
-              {editTeamErrors.tagline && <p className="text-xs text-red-500">{editTeamErrors.tagline}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Input value={editTeamData.teamDescription} onChange={e => handleEditTeamInputChange('teamDescription', e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter className="px-6 py-4 border-t border-border gap-2">
-            <Button variant="outline" size="sm" className="h-9" onClick={() => setEditTeamDialogOpen(false)} disabled={editTeamLoading}>Cancel</Button>
-            <Button size="sm" className="h-9 min-w-[110px] text-white" onClick={handleEditTeam} disabled={editTeamLoading}>
-              {editTeamLoading ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</span> : 'Save Changes'}
-            </Button>
-          </DialogFooter>
+
+            {/* ── Details tab ── */}
+            <TabsContent value="details" className="mt-0">
+              <div className="px-6 py-5 space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Team name <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={editTeamData.teamName}
+                    onChange={e => handleEditTeamInputChange('teamName', e.target.value)}
+                    className={editTeamErrors.teamName ? 'border-red-500' : ''}
+                  />
+                  {editTeamErrors.teamName && <p className="text-xs text-red-500">{editTeamErrors.teamName}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tagline <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={editTeamData.tagline}
+                    onChange={e => handleEditTeamInputChange('tagline', e.target.value)}
+                    className={editTeamErrors.tagline ? 'border-red-500' : ''}
+                  />
+                  {editTeamErrors.tagline && <p className="text-xs text-red-500">{editTeamErrors.tagline}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Description</Label>
+                  <Input
+                    value={editTeamData.teamDescription}
+                    onChange={e => handleEditTeamInputChange('teamDescription', e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter className="px-6 py-4 border-t border-border gap-2">
+                <Button variant="outline" size="sm" className="h-9" onClick={() => setEditTeamDialogOpen(false)} disabled={editTeamLoading}>
+                  Cancel
+                </Button>
+                <Button size="sm" className="h-9 min-w-[110px] text-white" onClick={handleEditTeam} disabled={editTeamLoading}>
+                  {editTeamLoading
+                    ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</span>
+                    : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </TabsContent>
+
+            {/* ── Members tab ── */}
+            <TabsContent value="members" className="mt-0">
+              <div className="px-6 py-5 space-y-4">
+
+                {/* Current members list */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current members</Label>
+                  {editTeamMembers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-3 text-center">No members yet.</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {editTeamMembers.map(m => (
+                        <div
+                          key={m.memberId}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-secondary/30"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Initials name={m.displayName} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate leading-tight">{m.displayName}</p>
+                              {m.isLeader && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                  <Crown className="w-2.5 h-2.5" /> Leader
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={removingMemberId === m.memberId}
+                            onClick={() => handleRemoveMemberFromTeam(m.memberId)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-40"
+                          >
+                            {removingMemberId === m.memberId
+                              ? <span className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin block" />
+                              : <UserMinus className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border" />
+
+                {/* Add member section */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Add member</Label>
+                  <div className="flex gap-2">
+                    <Select value={addMemberSelectId} onValueChange={setAddMemberSelectId}>
+                      <SelectTrigger className="flex-1 h-9">
+                        <SelectValue placeholder="Select member to add" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableToAdd.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground">All members already added</div>
+                        ) : (
+                          availableToAdd.map(member => (
+                            <SelectItem key={member.memberId} value={String(member.memberId)}>
+                              {member.profile?.displayName}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 px-3 shrink-0"
+                      onClick={handleAddMemberToTeam}
+                      disabled={!addMemberSelectId || addMemberLoading}
+                    >
+                      {addMemberLoading
+                        ? <span className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                        : <UserPlus className="w-4 h-4" />}
+                    </Button>
+                  </div>
+
+                  {/* Make leader toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer w-fit mt-1">
+                    <input
+                      type="checkbox"
+                      checked={addMemberIsLeader}
+                      onChange={e => setAddMemberIsLeader(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded accent-amber-500"
+                    />
+                    <span className="text-xs flex items-center gap-1 text-muted-foreground">
+                      <Crown className="w-3 h-3 text-amber-500" />
+                      Add as team leader
+                    </span>
+                    {addMemberIsLeader && editTeamMembers.some(m => m.isLeader) && (
+                      <span className="text-[10px] text-red-500">(current leader will remain — remove them first)</span>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <DialogFooter className="px-6 py-4 border-t border-border">
+                <Button variant="outline" size="sm" className="h-9" onClick={() => setEditTeamDialogOpen(false)}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Custom Team Dialog ── */}
+      {/* ════════════════════ Delete Custom Team Dialog ════════════════════ */}
       <Dialog open={deleteTeamDialogOpen} onOpenChange={setDeleteTeamDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -777,7 +1213,9 @@ function Team() {
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" className="h-9" onClick={() => setDeleteTeamDialogOpen(false)} disabled={deleteTeamLoading}>Cancel</Button>
             <Button variant="destructive" size="sm" className="h-9 min-w-[100px]" onClick={handleDeleteTeam} disabled={deleteTeamLoading}>
-              {deleteTeamLoading ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting...</span> : 'Delete'}
+              {deleteTeamLoading
+                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting...</span>
+                : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

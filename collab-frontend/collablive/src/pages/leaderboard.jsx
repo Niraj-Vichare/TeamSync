@@ -103,7 +103,7 @@ function Leaderboard() {
                 avatar: getInitials(r.userName),
                 score: Math.round(r.currentScore),
                 ticketsCompleted: r.currentMetrics.ticketsCompleted,  // was ticketCompleted
-                efficiency: Math.round(r.currentMetrics.efficiency * 100),
+                efficiency: Math.round(r.currentMetrics.efficiency *     100),
                 change: r.comparison.rankChange,
                 trend: getTrendType(r.comparison.rankChangeType),
                 userId: r.userId
@@ -245,7 +245,7 @@ function Leaderboard() {
                             <div className="col-span-4">Team Member</div>
                             <div className="col-span-2">Score</div>
                             <div className="col-span-2">Tickets</div>
-                            <div className="col-span-2">Efficiency</div>
+                            {/* <div className="col-span-2">Efficiency</div> */}
                             <div className="col-span-1">Trend</div>
                         </div>
 
@@ -318,7 +318,7 @@ function Leaderboard() {
                                                 <p className="text-xs text-muted-foreground">completed</p>
                                             </div>
 
-                                            <div className="col-span-2">
+                                            {/* <div className="col-span-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
                                                         <motion.div
@@ -332,7 +332,7 @@ function Leaderboard() {
                                                         {member.efficiency}%
                                                     </span>
                                                 </div>
-                                            </div>
+                                            </div> */}
 
                                             <div className="col-span-1">
                                                 <div className="flex items-center gap-1">

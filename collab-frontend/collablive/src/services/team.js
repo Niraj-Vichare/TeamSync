@@ -1,32 +1,30 @@
 import { handleTeamError } from "@/lib/handleTeamError";
 import axiosInstance from "./axiosInstance";
 
-class TeamService{
-  async getTeamMembers(workspaceGuid,search,filter,pageNumber,pageSize)
-  {
-    try{
-        const response = await axiosInstance.get("/teams/members",{
-            params: { workspaceGuid, search, filter, pageNumber, pageSize }
-        })
-        return response;
-    }catch(error){
-        console.error("Error while getting the team members",error);
-        throw handleTeamError(error);
+class TeamService {
+    async getTeamMembers(workspaceGuid, search, filter, pageNumber, pageSize) {
+        try {
+            const response = await axiosInstance.get("/teams/members", {
+                params: { workspaceGuid, search, filter, pageNumber, pageSize }
+            })
+            return response;
+        } catch (error) {
+            console.error("Error while getting the team members", error);
+            throw handleTeamError(error);
+        }
     }
-  }
 
-  async deleteTeamMember(memberId){
-    try{
-        const response = await axiosInstance.delete(`/teams?memberId=${memberId}`);
-        return response.data;
-    }catch(error){
-        console.error("Error while deleting the team members",error);
-        throw handleTeamError(error);
+    async deleteTeamMember(memberId) {
+        try {
+            const response = await axiosInstance.delete(`/teams?memberId=${memberId}`);
+            return response;
+        } catch (error) {
+            console.error("Error while deleting the team members", error);
+            throw handleTeamError(error);
+        }
     }
-  }
 
-  async updateMember(workspaceGuid, memberData) 
-  {
+    async updateMember(workspaceGuid, memberData) {
         try {
             const response = await axiosInstance.put(`/teams/member?workspaceGuid=${workspaceGuid}`, memberData);
             return response;
@@ -36,74 +34,99 @@ class TeamService{
         }
     }
 
-  async addTeamMember(workspaceGuid,member)
-  {
-    console.log("Adding member:",member);
-    try{
-        const response = await axiosInstance.post(`/teams/member/create?workspaceGuid=${workspaceGuid}`,
-            member
+    async addTeamMember(workspaceGuid, member) {
+        console.log("Adding member:", member);
+        try {
+            const response = await axiosInstance.post(`/teams/member/create?workspaceGuid=${workspaceGuid}`,
+                member
+            );
+            return response;
+        } catch (error) {
+            console.error("Error while adding the team member", error);
+            throw handleTeamError(error);
+        }
+    }
+
+    async getProjectTeam(workspaceGuid) {
+        try {
+            const response = await axiosInstance.get(`/teams/custom?workspaceGuid=${workspaceGuid}`);
+            return response;
+        } catch (error) {
+            throw handleTeamError(error);
+        }
+    }
+
+    async getDepartmentTeams(workspaceGuid) {
+        try {
+            const response = await axiosInstance.get(`/teams/department?workspaceGuid=${workspaceGuid}`);
+            return response;
+        } catch (error) {
+            throw handleTeamError(error);
+        }
+    }
+    async deleteProjectTeam(workspaceGuid, teamId) {
+        try {
+            const response = await axiosInstance.delete(
+                `/teams/remove?workspaceGuid=${workspaceGuid}&teamId=${teamId}`
+            );
+            return response;
+        } catch (error) {
+            console.error("Error while deleting the team", error);
+            throw handleTeamError(error);
+        }
+    }
+
+    async getTeamDropdown(workspaceGuid) {
+        try {
+            const response = await axiosInstance.get(`/teams/dropdown?workspaceGuid=${workspaceGuid}`)
+            return response.data;
+
+        } catch (error) {
+            console.error('Error while get team dropdown', error);
+            throw handleTeamError(error);
+        }
+    }
+
+    async createProjectTeam(workspaceGuid, team) {
+        try {
+            const response = await axiosInstance.post(`/teams/create?workspaceGuid=${workspaceGuid}`,
+                team
+            );
+            return response;
+        } catch (error) {
+            console.error("Error while creating the team", error);
+            throw handleTeamError(error);
+        }
+    }
+
+    async updateProjectTeam(workspaceGuid, teamData) {
+        try {
+            const response = await axiosInstance.put(
+                `/teams/update?workspaceGuid=${workspaceGuid}`,
+                teamData
+            );
+            return response;
+        } catch (error) {
+            console.error("Error while updating the team", error);
+            throw handleTeamError(error);
+        }
+    }
+    async addMemberToTeam(workspaceGuid, payload) {
+        // payload: { teamId, memberId, isLeader }
+        const response = await axiosInstance.post(
+            `/teams/custom/member/add?workspaceGuid=${workspaceGuid}`, payload
         );
         return response;
-    }catch(error){
-        console.error("Error while adding the team member",error);
-        throw handleTeamError(error);
     }
-  }
 
-  async getProjectTeam(workspaceGuid){
-    try{
-        const response = await axiosInstance.get(`/teams/custom?workspaceGuid=${workspaceGuid}`);
-        return response.data;
-    }catch(error){
-        throw handleTeamError(error);
-    }
-  }
-
-  async getDepartmentTeams(workspaceGuid){
-    try{
-        const response = await axiosInstance.get(`/teams/department?workspaceGuid=${workspaceGuid}`);
-        return response.data;
-    }catch(error){
-        throw handleTeamError(error);
-    }
-  }
-
-  async getTeamDropdown(workspaceGuid){
-    try{
-        const response = await axiosInstance.get(`/teams/dropdown?workspaceGuid=${workspaceGuid}`)
-        return response.data;
-
-    }catch(error){
-        console.error('Error while get team dropdown',error);
-        throw handleTeamError(error);
-    }
-  }
-
-  async createProjectTeam(workspaceGuid,team)
-  {
-    try{
-        const response = await axiosInstance.post(`/teams/create?workspaceGuid=${workspaceGuid}`,
-            team
+    async removeMemberFromTeam(workspaceGuid, payload) {
+        // payload: { teamId, memberId }
+        const response = await axiosInstance.post(
+            `/teams/custom/member/remove?workspaceGuid=${workspaceGuid}`,
+            { data: payload }
         );
         return response;
-    }catch(error){
-        console.error("Error while creating the team",error);
-        throw handleTeamError(error);
     }
-  }
-
-  async updateProjectTeam(teamId, teamData)
-  {
-    try{
-        const response = await axiosInstance.put(`/teams/update?teamId=${teamId}`,
-            teamData
-        );
-        return response;
-    }catch(error){
-        console.error("Error while updating the team",error);
-        throw handleTeamError(error);
-    }
-  }
 
 }
 
