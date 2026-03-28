@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Interfaces;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Supabase.Gotrue;
 using Supabase.Interfaces;
@@ -18,14 +19,14 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             _supabaseClient = supabaseClient;
         }
-        public async Task<string> CreateWorkspace(string ownerId, string name,string description)
+        public async Task<(string,int)> CreateWorkspace(string ownerId, string name,string description)
         {
             var profile = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == ownerId).Get();
             
 
             if (profile.Models.Count == 0)
             {
-                return string.Empty; // Profile not found
+                return (string.Empty,0); // Profile not found
             }
             int siteuserId = profile.Models.FirstOrDefault().Id;
 
@@ -53,7 +54,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 };
                 await _supabaseClient.From<WorkspaceUserMapping>().Insert(mapping);
             }
-            return result.Models.FirstOrDefault().WorkspaceGuid;
+            return (result.Models.FirstOrDefault().WorkspaceGuid,result.Models.FirstOrDefault().Id);
         }
 
         public async Task<List<WorkspaceUserMapping>> GetWorkspaces(string userGuid)
@@ -152,5 +153,31 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Delete();
             return true;
         }
+
+
+        public async Task<List<string>> GetAllActiveWorkspaceGuid()
+        {
+            var workspaces = await _supabaseClient.From<Workspace>().Get();
+            if(workspaces == null)
+            {
+                return null;
+            }
+            return workspaces.Models.Select(wo => wo.WorkspaceGuid).ToList();
+        }
+        public async Task<List<WorkspaceInfoDto>> GetAllWorkspaceInfo()
+        {
+            var workspaces = await _supabaseClient.From<Workspace>().Get();
+            if (workspaces == null)
+            {
+                return null;
+            }
+            return workspaces.Models.Select(wo=>new WorkspaceInfoDto
+            {
+                WorkspaceGuid = wo.WorkspaceGuid,
+                WorkspaceId = wo.Id
+            }).ToList();
+
+        }
+
     }
 }

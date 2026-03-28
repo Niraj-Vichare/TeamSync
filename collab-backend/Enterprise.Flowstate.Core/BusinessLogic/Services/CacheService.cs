@@ -27,7 +27,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
         #region Fluent Entry Points
-        public WorkspaceCacheContext Workspace(string workspaceId) => new(workspaceId, this);
+        public WorkspaceCacheContext Workspace(string workspaceGuid,int workspaceId) => new(workspaceGuid,workspaceId, this);
         public GlobalUserCacheContext User(string userId) => new(userId, this);
         #endregion
 
@@ -117,15 +117,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        public async Task UpsertUserMetricAsync(string workspaceId, string userId, RankingCacheModel metric)
+        public async Task UpsertUserMetricAsync(string workspaceGuid, string userId, RankingCacheModel metric)
         {
-            var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, userId);
+            var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceGuid, userId);
             await SetAsync(key, metric, TimeSpan.FromDays(7));
         }
 
-        public async Task<RankingCacheModel?> GetUserMetricAsync(string workspaceId, string userId)
+        public async Task<RankingCacheModel?> GetUserMetricAsync(string workspaceGuid, string userId)
         {
-            var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, userId);
+            var key = string.Format(FlowStateConstants.Cache.UserMetric, workspaceGuid, userId);
             return await GetAsync<RankingCacheModel>(key);
         }
 
@@ -183,12 +183,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
         public async Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(
-     string workspaceId, int pageNumber, int pageSize)
+     string workspaceGuid, int pageNumber, int pageSize)
         {
             int start = (pageNumber - 1) * pageSize;
             int stop = start + pageSize - 1;
 
-            var rankingKey = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceId);
+            var rankingKey = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceGuid);
 
             var userIds = await _db.SortedSetRangeByRankAsync(rankingKey, start, stop, Order.Descending);
             if (userIds.Length == 0) return new Dictionary<string, RankingCacheModel>();
@@ -199,7 +199,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 .Select(id => (
                     userId: id.ToString(),
                     task: batch.StringGetAsync(
-                        string.Format(FlowStateConstants.Cache.UserMetric, workspaceId, id.ToString()))
+                        string.Format(FlowStateConstants.Cache.UserMetric, workspaceGuid, id.ToString()))
                 ))
                 .ToList();
 
@@ -299,11 +299,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         #endregion
 
         #region Bulk Operations
-        public async Task AddPendingUpdateAsync(string workspaceId, string userId)
+        public async Task AddPendingUpdateAsync(string workspaceGuid, string userId)
         {
             try
             {
-                var key = string.Format(FlowStateConstants.Cache.WorkspacePendingUpdates, workspaceId);
+                var key = string.Format(FlowStateConstants.Cache.WorkspacePendingUpdates, workspaceGuid);
                 await _db.SetAddAsync(key, userId);
             }
             catch (Exception ex)
@@ -312,11 +312,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
         }
 
-        public async Task<List<string>> GetAndClearPendingUpdatesAsync(string workspaceId)
+        public async Task<List<string>> GetAndClearPendingUpdatesAsync(string workspaceGuid,int workspaceId)
         {
             try
             {
-                var key = string.Format(FlowStateConstants.Cache.WorkspacePendingUpdates, workspaceId);
+                var key = string.Format(FlowStateConstants.Cache.WorkspacePendingUpdates, workspaceGuid);
                 var processingKey = $"{key}:processing:{Guid.NewGuid():N}";
 
                 if (!await _db.KeyExistsAsync(key)) return [];
@@ -372,6 +372,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             var key = string.Format(FlowStateConstants.Cache.UserRole, workspaceId, userId);
             await SetStringAsync(key, roleName);
+        }
+
+        public async Task<int> GetUserId(string workspaceGuid, string userGuid)
+        {
+            var key = string.Format(FlowStateConstants.Cache.UserId, workspaceGuid, userGuid);
+            string userId = await GetStringAsync(key);
+            return Convert.ToInt32(userId);
         }
 
         public async Task InvalidateUserRoleAsync(string userId, string workspaceId)

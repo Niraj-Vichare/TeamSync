@@ -21,5 +21,6 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public string? Email { get; set; }
         public User? User { get; set; }
         public bool IsLeader { get; set; }
+        public string? Phone { get; set; }
     }
 }

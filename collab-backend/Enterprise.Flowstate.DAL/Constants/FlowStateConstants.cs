@@ -39,6 +39,7 @@
             public const string UserMetricPrevious = "workspace:{0}:user:{1}:previous";
             // workspace:{guid}:user:{userId}:role
             public const string UserRole = "workspace:{0}:user:{1}:role";
+            public const string UserId = "workspace:{0}:user:{1}:userId";
             // workspace:{guid}:user:{userId}:permissions
             public const string UserPermissions = "workspace:{0}:user:{1}:permissions";
 

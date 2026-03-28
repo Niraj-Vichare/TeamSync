@@ -25,7 +25,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 return string.Empty;
             }
-            string workspaceGuid = await _omniRepository.WorkspaceRepository.CreateWorkspace(userClaimsId, name, description);
+            (string workspaceGuid, int workspaceId) = await _omniRepository.WorkspaceRepository.CreateWorkspace(userClaimsId, name, description);
+
             if (!string.IsNullOrEmpty(workspaceGuid))
             {
                 int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
@@ -44,9 +45,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     UserProfilePic = profile.ProfileImageUrl
                 };
                 #region Cache Things
-                var ws = _cache.Workspace(workspaceGuid);
+                var ws = _cache.Workspace(workspaceGuid,workspaceId);
                 await ws.User(userClaimsId).Metric.UpsertAsync(userMetric);
                 await ws.User(userClaimsId).Role.SetAsync(AuthEnums.RoleEnum.Owner.ToString());
+                await ws.User(userClaimsId).UserId.SetAsync(profile.Id.ToString());
                 await ws.Ranking.UpdateAsync(userClaimsId, 0); 
                 await _cache.SetStringAsync(
                     string.Format(FlowStateConstants.Cache.UserWorkspace, userClaimsId),
@@ -133,6 +135,18 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task<List<int>> GetAllActiveWorkspaceIds()
         {
             var response = await _omniRepository.WorkspaceRepository.GetAllActiveWorkspaceIds();
+            return response;
+        }
+
+        public async Task<List<string>> GetAllActiveWorkspaceGuid()
+        {
+            var response = await _omniRepository.WorkspaceRepository.GetAllActiveWorkspaceGuid();
+            return response;
+        }
+
+        public async Task<List<WorkspaceInfoDto>> GetAllWorkspaceInfo()
+        {
+            var response = await _omniRepository.WorkspaceRepository.GetAllWorkspaceInfo();
             return response;
         }
 

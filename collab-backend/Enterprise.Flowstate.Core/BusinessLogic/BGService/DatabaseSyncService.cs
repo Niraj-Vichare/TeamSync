@@ -70,24 +70,24 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
             try
             {
-                var activeWorkspaceIds = await omniService.WorkspaceService.GetAllActiveWorkspaceIds();
+                var workspaceInfos = await omniService.WorkspaceService.GetAllWorkspaceInfo();
                 int totalSynced = 0;
                 int totalErrors = 0;
 
-                foreach (var workspaceId in activeWorkspaceIds)
+                foreach (var workspaceInfo in workspaceInfos)
                 {
                     if (stoppingToken.IsCancellationRequested)
                         break;
 
                     try
                     {
-                        var synced = await SyncWorkspaceDataAsync(workspaceId,cache,omniService,stoppingToken);
+                        var synced = await SyncWorkspaceDataAsync(workspaceInfo.WorkspaceGuid,workspaceInfo.WorkspaceId, cache,omniService,stoppingToken);
                         totalSynced += synced;
                     }
                     catch (Exception ex)
                     {
                         totalErrors++;
-                        _logger.LogError(ex, "Error syncing workspace {WorkspaceId}", workspaceId);
+                        _logger.LogError(ex, "Error syncing workspace {WorkspaceId}", workspaceInfo.WorkspaceId);
                     }
                 }
 
@@ -104,36 +104,37 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
 
         }
-        private async Task<int> SyncWorkspaceDataAsync(int workspaceId,ICache cache,IOmniService omniService,CancellationToken stoppingToken)
+        private async Task<int> SyncWorkspaceDataAsync(string workspaceGuid,int workspaceId,ICache cache,IOmniService omniService,CancellationToken stoppingToken)
         {
-            string workspaceIdInString = workspaceId.ToString();
-            var pendingUserIds = await cache.GetAndClearPendingUpdatesAsync(workspaceIdInString);
+            var pendingUserGuids = await cache.GetAndClearPendingUpdatesAsync(workspaceGuid,workspaceId);
 
-            if (!pendingUserIds.Any())
+            if (!pendingUserGuids.Any())
             {
-                _logger.LogDebug("No pending updates for workspace {WorkspaceId}", workspaceIdInString);
+                _logger.LogDebug("No pending updates for workspace {WorkspaceId}", workspaceId);
                 return 0;
             }
             _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceId}",
-            pendingUserIds.Count, workspaceIdInString);
+            pendingUserGuids.Count, workspaceId);
 
             var (currentWeekStart,currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
             int syncedCount = 0;
-            foreach(var userId in pendingUserIds)
+            foreach(var userGuid in pendingUserGuids)
             {
                 if (stoppingToken.IsCancellationRequested)
                     break;
                 try
                 {
-                    RankingCacheModel metric = await cache.GetUserMetricAsync(workspaceIdInString, userId);
+                    RankingCacheModel metric = await cache.GetUserMetricAsync(workspaceGuid, userGuid);
 
                     if (metric == null)
                     {
                         _logger.LogWarning("Metric not found in Redis for user {UserId} workspace {WorkspaceId}",
-                            userId, workspaceIdInString);
+                            userGuid, workspaceGuid);
                         continue;
                     }
-                    var rank = await cache.GetUserRankAsync(workspaceIdInString, userId);
+                    var rank = await cache.GetUserRankAsync(workspaceGuid, userGuid);
+
+                    int userId = await cache.GetUserId(workspaceGuid, userGuid);
 
                     WeeklyUserStatsDto userMetric = new WeeklyUserStatsDto
                     {
@@ -144,7 +145,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                         TotalHours = metric.TotalHours,
                         RankPosition = (int)(rank ?? 0),
                         TicketsCompleted = metric.TotalTicketCompleted,
-                        UserId = Convert.ToInt32(userId),
+                        UserId = userId,
                         WorkspaceId = workspaceId,
                         EndPeriod = currentWeekEnd,
                         StartPeriod = currentWeekStart,
@@ -157,7 +158,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                 catch(Exception ex)
                 {
                     _logger.LogError(ex, "Error syncing user {UserId} in workspace {WorkspaceId}",
-                    userId, workspaceIdInString);
+                    userGuid, workspaceGuid);
                 }
             }
             return syncedCount;

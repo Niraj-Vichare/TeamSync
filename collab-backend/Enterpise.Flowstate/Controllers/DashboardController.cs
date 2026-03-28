@@ -11,7 +11,6 @@ using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 namespace Enterprise.Flowstate.Controllers
 {
     [Route("dashboard")]
-    [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member)]
     public class DashboardController : AuthBaseController
     {
         public IOmniService _omniService;

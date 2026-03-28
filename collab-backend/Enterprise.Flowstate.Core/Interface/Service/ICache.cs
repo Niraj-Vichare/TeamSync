@@ -13,11 +13,11 @@ public interface ICache
     Task<string> GetStringAsync(string key);
     Task<bool> SetStringAsync(string key, string value, TimeSpan? expiry = null);
     Task<(long rank, double score)> UpdateWorkspaceRankingAtomicAsync(string workspaceId, string userId, double score);
-    System.Threading.Tasks.Task UpsertUserMetricAsync(string workspaceId, string userId, RankingCacheModel metric);
+    System.Threading.Tasks.Task UpsertUserMetricAsync(string workspaceGuid, string userId, RankingCacheModel metric);
     Task<Dictionary<string, RankingCacheModel>> GetWorkspaceRankingsAsync(string workspaceId, int pageNumber, int pageSize);
     Task<int?> GetUserRankAsync(string workspaceId, string userId);
     System.Threading.Tasks.Task AddPendingUpdateAsync(string workspaceId, string userId);
-    Task<List<string>> GetAndClearPendingUpdatesAsync(string workspaceId);
+    Task<List<string>> GetAndClearPendingUpdatesAsync(string workspaceGuid,int workspaceId);
     Task<int?> GetPreviousWeekRankAsync(string workspaceId, string userId);
     Task<RankingCacheModel> GetPreviousWeekMetricAsync(string workspaceId, string userId);
     Task<double?> GetPreviousWeekScoreAsync(string workspaceId, string userId);
@@ -33,8 +33,11 @@ public interface ICache
     Task<string> GetUserRoleAsync(string userId, string workspaceId);
     System.Threading.Tasks.Task SetUserRoleAsync(string userId, string workspaceId, string roleName);
     System.Threading.Tasks.Task InvalidateUserRoleAsync(string userId, string workspaceId);
+    System.Threading.Tasks.Task<int> GetUserId(string workspaceGuid, string userGuid);
 
     // ── Only NEW additions ──────────────────────────────────────────────
-    WorkspaceCacheContext Workspace(string workspaceId);
+    WorkspaceCacheContext Workspace(string workspaceGuid,int workspaceId);
     GlobalUserCacheContext User(string userId);
+
+
 }

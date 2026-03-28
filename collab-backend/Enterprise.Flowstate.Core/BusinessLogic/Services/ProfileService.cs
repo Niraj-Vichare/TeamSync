@@ -64,7 +64,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Guid = result.Guid,
                 ProfileImageUrl = result.ProfileImageUrl,
                 UpdatedAt = result.UpdatedAt,
-                WorkspaceId = result.WorkspaceId
+                WorkspaceId = result.WorkspaceId,
+                Email = result.Email,
             };
             return profile;
         }

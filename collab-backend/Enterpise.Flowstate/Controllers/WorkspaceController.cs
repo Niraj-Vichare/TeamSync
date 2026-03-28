@@ -204,8 +204,7 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-
-        [HttpGet("dropdown")]
+        [HttpGet("user/dropdown")]
         public async Task<ApiResponseModel<object>> GetWorkspaceUsers([FromQuery] string workspaceGuid)
         {
             try

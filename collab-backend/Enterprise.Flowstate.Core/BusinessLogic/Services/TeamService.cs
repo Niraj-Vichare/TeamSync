@@ -370,11 +370,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             bool deletedMapping = await _omniRepository.WorkspaceRepository.RemoveUserFromWorkspace(workspaceGuid, profileId);
 
+            int workspaceId = _omniRepository.WorkspaceRepository.GetWorkspaceId(workspaceGuid).GetAwaiter().GetResult();
+
             bool isDeleted = deletedMember && deletedMapping;
 
             if (isDeleted)
             {
-                var ws = _cache.Workspace(workspaceGuid);
+                var ws = _cache.Workspace(workspaceGuid, workspaceId);
                 await ws.User(profileGuid).Role.DeleteAsync();
                 await ws.User(profileGuid).Metric.DeleteAsync();
 

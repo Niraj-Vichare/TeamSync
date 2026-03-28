@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Models;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Models;
 using Supabase.Gotrue;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface IWorkspaceRepository
     {
-        Task<string> CreateWorkspace(string userIdClaims, string name, string description);
+        Task<(string,int)> CreateWorkspace(string userIdClaims, string name, string description);
         Task<List<WorkspaceUserMapping>> GetWorkspaces(string userGuid);
         Task<bool> HasWorkspace(string email);
         Task<int> GetWorkspaceId(string workspaceGuid);
@@ -20,5 +21,8 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<int> GetUserWorkspaceInfo(string workspaceGuid,string userId);
         Task<bool> UpdateUserRole(string workspaceGuid, int profileId, int roleId);
         Task<bool> RemoveUserFromWorkspace(string workspaceGuid, int profileId);
+        Task<List<string>> GetAllActiveWorkspaceGuid();
+        Task<List<WorkspaceInfoDto>> GetAllWorkspaceInfo();
+
     }
 }

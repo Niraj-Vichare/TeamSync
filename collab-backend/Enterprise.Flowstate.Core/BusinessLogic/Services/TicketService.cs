@@ -11,9 +11,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     {
         private IOmniRepository _omniRepository;
         private readonly IEventPublisher _eventPublisher;
-        public TicketService(IOmniRepository omniRepository)
+        public TicketService(IOmniRepository omniRepository,IEventPublisher eventPublisher)
         {
             _omniRepository = omniRepository;
+            _eventPublisher = eventPublisher;
         }
 
         public async Task<bool> DeleteTicket(string ticketId)
@@ -82,9 +83,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         TicketGuid = ticketGuid.ToString(),
                         UserGuid = userId,
                         EventGuid = Guid.NewGuid().ToString(),
+                        WorkspaceGuid = ticketDto.WorkspaceGuid
                     };
 
-                    string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
+                    string json = System.Text.Json.JsonSerializer.Serialize(eventLogDto);
                     byte[] body = Encoding.UTF8.GetBytes(json);
                     await _eventPublisher.PublishAsync(eventLogDto, 0);
                 }
@@ -97,6 +99,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         EventDescription = "Ticket is updated",
                         TicketGuid = ticketId,
                         UserGuid = userId,
+                        WorkspaceGuid = ticketDto.WorkspaceGuid,
                         EventGuid = Guid.NewGuid().ToString(),
                     };
                 }
@@ -174,7 +177,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         }
 
-        public async Task<bool> CreateTicket(string userId, TicketDto ticketDto)
+        public async Task<bool> CreateTicket(string workspaceGuid, TicketDto ticketDto)
         {
             Ticket ticket = new Ticket()
             {
@@ -204,7 +207,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     EventTypeId = (int)GeneralEnums.EventType.TicketCreated,
                     EventDescription = "Ticket is created.",
                     TicketGuid = ticket.TicketGuid.ToString(),
-                    UserGuid = userId,
+                    WorkspaceGuid = workspaceGuid,
                 };
                 await _omniRepository.ProfileRepository.AddEventLog(eventLog);
             }

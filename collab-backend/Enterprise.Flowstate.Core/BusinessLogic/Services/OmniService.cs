@@ -44,7 +44,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             ProjectService = new ProjectService(_omniRepository,eventPublish);
             TeamService = new TeamService(_omniRepository,_client,_cache);
             SprintService = new SprintService(_omniRepository);
-            TicketService = new TicketService(_omniRepository);
+            TicketService = new TicketService(_omniRepository,eventPublish);
             DashboardService = new DashboardService(_omniRepository,_eventPublisher);
             RoleService = new RoleService(_omniRepository, _cache);
         }

@@ -25,6 +25,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public string? ProjectName { get; set; }
         public int? ProjectId { get; set; }
         public int? SprintId { get; set; }
+        public string? WorkspaceGuid { get; set; }
         public string? SprintName { get; set; }
         public string? Steps { get; set; }
         public DateTime? UpdatedAt { get; set; }
