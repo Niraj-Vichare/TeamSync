@@ -4,10 +4,11 @@ import BillingTab from '@/components/settingComponents/BillingTab';
 import NotificationsTab from '@/components/settingComponents/NotificationsTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator'
+import { useAuth } from '@/context/AuthContext';
 import profileService from '@/services/profile';
 import { AnimatePresence,motion } from 'framer-motion';
 import { Bell, CreditCard, Palette, Shield, User } from 'lucide-react';
-import React, { useEffect, useState } from 'react'
+import React, { use, useEffect, useState } from 'react'
 
 function Settings() {
   const [activeTab, setActiveTab] = useState('account');

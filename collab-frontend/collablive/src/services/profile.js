@@ -5,7 +5,8 @@ class ProfileService{
     async getUserProfile()
     {
         try {
-            const response = await axiosInstance.get(`/profile?workspaceGuid=${workspaceGuid}`);
+            const response = await axiosInstance.get(`/user/profile`);
+            console.log("Profile data fetched:", response.data);
             return response;
         } catch (error) {
             console.error('Error while getting profile:', error);

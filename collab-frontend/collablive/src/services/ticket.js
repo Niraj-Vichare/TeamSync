@@ -35,6 +35,7 @@ class TicketService {
 
     async updateTicket(workspaceGuid, ticketGuid, ticketDto) {
         try {
+            ticketDto.workspaceGuid = workspaceGuid;
             const response = await axiosInstance.patch(`/tickets/${ticketGuid}`, ticketDto);
             return response.data;
         } catch (error) {

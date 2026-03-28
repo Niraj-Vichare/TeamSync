@@ -7,42 +7,91 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { Separator } from '../ui/separator';
 import profileService from '@/services/profile';
+import { email } from 'zod';
+import workspaceService from '@/services/workspace';
 
 function AccountTab({ profile }) {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    username: '',
+    displayName: '',
     email: '',
+    username: '',
     phone: '',
     bio: '',
-    language: 'en',
-    timezone: 'pst',
+    id: '',
+    guid: '',
   });
 
+  const [workspaces, setWorkspaces] = useState([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState('');
+
   const [loading, setLoading] = useState(false);
+  const firstName = formData.displayName.split(' ')[0] || '';
+  const lastName = formData.displayName.split(' ').slice(1).join(' ') || '';
 
   // When profile prop changes, populate the form
   useEffect(() => {
     if (profile) {
       setFormData({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        username: profile.username || '',
+        displayName: profile.displayName || '',
         email: profile.email || '',
+        username: profile.username || '',
         phone: profile.phone || '',
         bio: profile.bio || '',
-        language: profile.language || 'en',
-        timezone: profile.timezone || 'pst',
+        id: profile.id || '',
+        guid: profile.guid || '',
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    const fetchWorkspaces = async () => {
+      try {
+        const response = await workspaceService.getWorkspaces();
+        const data = response.data.data || [];
+
+        setWorkspaces(data);
+
+        const saved = localStorage.getItem('workspaceGuid');
+
+        const active =
+          saved ||
+          data[0]?.workspaceGuid ||
+          '';
+
+        setCurrentWorkspace(active);
+
+      } catch (error) {
+        console.error('Error fetching workspaces:', error);
+      }
+    };
+
+    fetchWorkspaces();
+  }, []);
 
   // Generic change handler for all inputs
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
+
+  const handleNameChange = (field, value) => {
+    const updatedFirst =
+      field === 'firstName' ? value : firstName;
+
+    const updatedLast =
+      field === 'lastName' ? value : lastName;
+
+    const newDisplayName = `${updatedFirst} ${updatedLast}`.trim();
+
+    setFormData(prev => ({
+      ...prev,
+      displayName: newDisplayName,
+    }));
+  };
+  const handleWorkspaceChange = (workspaceGuid) => {
+  setCurrentWorkspace(workspaceGuid);
+  localStorage.setItem('workspaceGuid', workspaceGuid);
+};
 
   // For Select components (since they don’t emit regular events)
   const handleSelectChange = (field, value) => {
@@ -85,18 +134,22 @@ function AccountTab({ profile }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" value={formData.firstName} onChange={handleChange} />
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => handleNameChange('firstName', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" value={formData.lastName} onChange={handleChange} />
+              <Input id="lastName" value={lastName} onChange={(e) => handleNameChange('lastName', e.target.value)} />
             </div>
           </div>
 
           {/* Username */}
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
-            <Input id="username" value={formData.username} onChange={handleChange} />
+            <Input id="username" value={formData.displayName} onChange={handleChange} />
             <p className="text-sm text-muted-foreground">
               This is your public display name. It can be your real name or a pseudonym.
             </p>
@@ -129,6 +182,29 @@ function AccountTab({ profile }) {
           </div>
 
           <Separator />
+          <div className="space-y-2">
+            <Label>Workspace</Label>
+
+            <Select
+              value={currentWorkspace}
+              onValueChange={handleWorkspaceChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+
+              <SelectContent>
+                {workspaces.map((ws) => (
+                  <SelectItem
+                    key={ws.workspaceGuid}
+                    value={ws.workspaceGuid}
+                  >
+                    {ws.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

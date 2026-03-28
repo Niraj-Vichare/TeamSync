@@ -108,14 +108,14 @@ export function NavUser({ user }) {
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={()=>navigate('/settings')}>
+              {/* <DropdownMenuItem onSelect={()=>navigate('/settings')}>
                 <IconCreditCard />
                 Billing
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={()=>navigate('/settings')}>
                 <IconNotification />
                 Notifications
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />

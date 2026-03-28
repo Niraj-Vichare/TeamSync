@@ -111,9 +111,19 @@ class WorkspaceService {
     // Get Workspace Profiles
     async getWorkspaceProfiles(workspaceGuid) {
         try {
-            const response = await axiosInstance.get(`/workspace/dropdown?workspaceGuid=${workspaceGuid}`);
+            const response = await axiosInstance.get(`/workspace/user/dropdown?workspaceGuid=${workspaceGuid}`);
             return response.data;
         } catch (error) {
+            throw error;
+        }
+    }
+
+    async getWorkspaces(){
+        try{
+            const response = await axiosInstance.get('/workspace/workspaces');
+            return response;
+        }catch(error){
+            console.error('Error while fetching workspaces:', error);
             throw error;
         }
     }
