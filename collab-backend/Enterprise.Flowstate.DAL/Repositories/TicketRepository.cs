@@ -1,6 +1,8 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Enterprise.Flowstate.DAL.Models.Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,7 +31,24 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return false;
         }
 
-        public async Task<bool> DeleteTicket(string ticketGuid)
+        public async Task<bool> IsCloseRequested(string ticketGuid)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return false;
+            var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Get();
+            if (result.Models.Any())
+            {
+                var ticket = result.Models.FirstOrDefault();    
+                if (ticket.StatusId == (int)TicketEnums.TicketStatus.Closed)
+                {
+                    return true;
+                }
+                return false;
+         
+            }
+            return false;
+        }
+            public async Task<bool> DeleteTicket(string ticketGuid)
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
                 return false; // invalid ticketGuid
@@ -352,6 +371,105 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var updateResponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Update(ticket);
 
             return updateResponse.Models.Any();
+        }
+
+        public async Task<List<TicketCommentDto>> GetTicketComments(string ticketGuid)
+        {
+            List<TicketCommentDto> ticketCommentDtos = new List<TicketCommentDto>();
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return null; // invalid ticketGuid
+            var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Get();
+            int ticketId = result.Models.FirstOrDefault().TicketId;
+            if(ticketId == 0)
+            {
+                return null;
+            }
+            var comments = await _supabaseClient.From<TicketComment>().Where(c => c.TicketId == ticketId).Select("*,profile:commented_by(display_name,avatar_url,guid)").Get();
+            for(int i = 0; i < comments.Models.Count; i++)
+            {
+                TicketCommentDto comment = new TicketCommentDto()
+                {
+                    AuthorAvatarUrl = comments.Models[i].Author?.ProfileImageUrl,
+                    AuthorName = comments.Models[i].Author?.DisplayName,
+                    AuthorGuid = comments.Models[i].Author?.Guid.ToString(),
+                    CommentText = comments.Models[i].CommentText,
+                    Id = (int)comments.Models[i].Id,  
+                };
+                ticketCommentDtos.Add(comment);
+            }
+            return ticketCommentDtos;
+        }
+
+        public async Task<bool> IsAssignedUser(string ticketGuid, string userGuid)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return false;
+            var result = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid ==guid).Get();
+            int userId = result.Models.FirstOrDefault().AssignedTo ?? 0;
+            var userResult = await _supabaseClient.From<Profile>().Where(p => p.Guid == userGuid).Get();
+            int assignedUserId = userResult.Models.FirstOrDefault().Id;
+            return userId == assignedUserId;
+        }
+        public async Task<bool> AddComment(string ticketGuid, string userId, AddCommentRequest commentRequest)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return false;
+            var ticketResult = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid ==guid).Get();
+            if (!ticketResult.Models.Any())
+            {
+                return false; // ticket not found
+            }
+            var ticket = ticketResult.Models.FirstOrDefault();
+
+            var userResult = await _supabaseClient.From<Profile>().Where(p => p.Guid == userId).Get();
+            if (!userResult.Models.Any())
+            {
+                return false; // user not found
+            }
+            var user = userResult.Models.FirstOrDefault();
+
+            TicketComment newComment = new TicketComment
+            {
+                TicketId = ticket.TicketId,
+                AuthorId = user.Id,
+                CommentText = commentRequest.CommentText,
+                Media = null,
+                CreateDate = DateTime.UtcNow
+            };
+
+            var insertResult = await _supabaseClient.From<TicketComment>().Insert(newComment);
+            return insertResult.Models.Any();
+
+        }
+
+        public async Task<bool> LogCloseRequest(string workspaceGuid,string ticketGuid,string reason)
+        {
+            if (!Guid.TryParse(ticketGuid, out var guid))
+                return false;
+            var ticket = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == guid).Get();
+            if(!ticket.Models.Any())
+            {
+                return false; // ticket not found
+            }
+            var workspace = await _supabaseClient.From<Workspace>().Where(w => w.WorkspaceGuid == workspaceGuid).Get();
+            if (!workspace.Models.Any())
+            {
+                return false; // workspace not found
+            }
+
+            var ticketId = ticket.Models.FirstOrDefault().TicketId;
+            TicketCloseRequest closeRequest = new TicketCloseRequest
+            {
+                Reason = reason,
+                Status = (int)TicketEnums.TicketCloseRequestStatus.Pending,
+                WorkspaceId = workspace.Models.FirstOrDefault().Id,
+                RequestedBy = ticket.Models.FirstOrDefault().AssignedTo,
+                TicketGuid = Guid.Parse(ticketGuid),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _supabaseClient.From<TicketCloseRequest>().Insert(closeRequest);
+            return true;
         }
     }
 }

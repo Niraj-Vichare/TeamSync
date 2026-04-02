@@ -11,6 +11,7 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
 		<PackageReference Include="Supabase" Version="1.1.1" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+		<PackageReference Include="System.Threading.RateLimiting" Version="10.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>

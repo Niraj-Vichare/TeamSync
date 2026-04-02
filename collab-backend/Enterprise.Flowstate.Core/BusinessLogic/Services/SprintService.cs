@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
-    public class SprintService:ISprintService
+    public class SprintService : ISprintService
     {
         private IOmniRepository _omniRepository;
         public SprintService(IOmniRepository omniRepository)
@@ -45,7 +45,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 EventsLog eventLog = new EventsLog
                 {
                     SprintGuid = sprint.SprintGuid,
-                    ProjectGuid = sprint?.Project?.ProjectId.ToString(),
+                    ProjectGuid = sprint.ProjectId?.ToString(),
                     EventDescription = "Sprint.Created",
                     CreatedAt = DateTime.UtcNow,
                     EventGuid = Guid.NewGuid().ToString(),
@@ -56,16 +56,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
             return result;
         }
-        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid,int teamId)
+        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid, int teamId)
         {
-            bool isIncluded = await _omniRepository.SprintRepository.IncludeTicketInSprint(sprintGuid, ticketGuid,teamId);
+            bool isIncluded = await _omniRepository.SprintRepository.IncludeTicketInSprint(sprintGuid, ticketGuid, teamId);
             if (isIncluded)
             {
                 EventsLog eventsLog = new EventsLog
                 {
                     CreatedAt = DateTime.UtcNow,
                     EventDescription = "Sprint.Ticket.Included",
-                    EventGuid= Guid.NewGuid().ToString(),
+                    EventGuid = Guid.NewGuid().ToString(),
                     SprintGuid = sprintGuid,
                     TicketGuid = ticketGuid,
                     EventTypeId = (int)GeneralEnums.EventType.TicketIncludeInSprint,
@@ -84,15 +84,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<List<SprintDropdownModel>> GetSprintsByProjectId(string projectId)
         {
-            int projectInt = Convert.ToInt32(projectId);
-            if(projectInt == 0)
+            // BUG FIX: Convert.ToInt32 throws FormatException on non-numeric input; use TryParse
+            if (!int.TryParse(projectId, out int projectInt) || projectInt == 0)
             {
                 return null;
             }
             var result = await _omniRepository.SprintRepository.GetSprintsByProjectId(projectInt);
             return result;
         }
-        public async Task<PaginationResponse<SprintDto>> GetSprints(string workspaceGuid,string searchTerm, string statusFilter,string projectFilter, int pageNumber,int pageSize)
+        public async Task<PaginationResponse<SprintDto>> GetSprints(string workspaceGuid, string searchTerm, string statusFilter, string projectFilter, int pageNumber, int pageSize)
         {
 
             // Call repository with filters and pagination
@@ -103,7 +103,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 pageSize
             );
 
-            List<SprintDto> result = new List<SprintDto>(); 
+            List<SprintDto> result = new List<SprintDto>();
             foreach (var sprint in sprints)
             {
                 result.Add(new SprintDto
@@ -112,7 +112,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Goal = sprint.Description,
                     Id = sprint.SprintId,
                     ProjectId = sprint.ProjectId,
-                    ProjectName = sprint.Project.ProjectName,
+                    // BUG FIX: sprint.Project can be null when loaded without join
+                    ProjectName = sprint.Project?.ProjectName,
                     StartDate = sprint.StartDate,
                     Tagline = sprint.Tagline,
                     Status = (SprintEnums.SprintStatus)sprint.StatusId,
@@ -120,11 +121,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     Title = sprint.Title,
                     UpdateDate = sprint.UpdateDate,
                     SprintGuid = sprint.SprintGuid,
-                    TeamModel = new TeamDropdownModel
+                    // BUG FIX: sprint.Team can be null when loaded without join
+                    TeamModel = sprint.Team != null ? new TeamDropdownModel
                     {
                         TeamId = sprint.Team.TeamId,
                         TeamName = sprint.Team.TeamName
-                    }
+                    } : null
                 });
             }
 
@@ -154,7 +156,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Goal = sprint.Description,
                 Id = sprint.SprintId,
                 ProjectId = sprint.ProjectId,
-                ProjectName = sprint.Project.ProjectName,
+                // BUG FIX: sprint.Project can be null when loaded without join
+                ProjectName = sprint.Project?.ProjectName,
                 StartDate = sprint.StartDate,
                 Tagline = sprint.Tagline,
                 Status = (SprintEnums.SprintStatus)sprint.StatusId,
@@ -162,16 +165,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 Title = sprint.Title,
                 UpdateDate = sprint.UpdateDate,
                 SprintGuid = sprint.SprintGuid,
-                TeamModel = new TeamDropdownModel
+                // BUG FIX: sprint.Team can be null when loaded without join
+                TeamModel = sprint.Team != null ? new TeamDropdownModel
                 {
                     TeamId = sprint.Team.TeamId,
                     TeamName = sprint.Team.TeamName
-                }
+                } : null
             };
             return sprintDto;
         }
 
-        
+
         public Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize)
         {
             return _omniRepository.SprintRepository.GetSprintActivities(sprintGuid, pagNumber, pageSize);
@@ -221,7 +225,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             // Add sprint end date if it's not already the last entry
             var lastEntry = progressList.Last();
-            if (lastEntry.Date.Date != sprint.EndDate)
+            // BUG FIX: sprint.EndDate is nullable DateTime; comparing .Date to the nullable directly
+            // caused a type mismatch. Must use .Value.Date for correct comparison.
+            if (sprint.EndDate.HasValue && lastEntry.Date.Date != sprint.EndDate.Value.Date)
             {
                 progressList.Add(new SprintProgressModel
                 {
@@ -236,8 +242,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         public async Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid)
         {
-            var breakDown =await _omniRepository.SprintRepository.GetSprintBreakdown(sprintGuid);
-            if(breakDown == null)
+            var breakDown = await _omniRepository.SprintRepository.GetSprintBreakdown(sprintGuid);
+            if (breakDown == null)
             {
                 return new SprintBreakdownModel();
             }

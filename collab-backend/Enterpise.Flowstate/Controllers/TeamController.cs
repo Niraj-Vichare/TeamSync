@@ -6,10 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 using System.Security.Claims;
 using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Configuration;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("teams")]
+    [EnableRateLimiting(RateLimitingConfiguration.Api)]
     public class TeamController : AuthBaseController
     {
         private IOmniService _omniService;
@@ -21,6 +24,7 @@ namespace Enterpise.Flowstate.Controllers
         #region Members Methods
 
         [HttpPost("member/create")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> AddMember([FromQuery] string workspaceGuid, [FromBody] TeamMemberDto mapping)
         {
             try
@@ -387,6 +391,8 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpPatch("update")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+
         public async Task<ApiResponseModel<object>> UpdateTeam([FromQuery] string workspaceGuid, TeamDto team)
         {
             try
@@ -438,6 +444,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpPost("create")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> CreateTeam([FromQuery] string workspaceGuid, TeamDto teamDto)
         {
             try
@@ -542,6 +549,8 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpPost("custom/member/add")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+
         public async Task<ApiResponseModel<object>> AddTeamMember([FromQuery] string workspaceGuid, [FromBody] TeamMemberMapping teamMemberMapping)
         {
             try

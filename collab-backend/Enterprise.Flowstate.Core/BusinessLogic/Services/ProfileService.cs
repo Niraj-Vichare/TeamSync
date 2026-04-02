@@ -119,6 +119,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             var result = _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
         }
 
-       
+
+        public async Task<int> GetUserRole(string userGuid,string workspaceGuid)
+        {
+            return await _omniRepository.ProfileRepository.GetUserRole(userGuid,workspaceGuid);
+        }
+
+
     }
 }

@@ -11,5 +11,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<List<ProfileDto>> GetWorkspaceUsers(string workspaceGuid);
         System.Threading.Tasks.Task UpertWeeklyUserMetric(WeeklyUserStatsDto weeklyUserStatsDto);
         Task<bool> ProfileExists(string userGuid);
+        Task<int> GetUserRole(string userGuid,string workspaceGuid);
     }
 }

@@ -27,5 +27,12 @@ namespace Enterprise.Flowstate.DAL.Enums
             Bug = 1,
             UserStories = 2
         }
+        public enum TicketCloseRequestStatus
+        {
+            Pending = 0,
+            Approved = 1,
+            Rejected = 2,
+            Cancelled = 3
+        }
     }
 }

@@ -1,16 +1,19 @@
 using Enterprise.Flowstate.BAL.BusinessLogic.BGService;
 using Enterprise.Flowstate.BAL.BusinessLogic.Services;
 using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Configuration;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Repositories;
 using Enterprise.Flowstate.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using Supabase;
 using System.Text;
 using DotNetEnv;
+using Microsoft.AspNetCore.HttpOverrides;
 
 Env.Load();
 
@@ -18,62 +21,46 @@ var SUPABASE_KEY = Environment.GetEnvironmentVariable("Supabase_SUPABASE_KEY");
 var JWT_KEY = Environment.GetEnvironmentVariable("JwtSetting_SecretKey");
 
 if (string.IsNullOrEmpty(JWT_KEY))
-    throw new InvalidOperationException(
-        "JwtSetting_SecretKey is not set. Add it to your .env file.");
+    throw new InvalidOperationException("JwtSetting_SecretKey is not set. Add it to your .env file.");
 
 if (string.IsNullOrEmpty(SUPABASE_KEY))
-    throw new InvalidOperationException(
-        "Supabase_SUPABASE_KEY is not set. Add it to your .env file.");
+    throw new InvalidOperationException("Supabase_SUPABASE_KEY is not set. Add it to your .env file.");
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 var JwtToken = new JwtSetting();
 builder.Configuration.GetSection("JwtSetting").Bind(JwtToken);
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<Supabase.Client>(provider =>
-{
-    return new Supabase.Client(
+builder.Services.AddSingleton<Supabase.Client>(_ =>
+    new Supabase.Client(
         builder.Configuration["Supabase:SUPABASE_URL"],
         SUPABASE_KEY,
-        new SupabaseOptions
-        {
-            AutoConnectRealtime = true,
-            AutoRefreshToken = true,
-        }
-    );
-});
+        new SupabaseOptions { AutoConnectRealtime = true, AutoRefreshToken = true }));
+
 builder.Services.AddSignalR();
+
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-
-    var redisOptions = new ConfigurationOptions
+    return ConnectionMultiplexer.Connect(new ConfigurationOptions
     {
-        EndPoints =
-        {
-            { config["RedisConnection:HostName"], int.Parse(config["RedisConnection:Port"]) }
-        },
+        EndPoints = { { config["RedisConnection:HostName"], int.Parse(config["RedisConnection:Port"]) } },
         User = config["RedisConnection:UserName"],
         Password = config["RedisConnection:Password"],
         AbortOnConnectFail = false
-    };
-
-    return ConnectionMultiplexer.Connect(redisOptions);
+    });
 });
-
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
 builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IOmniService, OmniService>();
-builder.Services.AddSingleton<ICache,CacheService>();
+builder.Services.AddSingleton<ICache, CacheService>();
 builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
 builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
 builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();
@@ -82,56 +69,43 @@ builder.Services.AddHostedService<DatabaseSyncService>();
 builder.Services.AddHostedService<WeeklyPeriodResetService>();
 
 builder.Services.AddCors(options =>
-{
     options.AddPolicy("AllowSpecificOrigins", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5174") // specify allowed origins
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
-
+              .AllowCredentials()));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            // What we need to validate
-            options.TokenValidationParameters = new TokenValidationParameters
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = JwtToken.Issuer,
+            ValidAudience = JwtToken.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JWT_KEY))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
             {
-                // What we need to validate
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                // Configure the issuer that we learn in part-1 under jwt structure. 
-                ValidIssuer = JwtToken.Issuer,
-                ValidAudience = JwtToken.Audience,
-                // Remember the sign that we need to have to know authenticity when visiting bank again?
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JWT_KEY))
-            };
-            options.Events = new JwtBearerEvents
-            {
-                OnMessageReceived = context =>
-                {
-                    var accessToken = context.Request.Query["access_token"];
-                    var path = context.HttpContext.Request.Path;
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
 
-                    // If the request is for our SignalR hub AND there's a token in query string
-                    if (!string.IsNullOrEmpty(accessToken) &&
-                        path.StartsWithSegments("/hubs/leaderboard"))
-                    {
-                        context.Token = accessToken;
-                    }
-                    else
-                    {
-                        // Fall back to cookie for regular API requests
-                        context.Token = context.Request.Cookies["authToken"];
-                    }
+                // SignalR hub reads token from query string; everything else uses the cookie
+                context.Token = (!string.IsNullOrEmpty(accessToken) &&
+                                  path.StartsWithSegments("/hubs/leaderboard"))
+                    ? accessToken.ToString()
+                    : context.Request.Cookies["authToken"];
 
-                    return System.Threading.Tasks.Task.CompletedTask;
-                }
-            };
-        });
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddFlowstateRateLimiting();
 
 var app = builder.Build();
 
@@ -146,18 +120,24 @@ catch (Exception ex)
     Console.WriteLine($"Failed to setup RabbitMQ topology: {ex.Message}");
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.MapHub<LeaderboardHub>("/hubs/leaderboard");
-app.UseCors("AllowSpecificOrigins");
+app.UseForwardedHeaders();
+
 app.UseHttpsRedirection();
+
+app.UseCors("AllowSpecificOrigins");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseRateLimiter();
+
+app.MapHub<LeaderboardHub>("/hubs/leaderboard");
 app.MapControllers();
 
 app.Run();

@@ -1,16 +1,19 @@
 ﻿using Enterprise.Flowstate.BAL.Filters;
 using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Configuration;
 using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("workspace")]
-    public class WorkspaceController : OwnerAuthorizedControllerBase
+    [EnableRateLimiting(RateLimitingConfiguration.Api)]
+    public class WorkspaceController : AuthBaseController
     {
         private readonly IOmniService _omniService;
         public WorkspaceController(IOmniService omniService)
@@ -20,6 +23,7 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpPost]
         [Route("create-workspace")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> CreateWorkspace(WorkspaceRequestModel workspaceRequestModel)
         {
             try
@@ -150,6 +154,7 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpPost]
         [Route("join-workspace/{workspaceId}")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> JoinWorkspace(string workspaceId)
         {
             try

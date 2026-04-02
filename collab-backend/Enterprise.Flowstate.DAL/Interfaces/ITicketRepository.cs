@@ -26,6 +26,12 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<Ticket?> UpdateTicketStatus(string workspaceGuid, int ticketId, int status);
         Task<bool> UpdateTicketPriority(string ticketGuid, int priority);
         Task<bool> AddTicketToSprint(string ticketGuid, string sprintId);
+        Task<bool> IsCloseRequested(string ticketGuid);
+        Task<List<TicketCommentDto>> GetTicketComments(string ticketGuid);
+        Task<bool> IsAssignedUser(string ticketGuid, string userGuid);
+        Task<bool> AddComment(string ticketGuid,string userId,AddCommentRequest commentRequest);
+        Task<bool> LogCloseRequest(string workspaceGuid,string ticketGuid,string reason);
+
 
     }
 

@@ -1,7 +1,11 @@
-﻿using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.Filters;
+using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Configuration;
 using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace Enterprise.Flowstate.Controllers
@@ -16,6 +20,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost]
+        [RequireAuthorization(AuthEnums.RoleEnum.Owner,AuthEnums.RoleEnum.Admin,AuthEnums.RoleEnum.Manager)]
         public async Task<ApiResponseModel<object>> CreateTicket([FromQuery] string workspaceGuid, [FromBody] TicketDto ticketDto)
         {
             try
@@ -187,6 +192,8 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpDelete]
+        [RequireAuthorization(AuthEnums.RoleEnum.Owner, AuthEnums.RoleEnum.Admin, AuthEnums.RoleEnum.Manager)]
+
         public async Task<ApiResponseModel<object>> DeleteTicket(string ticketGuid)
         {
             try
@@ -261,6 +268,8 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPatch]
+        [RequireAuthorization(AuthEnums.RoleEnum.Owner, AuthEnums.RoleEnum.Admin, AuthEnums.RoleEnum.Manager)]
+
         public async Task<ApiResponseModel<object>> AddTicketInSprint(string ticketGuid, string sprint)
         {
             try
@@ -333,6 +342,8 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPut("{ticketGuid}/steps")]
+        [RequireAuthorization(AuthEnums.RoleEnum.Owner, AuthEnums.RoleEnum.Admin, AuthEnums.RoleEnum.Manager)]
+
         public async Task<ApiResponseModel<object>> UpdateTicketSteps(string ticketGuid, List<string> steps)
         {
             try
@@ -457,61 +468,224 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        //[HttpPut("status")]
-        //public async Task<ApiResponseModel<object>> UpdateTicketStatus([FromQuery] string workspaceGuid,[FromBody] string ticketGuid,[FromBody]string status)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(workspaceGuid))
-        //        {
-        //            return new ApiResponseModel<object>
-        //            {
-        //                StatusCode = StatusCodes.Status400BadRequest,
-        //                Success = false,
-        //                Message = "Workspace GUID is required to create a sprint."
-        //            };
-        //        }
 
-        //        // 2️. Get user identity
-        //        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        //        var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        //        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        //        {
-        //            return new ApiResponseModel<object>
-        //            {
-        //                StatusCode = StatusCodes.Status401Unauthorized,
-        //                Success = false,
-        //                Message = "Authentication failed."
-        //            };
-        //        }
+        [HttpGet("{ticketGuid}/detail")]
+        public async Task<ApiResponseModel<object>> GetTicketDetail(string ticketGuid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Ticket GUID is required."
+                    };
+                }
 
-        //        //bool isUpdated = await _omniService.TicketService.UpdateTicketStatus(workspaceGuid, ticketGuid, status);
-        //        if (!false)
-        //        {
-        //            return new ApiResponseModel<object>
-        //            {
-        //                Data = null,
-        //                Message = "Not able to update the ticket status",
-        //                StatusCode = StatusCodes.Status400BadRequest,
-        //                Success = false
-        //            };
-        //        }
-        //        return new ApiResponseModel<object>
-        //        {
-        //            Message = "Updated the ticket status successfully",
-        //            StatusCode = StatusCodes.Status200OK,
-        //            Success = true
-        //        };
-        //    }catch(Exception ex)
-        //    {
-        //        return new ApiResponseModel<object>
-        //        {
-        //            Data = ex,
-        //            Message = ex.Message,
-        //            Success = false,
-        //            StatusCode = StatusCodes.Status500InternalServerError
-        //        };
-        //    }
-        //}
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                var detail = await _omniService.TicketService.GetTicketDetail(ticketGuid,userId.ToString());
+                if (detail == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Ticket not found.",
+                        Success = false,
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Data = detail,
+                    Message = "",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
+
+        [HttpPost("{ticketGuid}/comments")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+        public async Task<ApiResponseModel<object>> AddComment(
+            string ticketGuid,
+            [FromBody] AddCommentRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Ticket GUID is required."
+                    };
+                }
+
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                if (string.IsNullOrEmpty(request?.CommentText?.Trim()))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Comment text cannot be empty."
+                    };
+                }
+
+                bool canComment = await _omniService.TicketService.CanUserComment(request.WorkspaceGuid,ticketGuid, userId.ToString());
+                if (!canComment)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden,
+                        Success = false,
+                        Message = "Only the assigned user or a Manager / Admin / Owner can comment on this ticket."
+                    };
+                }
+
+                bool added = await _omniService.TicketService.AddComment(ticketGuid, userId.ToString(), request);
+                if (!added)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Failed to save comment.",
+                        Success = false,
+                        StatusCode = StatusCodes.Status500InternalServerError
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = "Comment added.",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
+
+        [HttpPost("{ticketGuid}/close-request")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+        public async Task<ApiResponseModel<object>> RequestClose(
+            string ticketGuid,
+            [FromBody] CloseRequestPayload payload)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Ticket GUID is required."
+                    };
+                }
+
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                bool isAssignee = await _omniService.TicketService.IsAssignedUser(ticketGuid, userId.ToString());
+                if (!isAssignee)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden,
+                        Success = false,
+                        Message = "Only the user assigned to this ticket can request its closure."
+                    };
+                }
+
+                bool requested = await _omniService.TicketService.RequestTicketClose(
+                    ticketGuid, userId.ToString(), payload?.Reason ?? string.Empty);
+                if (!requested)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Failed to submit close request.",
+                        Success = false,
+                        StatusCode = StatusCodes.Status500InternalServerError
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = "Close request submitted successfully.",
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
     }
 }

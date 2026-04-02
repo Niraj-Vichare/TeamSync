@@ -2,6 +2,8 @@
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Enterprise.Flowstate.Configuration;
 
 namespace Enterpise.Flowstate.Controllers
 {
@@ -18,6 +20,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpPost("signin")]
+        [EnableRateLimiting(RateLimitingConfiguration.Auth)]
         public async Task<ApiResponseModel<object>> Signin(LoginCredentials loginData)
         {
             try
@@ -125,6 +128,7 @@ namespace Enterpise.Flowstate.Controllers
 
         
         [HttpPost("signup")]
+        [EnableRateLimiting(RateLimitingConfiguration.Auth)]
         public async Task<ApiResponseModel<object>> Signup(SignupDto signupData)
         {
             try

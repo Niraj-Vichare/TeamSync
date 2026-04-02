@@ -4,11 +4,14 @@ using Enterprise.Flowstate.Controllers;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Enterprise.Flowstate.Configuration;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("tasks")]
-    public class TaskController : MemberAuthorizedControllerBase
+    [EnableRateLimiting(RateLimitingConfiguration.Api)]
+    public class TaskController : AuthBaseController
     {
         private IOmniService _omniService;
         public TaskController(IOmniService omniService)
@@ -18,6 +21,7 @@ namespace Enterpise.Flowstate.Controllers
 
 
         [HttpPost]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> CreateTask([FromQuery] string workspaceGuid, [FromBody] TaskDto taskDto)
         {
             try
@@ -222,6 +226,7 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpPatch]
         [Route("{taskId}/status")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> UpdateTaskStatus(int taskId,[FromQuery] string status)
         {
             try

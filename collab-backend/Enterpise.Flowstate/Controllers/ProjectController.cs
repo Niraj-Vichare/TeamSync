@@ -8,12 +8,15 @@ using System.Security.Claims;
 using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 using Enterprise.Flowstate.BAL.Filters;
 using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
+using Enterprise.Flowstate.Configuration;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Enterpise.Flowstate.Controllers
 {
     [Route("projects")]
-    //[RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager)]
-    public class ProjectController : OwnerAuthorizedControllerBase
+    [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager)]
+    [EnableRateLimiting(RateLimitingConfiguration.Api)]
+    public class ProjectController : AuthBaseController
     {
         private readonly IOmniService _omniService;
 
@@ -68,6 +71,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpPost]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> CreateProject([FromQuery] string workspaceGuid, ProjectDto project)
         {
             try

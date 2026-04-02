@@ -23,5 +23,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task AddEventLog(EventsLog eventsLog);
         Task<bool> UpertWeeklyUserMetric(WeeklyUserStats weeklyUserStats);
         Task UpdateCurrentWorkspace(string userGuid, string workspaceGuid);
+        Task<int> GetUserRole(string userGuid, string workspaceGuid);
     }
 }

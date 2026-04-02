@@ -1,36 +1,26 @@
-﻿
-
-using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
+using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 
 namespace Enterprise.Flowstate.BAL.Filters
 {
-    /// <summary>
-    /// Combined authorization: Checks both Role AND Plan features
-    /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
     public class RequireAuthorizationAttribute : Attribute, IAsyncAuthorizationFilter
     {
         private readonly AuthEnums.RoleEnum[] _allowedRoles;
         private readonly PlanEnums.PlanFeature? _requiredFeature;
 
-        /// <summary>
-        /// Role-only authorization
-        /// </summary>
         public RequireAuthorizationAttribute(params AuthEnums.RoleEnum[] roles)
         {
             _allowedRoles = roles;
             _requiredFeature = null;
         }
 
-        /// <summary>
-        /// Role + Plan feature authorization
-        /// </summary>
         public RequireAuthorizationAttribute(PlanEnums.PlanFeature feature, params AuthEnums.RoleEnum[] roles)
         {
             _allowedRoles = roles;
@@ -41,40 +31,30 @@ namespace Enterprise.Flowstate.BAL.Filters
         {
             var user = context.HttpContext.User;
 
-            // Guard 1: Reject any request that has not been authenticated.
-            // Previously these context.Result assignments were commented out,
-            // meaning unauthenticated callers silently fell through the filter.
-            if (!user.Identity?.IsAuthenticated ?? true)
+            // Guard 1: not authenticated at all
+            if (!(user.Identity?.IsAuthenticated ?? false))
             {
-                context.Result = new ObjectResult(new
-                {
-                    success = false,
-                    message = "User not authenticated"
-                })
+                context.Result = new ObjectResult(new { success = false, message = "User not authenticated" })
                 {
                     StatusCode = StatusCodes.Status401Unauthorized
                 };
                 return;
-
             }
 
-            //var userId = user.FindFirst("sub")?.Value;
+            // userId comes from the Supabase JWT "sub" claim (mapped to NameIdentifier by JwtBearer)
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                      ?? user.FindFirst("sub")?.Value;
 
-            // workspaceId is carried in the X-Workspace-ID request header and
-            // added to claims by the auth middleware, or extracted from the token.
-            // If it is missing the request context is incomplete — reject it.
+            // workspaceId comes from the X-Workspace-ID request header (set by axiosInstance interceptor)
             var workspaceId = context.HttpContext.Request.Headers["X-Workspace-ID"].FirstOrDefault()
-                              ?? user.FindFirst("workspaceId")?.Value;
+                           ?? user.FindFirst("workspaceId")?.Value;
 
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            // Guard 2: Reject requests where user identity or workspace context is missing.
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(workspaceId))
             {
                 context.Result = new ObjectResult(new
                 {
                     success = false,
-                    message = "Invalid user context: userId or workspaceId is missing"
+                    message = "Invalid request context: userId or workspaceId is missing"
                 })
                 {
                     StatusCode = StatusCodes.Status401Unauthorized
@@ -82,29 +62,58 @@ namespace Enterprise.Flowstate.BAL.Filters
                 return;
             }
 
-            var authService = context.HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
 
-            // 1. Check Role Permission
-            if (_allowedRoles != null && _allowedRoles.Length > 0)
+            var cache = context.HttpContext.RequestServices.GetRequiredService<ICache>();
+
+            string? cachedRole = await cache.GetUserRoleAsync(userId, workspaceId);
+
+            int userRoleId = 0;
+
+            // Try cache first
+            if (!string.IsNullOrEmpty(cachedRole) &&
+                Enum.TryParse<RoleEnum>(cachedRole, true, out var role))
             {
-                var userRoleClaim = user.FindFirst("role")?.Value;
+                userRoleId = (int)role;
+            }
+            else
+            {
+                // Cache miss OR invalid cache → fetch from DB
+                var omniService = context.HttpContext.RequestServices
+                    .GetRequiredService<IOmniService>();
 
-                if (string.IsNullOrEmpty(userRoleClaim) || !int.TryParse(userRoleClaim, out int userRole))
-                {
-                    context.Result = new ForbidResult();
-                    return;
-                }
+                userRoleId = await omniService.ProfileService
+                    .GetUserRole(userId, workspaceId);
 
-                bool hasRolePermission = _allowedRoles.Any(r => (int)r == userRole);
-
-                if (!hasRolePermission)
+                if (userRoleId <= 0)
                 {
                     context.Result = new ObjectResult(new
                     {
                         success = false,
-                        message = "Insufficient role permissions",
-                        requiredRoles = _allowedRoles,
-                        userRole = userRole
+                        message = "User is not a member of this workspace"
+                    })
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden
+                    };
+                    return;
+                }
+
+                // Cache the value (store as string)
+                await cache.SetUserRoleAsync(userId, workspaceId, userRoleId.ToString());
+            }
+
+            // 1. Role check
+            if (_allowedRoles != null && _allowedRoles.Length > 0)
+            {
+                bool hasRole = _allowedRoles.Any(r => (int)r == userRoleId);
+
+                if (!hasRole)
+                {
+                    context.Result = new ObjectResult(new
+                    {
+                        success = false,
+                        message = "Insufficient permissions",
+                        requiredRoles = _allowedRoles.Select(r => r.ToString()),
+                        yourRole = ((AuthEnums.RoleEnum)userRoleId).ToString()
                     })
                     {
                         StatusCode = StatusCodes.Status403Forbidden
@@ -113,9 +122,10 @@ namespace Enterprise.Flowstate.BAL.Filters
                 }
             }
 
-            // 2. Check Plan Feature
+            // 2. Plan feature check
             if (_requiredFeature.HasValue)
             {
+                var authService = context.HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
                 bool hasFeature = await authService.HasFeature(workspaceId, _requiredFeature.Value);
 
                 if (!hasFeature)

@@ -220,5 +220,21 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             var profileResponse = await _supabaseClient.From<Profile>().Where(profile=>profile.Id == profileId).Get();
             return profileResponse.Models.FirstOrDefault()?.Guid;
         }
+
+        public async Task<int> GetUserRole(string userGuid,string workspaceGuid)
+        {
+            var profileReponse = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            int profileId = profileReponse.Models.FirstOrDefault().Id;
+
+            var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            int workspaceId = workspaceResponse.Models.FirstOrDefault().Id;
+
+            if(workspaceId == null || profileId == null)
+            {
+                return -1;
+            }
+            var mappingRepsonse = await _supabaseClient.From<WorkspaceUserMapping>().Where(mpp => mpp.UserId == profileId && workspaceId == workspaceId).Get();
+            return (int)mappingRepsonse.Models.FirstOrDefault().RoleId;
+        }
     }
 }

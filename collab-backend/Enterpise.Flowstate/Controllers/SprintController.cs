@@ -1,14 +1,18 @@
 ﻿using Enterprise.Flowstate.BAL.Filters;
 using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Configuration;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 
 namespace Enterprise.Flowstate.Controllers
 {
     [Route("sprints")]
-    public class SprintController : OwnerAuthorizedControllerBase
+    [EnableRateLimiting(RateLimitingConfiguration.Api)]
+    public class SprintController : AuthBaseController
     {
         private IOmniService _omniService;
         public SprintController(IOmniService omniService)
@@ -17,8 +21,9 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost]
-        //[RequirePermission("sprints.create")]
-        public async Task<ApiResponseModel<object>> CreateSprint([FromQuery] string workspaceGuid,[FromBody] SprintDto sprintDto)
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager)]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+        public async Task<ApiResponseModel<object>> CreateSprint([FromQuery] string workspaceGuid, [FromBody] SprintDto sprintDto)
         {
             try
             {
@@ -86,7 +91,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                
+
 
                 // 3. Create sprint
                 bool isCreated = await _omniService.SprintService.CreateSprint(
@@ -122,7 +127,8 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost("{sprintGuid}/tickets/{ticketGuid}")]
-        public async Task<ApiResponseModel<object>> IncludeTicketSprint(string sprintGuid,string ticketGuid,[FromBody]int teamId)
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager)]
+        public async Task<ApiResponseModel<object>> IncludeTicketSprint(string sprintGuid, string ticketGuid, [FromBody] int teamId)
         {
             try
             {
@@ -148,7 +154,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                bool isUpdated = await _omniService.SprintService.IncludeTicketInSprint(sprintGuid, ticketGuid,teamId);
+                bool isUpdated = await _omniService.SprintService.IncludeTicketInSprint(sprintGuid, ticketGuid, teamId);
                 if (!isUpdated)
                 {
                     return new ApiResponseModel<object>
@@ -172,15 +178,16 @@ namespace Enterprise.Flowstate.Controllers
                 return new ApiResponseModel<object>
                 {
                     Data = null,
-                    Message = "",
-
+                    // BUG FIX: was returning empty string, now returns the actual error
+                    Message = $"An error occurred: {ex.Message}",
                     Success = false,
                 };
             }
         }
 
         [HttpGet]
-        public async Task<ApiResponseModel<PaginationResponse<SprintDto>>> GetSprints([FromQuery]string workspaceGuid,[FromQuery]string? searchTerm,[FromQuery]string? status,[FromQuery]string? projectId,[FromQuery]int pageNumber = 1,[FromQuery]int pageSize = 10)
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
+        public async Task<ApiResponseModel<PaginationResponse<SprintDto>>> GetSprints([FromQuery] string workspaceGuid, [FromQuery] string? searchTerm, [FromQuery] string? status, [FromQuery] string? projectId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -245,6 +252,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("/projects/{projectId}/sprints")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<List<SprintDropdownModel>> GetSprintsByProjectId([FromRoute] string projectId)
         {
             try
@@ -254,7 +262,7 @@ namespace Enterprise.Flowstate.Controllers
 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
-                    return null;    
+                    return null;
                 }
 
                 if (string.IsNullOrEmpty(projectId))
@@ -273,7 +281,8 @@ namespace Enterprise.Flowstate.Controllers
 
 
         [HttpGet("{sprintGuid}")]
-        public async Task<ApiResponseModel<object>> GetSprint([FromRoute] string sprintGuid,[FromQuery]string workspaceGuid)
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
+        public async Task<ApiResponseModel<object>> GetSprint([FromRoute] string sprintGuid, [FromQuery] string workspaceGuid)
         {
             try
             {
@@ -300,8 +309,8 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                var sprint = await _omniService.SprintService.GetSprint(workspaceGuid,sprintGuid);
-                if(sprint == null)
+                var sprint = await _omniService.SprintService.GetSprint(workspaceGuid, sprintGuid);
+                if (sprint == null)
                 {
                     return new ApiResponseModel<object>
                     {
@@ -335,7 +344,9 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/activities")]
-        public async Task<ApiResponseModel<object>> GetSprintActivities(string sprintGuid,int pageNumber,int pageSize)
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
+        // BUG FIX: pageNumber and pageSize were missing [FromQuery] so ASP.NET never bound them from the query string
+        public async Task<ApiResponseModel<object>> GetSprintActivities(string sprintGuid, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -362,7 +373,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                var activity = await _omniService.SprintService.GetSprintActivities(sprintGuid,pageNumber,pageSize);
+                var activity = await _omniService.SprintService.GetSprintActivities(sprintGuid, pageNumber, pageSize);
                 if (activity == null)
                 {
                     return new ApiResponseModel<object>
@@ -397,6 +408,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/assignedTeam")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<ApiResponseModel<object>> GetAssignedTeam(string sprintGuid)
         {
             try
@@ -459,6 +471,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/tickets")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<ApiResponseModel<object>> GetSprintTickets(string sprintGuid)
         {
             try
@@ -521,6 +534,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/progress")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<ApiResponseModel<object>> GetSprintProgress(string sprintGuid)
         {
             try
@@ -583,6 +597,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/breakdown")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<ApiResponseModel<object>> GetSprintBreakdown(string sprintGuid)
         {
             try
@@ -645,6 +660,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpGet("{sprintGuid}/members")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<ApiResponseModel<object>> GetSprintTeamMembers(string sprintGuid)
         {
             try
@@ -693,7 +709,7 @@ namespace Enterprise.Flowstate.Controllers
                 };
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new ApiResponseModel<object>
                 {

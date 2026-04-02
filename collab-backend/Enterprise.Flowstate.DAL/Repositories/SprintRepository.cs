@@ -82,10 +82,8 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 query = query.Filter("status", Supabase.Postgrest.Constants.Operator.Equals, status);
             }
 
-            if (!string.IsNullOrEmpty(project))
-            {
-                query = query.Filter("projectId", Supabase.Postgrest.Constants.Operator.Equals, project);
-            }
+            // NOTE: project filter already applied above via the In operator on projectIds array.
+            // The duplicate filter block that was here used "projectId" (wrong column name) and was removed.
 
             int start = (pageNumber - 1) * pageSize;
             int end = pageNumber * pageSize - 1;
@@ -154,9 +152,9 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
         public async Task<List<SprintDropdownModel>> GetSprintsByProjectId(int projectId)
         {
-            
+
             var sprintsResponse = await _supabaseClient.From<Sprint>().Where(s => s.ProjectId == projectId).Get();
-            if(sprintsResponse == null)
+            if (sprintsResponse == null)
             {
                 return new List<SprintDropdownModel>();
             }
@@ -168,7 +166,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return sprintDropdowns;
         }
 
-        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid,int memberId)
+        public async Task<bool> IncludeTicketInSprint(string sprintGuid, string ticketGuid, int memberId)
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
                 return false; // invalid ticketGuid
@@ -181,7 +179,10 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var ticket = ticketResponse.Models.First();
 
             var sprintResponse = await _supabaseClient.From<Sprint>().Where(s => s.SprintGuid == sprintGuid).Get();
-            if (sprintResponse == null)
+            // BUG FIX: sprintResponse itself is never null in the Supabase client - it's the Models
+            // collection that can be empty. The original null check never fired, so .First() on an
+            // empty list threw InvalidOperationException.
+            if (!sprintResponse.Models.Any())
             {
                 return false;
             }
@@ -207,12 +208,18 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
         public async Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize)
         {
-            var sprint =await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
+            var sprint = await _supabaseClient.From<Sprint>().Where(sprint => sprint.SprintGuid == sprintGuid).Get();
             if (!sprint.Models.Any())
             {
                 return null;
             }
-            var events =await _supabaseClient.From<EventsLog>().Where(eventLogs=>eventLogs.SprintGuid == sprintGuid).Get();
+            // BUG FIX: was fetching ALL events with no pagination despite accepting pageNumber/pageSize.
+            int start = (pagNumber - 1) * pageSize;
+            int end = pagNumber * pageSize - 1;
+            var events = await _supabaseClient.From<EventsLog>()
+                .Where(eventLogs => eventLogs.SprintGuid == sprintGuid)
+                .Range(start, end)
+                .Get();
             return events.Models.ToList();
         }
 
@@ -225,7 +232,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 return null;
             }
             var sprintId = sprint.Models.FirstOrDefault().SprintId;
-            var sprintMetric =await _supabaseClient.From<SprintMetric>().Where(sprint => sprint.SprintId == sprintId).Get();
+            var sprintMetric = await _supabaseClient.From<SprintMetric>().Where(sprint => sprint.SprintId == sprintId).Get();
             return sprintMetric.Models.FirstOrDefault();
         }
 
@@ -245,7 +252,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 MemberId = tm.Member.Profile.Id,
                 MemberName = tm.Member.Profile.DisplayName
             }).ToList();
-            return teamMembers; 
-        } 
+            return teamMembers;
+        }
     }
 }

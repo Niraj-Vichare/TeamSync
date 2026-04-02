@@ -1,9 +1,11 @@
 ﻿using Enterprise.Flowstate.BAL.Filters;
 using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.Configuration;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
@@ -11,6 +13,7 @@ using static Enterprise.Flowstate.DAL.Enums.GeneralEnums;
 namespace Enterprise.Flowstate.Controllers
 {
     [Route("dashboard")]
+    [EnableRateLimiting(RateLimitingConfiguration.Api)]
     public class DashboardController : AuthBaseController
     {
         public IOmniService _omniService;
@@ -127,6 +130,7 @@ namespace Enterprise.Flowstate.Controllers
 
 
         [HttpPost("timer/clockin")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> ClockIn([FromQuery] string workspaceGuid)
         {
             try
@@ -190,6 +194,7 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost("timer/clockout")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
         public async Task<ApiResponseModel<object>> ClockOut([FromQuery] string workspaceGuid, [FromQuery] bool isAutomatic = false)
         {
             try
