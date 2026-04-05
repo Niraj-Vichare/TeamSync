@@ -8,16 +8,15 @@ namespace Enterprise.Flowstate.DAL.Interfaces
 {
     public interface IOmniRepository
     {
-        public IWorkspaceRepository WorkspaceRepository { get; set; }
-        public ITaskRepository TaskRepository { get; set; }
-        public IProfileRepository ProfileRepository { get; set; }
-        public IProjectRepository ProjectRepository { get; set; }
-        public ITeamRepository TeamRepository { get; set; }
-        public ISprintRepository SprintRepository { get; set; }
-        public ITicketRepository TicketRepository { get; set; }
-        public IDashboardRepository DashboardRepository { get; set; }
-        public ILeaderBoardRepository LeaderBoardRepository { get; set; }
-        public INotificationRepository NotificationRepository { get; set; }
-
+        ITaskRepository TaskRepository { get; }
+        IWorkspaceRepository WorkspaceRepository { get; }
+        IProfileRepository ProfileRepository { get; }
+        IProjectRepository ProjectRepository { get; }
+        ITeamRepository TeamRepository { get; }
+        ISprintRepository SprintRepository { get; }
+        ITicketRepository TicketRepository { get; }
+        IDashboardRepository DashboardRepository { get; }
+        ILeaderBoardRepository LeaderBoardRepository { get; }
+        INotificationRepository NotificationRepository { get; }
     }
 }

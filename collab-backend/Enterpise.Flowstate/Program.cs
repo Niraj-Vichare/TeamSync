@@ -15,6 +15,7 @@ using System.Text;
 using DotNetEnv;
 using Microsoft.AspNetCore.HttpOverrides;
 using Enterprise.Flowstate.BAL.Hubs;
+using Enterprise.Flowstate.Extensions;
 
 Env.Load();
 
@@ -36,41 +37,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<Supabase.Client>(_ =>
-    new Supabase.Client(
-        builder.Configuration["Supabase:SUPABASE_URL"],
-        SUPABASE_KEY,
-        new SupabaseOptions { AutoConnectRealtime = true, AutoRefreshToken = true }));
 
-builder.Services.AddSignalR();
-
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    return ConnectionMultiplexer.Connect(new ConfigurationOptions
-    {
-        EndPoints = { { config["RedisConnection:HostName"], int.Parse(config["RedisConnection:Port"]) } },
-        User = config["RedisConnection:UserName"],
-        Password = config["RedisConnection:Password"],
-        AbortOnConnectFail = false
-    });
-});
-
-builder.Services.AddHttpClient();
-builder.Services.AddSingleton<IRabbitMqTopologySetup, RabbitMqTopologySetup>();
-builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IOmniService, OmniService>();
-builder.Services.AddSingleton<ICache, CacheService>();
+builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 
-builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
-builder.Services.AddHostedService<NotificationConsumer>();
-builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
-builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
-builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();
-builder.Services.AddHostedService<MessageConsumer>();
-builder.Services.AddHostedService<DatabaseSyncService>();
-builder.Services.AddHostedService<WeeklyPeriodResetService>();
+builder.Services.AddInfrastructure(builder.Configuration, SUPABASE_KEY);
+
+builder.Services.AddRepositories();
+builder.Services.AddBusinessServices();
+builder.Services.AddMessaging();
+builder.Services.AddHttpClient();
+builder.Services.AddSignalR();
+
 
 builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigins", policy =>
@@ -115,9 +94,11 @@ var app = builder.Build();
 
 try
 {
-    var topologySetup = app.Services.GetRequiredService<IRabbitMqTopologySetup>();
-    await topologySetup.SetupAsync();
-    Console.WriteLine("RabbitMQ topology setup completed");
+    using (var scope = app.Services.CreateScope())
+    {
+        var topologySetup = scope.ServiceProvider.GetRequiredService<IRabbitMqTopologySetup>();
+        await topologySetup.SetupAsync();
+    }
 }
 catch (Exception ex)
 {

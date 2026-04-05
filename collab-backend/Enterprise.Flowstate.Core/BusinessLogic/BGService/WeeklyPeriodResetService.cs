@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using Supabase.Gotrue;
+using static Enterprise.Flowstate.DAL.Constants.FlowStateConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
@@ -15,17 +16,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
     public class WeeklyPeriodResetService : BackgroundService
     {
         private readonly ILogger<WeeklyPeriodResetService> _logger;
-        private readonly ICache _cache;
         private readonly IServiceScopeFactory _scopeFactory;
 
         public WeeklyPeriodResetService(
             ILogger<WeeklyPeriodResetService> logger,
-            IServiceScopeFactory scopeFactory,
-            ICache cache
+            IServiceScopeFactory scopeFactory
             )
         {
             _logger = logger;
-            _cache = cache;
             _scopeFactory = scopeFactory;
         }
 
@@ -55,10 +53,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                     // Create scope just before using it
                     using var scope = _scopeFactory.CreateScope();
                     var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+                    var cache = scope.ServiceProvider.GetRequiredService<ICache>();
 
                     // Perform weekly reset
                     _logger.LogInformation("Starting weekly period reset...");
-                    await PerformWeeklyResetAsync(omniService, stoppingToken);
+                    await PerformWeeklyResetAsync(omniService,cache,stoppingToken);
                     _logger.LogInformation("Weekly period reset completed");
 
                     // Wait 2 hours to avoid multiple resets
@@ -85,6 +84,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+                var cache = scope.ServiceProvider.GetRequiredService<ICache>();
 
                 var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriod();
                 bool isWeeklyExist = await omniService.LeaderboardComparisonService.IsWeeklyUserStatsPresent(startDate, endDate);
@@ -108,7 +108,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                         try
                         {
-                            var synced = await SyncWorkspaceDataAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, stoppingToken);
+                            var synced = await SyncWorkspaceDataAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, cache, stoppingToken);
                             totalSynced += synced;
                         }
                         catch (Exception ex)
@@ -127,7 +127,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
         }
 
-        private async Task PerformWeeklyResetAsync(IOmniService omniService, CancellationToken stoppingToken)
+        private async Task PerformWeeklyResetAsync(IOmniService omniService,ICache cache,CancellationToken stoppingToken)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -148,7 +148,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     try
                     {
-                        var processed = await ProcessWorkspaceResetAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, stoppingToken);
+                        var processed = await ProcessWorkspaceResetAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, cache, stoppingToken);
                         totalProcessed += processed;
                     }
                     catch (Exception ex)
@@ -168,17 +168,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
         }
 
-        private async Task<int> ProcessWorkspaceResetAsync(string workspaceGuid,int workspaceId, IOmniService omniService, CancellationToken cancellationToken)
+        private async Task<int> ProcessWorkspaceResetAsync(string workspaceGuid,int workspaceId, IOmniService omniService,ICache cache,CancellationToken cancellationToken)
         {
             _logger.LogInformation("Processing workspace {WorkspaceId}", workspaceId);
 
             // Perform final sync before reset
-            await SyncWorkspaceDataAsync(workspaceGuid,workspaceId,omniService, cancellationToken);
+            await SyncWorkspaceDataAsync(workspaceGuid,workspaceId,omniService,cache,cancellationToken);
 
             try
             {
                 // Freeze current week rankings to previous week in Redis
-                await FreezeRankingsToRedisAsync(workspaceGuid,workspaceId, _cache);
+                await FreezeRankingsToRedisAsync(workspaceGuid,workspaceId, cache);
 
                 // Get all users in this workspace
                 var allUserIds = await omniService.WorkspaceService.GetAllActiveWorkspaceUser(workspaceId);
@@ -231,13 +231,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
         }
 
         // Consolidated sync method - used by both initial sync and weekly reset
-        private async Task<int> SyncWorkspaceDataAsync(string workspaceGuid,int workspaceId,IOmniService omniService, CancellationToken stoppingToken)
+        private async Task<int> SyncWorkspaceDataAsync(string workspaceGuid,int workspaceId,IOmniService omniService,ICache cache,CancellationToken stoppingToken)
         {
             _logger.LogInformation("Syncing workspace {WorkspaceId}", workspaceGuid);
 
             try
             {
-                var pendingUserIds = await _cache.GetAndClearPendingUpdatesAsync(workspaceGuid,workspaceId);
+                var pendingUserIds = await cache.GetAndClearPendingUpdatesAsync(workspaceGuid,workspaceId);
 
                 if (!pendingUserIds.Any())
                 {
@@ -259,7 +259,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     try
                     {
-                        RankingCacheModel metric = await _cache.GetUserMetricAsync(workspaceGuid, userId);
+                        RankingCacheModel metric = await cache.GetUserMetricAsync(workspaceGuid, userId);
 
                         if (metric == null)
                         {
@@ -268,7 +268,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                             continue;
                         }
 
-                        var rank = await _cache.GetUserRankAsync(workspaceGuid, userId);
+                        var rank = await cache.GetUserRankAsync(workspaceGuid, userId);
 
                         WeeklyUserStatsDto userMetric = new WeeklyUserStatsDto
                         {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,5 +9,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface INotificationPublisher
     {
+        Task<bool> PublishAsync(NotificationDto notification, int retryCount = 0);
     }
 }

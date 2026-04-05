@@ -10,46 +10,48 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
+
     public class OmniService : IOmniService
     {
-        public IAuthService AuthService { get; set; }
-        public ITaskService TaskService { get; set; }
-        public IWorkspaceService WorkspaceService { get; set; }
+        public IAuthService AuthService { get; }
+        public ITaskService TaskService { get; }
+        public IWorkspaceService WorkspaceService { get; }
+        public IProfileService ProfileService { get; }
+        public ITeamService TeamService { get; }
+        public IProjectService ProjectService { get; }
+        public ISprintService SprintService { get; }
+        public ITicketService TicketService { get; }
+        public IDashboardService DashboardService { get; }
+        public ILeaderboardComparisonService LeaderboardComparisonService { get; }
+        public IRoleService RoleService { get; }
+        public INotificationService NotificationService { get; }
 
-        private readonly Supabase.Client _client;
-        public IProfileService ProfileService { get; set; }   
-        public ITeamService TeamService { get; set; }
-        public IProjectService ProjectService { get; set; }
-        public ISprintService SprintService { get; set; }
-        public ITicketService TicketService { get; set; }
-        private IEventPublisher _eventPublisher;
-        private INotificationPublisher _notificationPublisher { get; set; }
-        public IDashboardService DashboardService { get; set; }
-        public ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
-        public IRoleService RoleService { get; set; }   
-        public INotificationService NotificationService { get; set; }
-        private IOmniRepository _omniRepository;
-        private ICache _cache;
-        public OmniService(IOmniRepository omniRepository,Supabase.Client client,IEventPublisher eventPublish,INotificationPublisher notificationPublisher,ICache cache)
+        public OmniService(
+            IAuthService authService,
+            ITaskService taskService,
+            IWorkspaceService workspaceService,
+            IProfileService profileService,
+            ITeamService teamService,
+            IProjectService projectService,
+            ISprintService sprintService,
+            ITicketService ticketService,
+            IDashboardService dashboardService,
+            ILeaderboardComparisonService leaderboardComparisonService,
+            IRoleService roleService,
+            INotificationService notificationService)
         {
-            _client = client;
-            _omniRepository = omniRepository;
-            _eventPublisher = eventPublish;
-            _notificationPublisher = notificationPublisher;
-            _cache = cache;
-            AuthService = new AuthService(_client);
-            TaskService = new TaskService(_omniRepository,_eventPublisher);
-            LeaderboardComparisonService = new LeaderboardComparisonService(_cache, _omniRepository);
-            ProfileService = new ProfileService(_cache,_omniRepository);
-            WorkspaceService = new WorkspaceService(_cache,_omniRepository);
-            ProjectService = new ProjectService(_omniRepository,eventPublish);
-            TeamService = new TeamService(_omniRepository,_client,_cache);
-            SprintService = new SprintService(_omniRepository);
-            TicketService = new TicketService(_omniRepository,eventPublish);
-            DashboardService = new DashboardService(_omniRepository,_eventPublisher);
-            RoleService = new RoleService(_omniRepository, _cache);
-            NotificationService = new NotificationService(_omniRepository);
+            AuthService = authService;
+            TaskService = taskService;
+            WorkspaceService = workspaceService;
+            ProfileService = profileService;
+            TeamService = teamService;
+            ProjectService = projectService;
+            SprintService = sprintService;
+            TicketService = ticketService;
+            DashboardService = dashboardService;
+            LeaderboardComparisonService = leaderboardComparisonService;
+            RoleService = roleService;
+            NotificationService = notificationService;
         }
-
     }
 }

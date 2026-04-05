@@ -1,25 +1,18 @@
-﻿using Enterprise.Flowstate.DAL.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Enterprise.Flowstate.BAL.Interface.Service
+﻿namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface IOmniService
     {
-        IAuthService AuthService { get; set; }
-        ITaskService TaskService { get; set; }
-        IProfileService ProfileService { get; set; }
-        IWorkspaceService WorkspaceService { get; set; }
-        IProjectService ProjectService { get; set; }
-        ITeamService TeamService { get; set; }
-        ISprintService SprintService { get; set; }
-        ITicketService TicketService { get; set; }
-        IDashboardService DashboardService { get; set; }
-        ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
-        IRoleService RoleService { get; set; }
-        INotificationService NotificationService { get; set; }
+        IAuthService AuthService { get; }
+        ITaskService TaskService { get; }
+        IProfileService ProfileService { get; }
+        IWorkspaceService WorkspaceService { get; }
+        IProjectService ProjectService { get; }
+        ITeamService TeamService { get; }
+        ISprintService SprintService { get; }
+        ITicketService TicketService { get; }
+        IDashboardService DashboardService { get; }
+        ILeaderboardComparisonService LeaderboardComparisonService { get; }
+        IRoleService RoleService { get; }
+        INotificationService NotificationService { get; }
     }
 }

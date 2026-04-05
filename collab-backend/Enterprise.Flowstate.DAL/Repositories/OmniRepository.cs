@@ -7,33 +7,41 @@ using System.Threading.Tasks;
 
 namespace Enterprise.Flowstate.DAL.Repositories
 {
-    public class OmniRepository:IOmniRepository
+    public class OmniRepository : IOmniRepository
     {
-        public ITaskRepository TaskRepository { get;set; }
-        public IWorkspaceRepository WorkspaceRepository { get;set; }    
-        public IProfileRepository ProfileRepository { get; set; }
-        public IProjectRepository ProjectRepository { get;set; }
-        public ITeamRepository TeamRepository { get; set; }
-        public ISprintRepository SprintRepository { get; set; }
-        public ITicketRepository TicketRepository { get; set; }
-        public IDashboardRepository DashboardRepository { get; set; }
-        public ILeaderBoardRepository LeaderBoardRepository { get; set; }
-        public INotificationRepository NotificationRepository { get; set; }
-        private readonly Supabase.Client _supabaseClient;
+        public ITaskRepository TaskRepository { get; }
+        public IWorkspaceRepository WorkspaceRepository { get; }
+        public IProfileRepository ProfileRepository { get; }
+        public IProjectRepository ProjectRepository { get; }
+        public ITeamRepository TeamRepository { get; }
+        public ISprintRepository SprintRepository { get; }
+        public ITicketRepository TicketRepository { get; }
+        public IDashboardRepository DashboardRepository { get; }
+        public ILeaderBoardRepository LeaderBoardRepository { get; }
+        public INotificationRepository NotificationRepository { get; }
 
-        public OmniRepository(Supabase.Client supabaseClient)
+        public OmniRepository(
+            ITaskRepository taskRepository,
+            IWorkspaceRepository workspaceRepository,
+            IProfileRepository profileRepository,
+            IProjectRepository projectRepository,
+            ITeamRepository teamRepository,
+            ISprintRepository sprintRepository,
+            ITicketRepository ticketRepository,
+            IDashboardRepository dashboardRepository,
+            ILeaderBoardRepository leaderBoardRepository,
+            INotificationRepository notificationRepository)
         {
-            _supabaseClient = supabaseClient;
-            TeamRepository = new TeamRepository(_supabaseClient);
-            NotificationRepository = new NotificationRepository(_supabaseClient);
-            TaskRepository = new TaskRepository(_supabaseClient);
-            ProfileRepository = new ProfileRepository(_supabaseClient);
-            WorkspaceRepository = new WorkspaceRepository(_supabaseClient);
-            SprintRepository = new SprintRepository(_supabaseClient);
-            ProjectRepository = new ProjectRepository(_supabaseClient);
-            TicketRepository = new TicketRepository(_supabaseClient);
-            DashboardRepository = new DashboardRepository(_supabaseClient);
-            LeaderBoardRepository = new LeaderBoardRepository(_supabaseClient);
+            TaskRepository = taskRepository;
+            WorkspaceRepository = workspaceRepository;
+            ProfileRepository = profileRepository;
+            ProjectRepository = projectRepository;
+            TeamRepository = teamRepository;
+            SprintRepository = sprintRepository;
+            TicketRepository = ticketRepository;
+            DashboardRepository = dashboardRepository;
+            LeaderBoardRepository = leaderBoardRepository;
+            NotificationRepository = notificationRepository;
         }
     }
 }
