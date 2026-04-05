@@ -23,6 +23,7 @@ import { AudioWaveform, Command, Frame, GalleryVerticalEnd, Map, MedalIcon, PieC
 import { NavProjects } from "./nav-projects"
 import { useAuth } from "@/context/AuthContext"
 import { Skeleton } from "@/components/ui/skeleton" // ✅ ShadCN Skeleton
+import { useRole } from "@/hooks/useRole"
 
 const staticData = {
   navMain: [
@@ -71,10 +72,16 @@ const staticData = {
 
 export function AppSidebar(props) {
   const { currentUser, workspaces, ongoingProjects } = useAuth()
+  const {userRole,roleId,canManageProjects} = useRole();
   
   const [loading, setLoading] = React.useState(true)
+  const filteredNavMain = staticData.navMain.filter((item) => {
+    if (item.title === "Projects" && !canManageProjects) {
+      return false
+    }
+    return true
+  })
 
-  console.log("Workspaces in Sidebar:", workspaces, ongoingProjects);
 
   // ✅ Skeleton Loader UI while fetching
   // if (loading || !workspaces || !ongoingProjects) {
@@ -132,8 +139,11 @@ export function AppSidebar(props) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={staticData.navMain} />
-        <NavProjects projects={ongoingProjects} />
+        <NavMain items={filteredNavMain} />        
+        {canManageProjects && (
+          <NavProjects projects={ongoingProjects} />
+        )}
+
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={currentUser} />

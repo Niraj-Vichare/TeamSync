@@ -16,6 +16,8 @@ import { Calendar } from '../ui/calendar'
 
 function TicketDialog({
     open = false,   
+    roleId,
+    canManageTickets,
     setOpen = () => {},
     loading = false,
     setLoading = () => {},
@@ -167,7 +169,7 @@ function TicketDialog({
                                     <Target className="w-4 h-4" /> Priority
                                 </Label>
                                 <Select
-                                    value={formData.priority}
+                                    value={formData.priority?.toString()}
                                     onValueChange={(v) => handleInputChange("priority", v)}
                                 >
                                     <SelectTrigger className={`w-full ${errors.priority ? "border-red-500" : ""}`}>
@@ -206,14 +208,14 @@ function TicketDialog({
                             </div>
                         </div>
 
-                        <div className={`grid gap-4 ${'user' === "admin" ? "grid-cols-2" : "grid-cols-1"}`}>
+                        <div className={`grid gap-4 ${(roleId === 1 || roleId === 2) ? "grid-cols-2" : "grid-cols-1"}`}>
                             {/* Project Field */}
                             <div className="space-y-2 w-full">
                                 <Label className="flex items-center gap-2">
                                     <Target className="w-4 h-4" /> Project
                                 </Label>
                                 <Select
-                                    value={formData.projectId}
+                                    value={formData.projectId?.toString() || ""}
                                     onValueChange={(v) => handleInputChange("projectId", v)}
                                 >
                                     <SelectTrigger className={`w-full ${errors.projectId ? "border-red-500" : ""}`}>
@@ -221,7 +223,7 @@ function TicketDialog({
                                     </SelectTrigger>
                                     <SelectContent>
                                         {projects.map((p) => (
-                                            <SelectItem key={p.projectId} value={p.projectId}>
+                                            <SelectItem key={p.projectId} value={p.projectId.toString()}>
                                                 {p.name}
                                             </SelectItem>
                                         ))}
@@ -232,25 +234,26 @@ function TicketDialog({
                                 )}
                             </div>
 
-                            {/* Reported By (Only visible for Admins) */}
-                            {"user" === "admin" && (
+                            {/* Reported By (Only visible for Admins/Owners) */}
+                            {(roleId === 1 || roleId === 2) && (
                                 <div className="space-y-2">
                                     <Label className="flex items-center gap-2">
                                         <Target className="w-4 h-4" /> Reported By
                                     </Label>
+
                                     <Select
-                                        value={formData.reportedBy}
-                                        onValueChange={(v) => handleInputChange("assignedTo", v)}
+                                        value={formData.reportedBy?.toString()}
+                                        onValueChange={(v) => handleInputChange("reportedBy", v)}
                                     >
                                         <SelectTrigger
-                                            className={`w-full ${errors.assignedTo ? "border-red-500" : ""}`}
+                                            className={`w-full ${errors.reportedBy ? "border-red-500" : ""}`}
                                         >
-                                            <SelectValue placeholder="Select Assigned To" />
+                                            <SelectValue placeholder="Select Reporter" />
                                         </SelectTrigger>
 
                                         <SelectContent>
                                             {workspaceUsers.map((user) => (
-                                                <SelectItem key={user.id} value={String(user.id)}>
+                                                <SelectItem key={user.id} value={user.id.toString()}>
                                                     <div className="flex items-center gap-2">
                                                         <Avatar className="w-5 h-5">
                                                             <AvatarImage src={user.profileImageUrl || ""} />
@@ -265,8 +268,8 @@ function TicketDialog({
                                         </SelectContent>
                                     </Select>
 
-                                    {errors.assignedTo && (
-                                        <p className="text-sm text-red-500">{errors.assignedTo}</p>
+                                    {errors.reportedBy && (
+                                        <p className="text-sm text-red-500">{errors.reportedBy}</p>
                                     )}
                                 </div>
                             )}

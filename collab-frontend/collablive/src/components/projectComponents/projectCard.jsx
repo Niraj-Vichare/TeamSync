@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Edit2Icon, Trash2Icon, Tag, Calendar, Clock, Image, FileText, Target } from 'lucide-react';
+import { ChevronDown, Edit2Icon, Trash2Icon, Tag, Calendar, Ticket, Image, FileText, Target, CheckCircle2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Label } from '../ui/label';
@@ -191,6 +191,29 @@ const ProjectCard = ({ project, onEdit, onDelete, onView }) => {
               {project.projectDescription || "No description provided for this project."}
             </p>
           </div>
+
+          {/* Ticket & task counts */}
+          {(project.totalTickets != null || project.closedTickets != null || project.activeTask != null) && (
+            <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-3">
+              {project.totalTickets != null && (
+                <div className="flex items-center gap-1.5">
+                  <Ticket className="w-3.5 h-3.5" />
+                  <span>
+                    <span className="font-medium text-foreground">{project.closedTickets ?? 0}</span>
+                    /{project.totalTickets} tickets
+                  </span>
+                </div>
+              )}
+              {project.activeTask != null && (
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>
+                    <span className="font-medium text-foreground">{project.activeTask}</span> tasks open
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* View button */}
           <div className="flex justify-center pt-2">

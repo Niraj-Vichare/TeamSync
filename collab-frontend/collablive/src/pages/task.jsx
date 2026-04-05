@@ -1,27 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  FilterIcon,
-  ListIcon,
-  PlusIcon,
-  SquareKanbanIcon,
-} from "lucide-react";
+import { FilterIcon, ListIcon, PlusIcon, SquareKanbanIcon } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 
 import { useAuth } from "@/context/AuthContext";
+import { useRole } from "@/hooks/useRole";          // FIX: import role hook
 import workspaceService from "@/services/workspace";
 import projectService from "@/services/project";
 import sprintService from "@/services/sprint";
@@ -36,72 +26,55 @@ function Task() {
   const { getCurrentWorkspaceId } = useAuth();
   const workspaceGuid = getCurrentWorkspaceId();
 
-  // === STATE ===
-  const [projects, setProjects] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [sprints, setSprints] = useState([]);
-  const [tickets, setTickets] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  // FIX: pull role flags once at the top — used to gate UI actions
+  const { canManageTasks, isViewer } = useRole();
 
-  const [taskOpen, setTaskOpen] = useState(false);
+  // === STATE ===
+  const [projects, setProjects]     = useState([]);
+  const [users, setUsers]           = useState([]);
+  const [sprints, setSprints]       = useState([]);
+  const [tickets, setTickets]       = useState([]);
+  const [tasks, setTasks]           = useState([]);
+  const [taskOpen, setTaskOpen]     = useState(false);
   const [taskLoading, setTaskLoading] = useState(false);
   const [actionType, setActionType] = useState("create");
-  const [errors, setErrors] = useState({});
-  const [activeTab, setActiveTab] = useState("list");
+  const [errors, setErrors]         = useState({});
+  const [activeTab, setActiveTab]   = useState("list");
 
-  // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [taskToDelete, setTaskToDelete]         = useState(null);
 
   // === FORM DATA ===
   const [taskFormData, setTaskFormData] = useState({
-    name: "",
-    description: "",
-    assignedTo: "",
-    priority: "",
-    projectId: "",
-    sprintId: "",
-    ticketId: "",
-    startDate: null,
-    endDate: null,
-    status: "",
+    name: "", description: "", assignedTo: "", priority: "",
+    projectId: "", sprintId: "", ticketId: "",
+    startDate: null, endDate: null, status: "",
   });
 
   // === FETCH GUARDS ===
-  const hasFetchedTasks = useRef(false);
+  const hasFetchedTasks    = useRef(false);
   const hasFetchedProjects = useRef(false);
-  const hasFetchedUsers = useRef(false);
+  const hasFetchedUsers    = useRef(false);
 
   // === VALIDATION ===
   const validateTaskForm = () => {
     const newErrors = {};
-
-    if (!taskFormData.name?.trim()) newErrors.name = "Task name is required.";
-    if (!taskFormData.description?.trim())
-      newErrors.description = "Description is required.";
-    if (!taskFormData.projectId) newErrors.projectId = "Project is required.";
-    if (!taskFormData.sprintId) newErrors.sprintId = "Sprint is required.";
-    if (!taskFormData.ticketId) newErrors.ticketId = "Ticket is required.";
-    if (!taskFormData.priority) newErrors.priority = "Priority is required.";
-    if (!taskFormData.status) newErrors.status = "Status is required.";
-
+    if (!taskFormData.name?.trim())        newErrors.name        = "Task name is required.";
+    if (!taskFormData.description?.trim()) newErrors.description = "Description is required.";
+    if (!taskFormData.projectId)           newErrors.projectId   = "Project is required.";
+    if (!taskFormData.sprintId)            newErrors.sprintId    = "Sprint is required.";
+    if (!taskFormData.ticketId)            newErrors.ticketId    = "Ticket is required.";
+    if (!taskFormData.priority)            newErrors.priority    = "Priority is required.";
+    if (!taskFormData.status)              newErrors.status      = "Status is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // === RESET FORM ===
   const resetTaskForm = () => {
     setTaskFormData({
-      name: "",
-      description: "",
-      assignedTo: "",
-      priority: "",
-      projectId: "",
-      sprintId: "",
-      ticketId: "",
-      startDate: null,
-      endDate: null,
-      status: "",
+      name: "", description: "", assignedTo: "", priority: "",
+      projectId: "", sprintId: "", ticketId: "",
+      startDate: null, endDate: null, status: "",
     });
     setErrors({});
   };
@@ -111,33 +84,28 @@ function Task() {
     try {
       setTaskLoading(true);
       const payload = {
-        title: taskFormData.name,
+        title:       taskFormData.name,
         description: taskFormData.description,
-        assignedTo: 0,
-        assignedBy: 0,
-        priority: parseInt(taskFormData.priority),
-        projectId: taskFormData.projectId,
-        sprintId: taskFormData.sprintId,
-        ticketId: taskFormData.ticketId,
-        startDate: taskFormData.startDate,
-        endDate: taskFormData.endDate,
-        status: parseInt(taskFormData.status),
+        assignedTo:  Number(taskFormData.assignedTo) || 0,
+        assignedBy:  0,
+        priority:    parseInt(taskFormData.priority),
+        projectId:   taskFormData.projectId,
+        sprintId:    taskFormData.sprintId,
+        ticketId:    taskFormData.ticketId,
+        startDate:   taskFormData.startDate,
+        endDate:     taskFormData.endDate,
+        status:      parseInt(taskFormData.status),
       };
 
       const response = await taskService.createTask(workspaceGuid, payload);
       if (response?.success) {
-        toast.success("Task Created 🎉", {
-          description: `${taskFormData.name} added successfully.`,
-        });
+        toast.success("Task Created 🎉", { description: `${taskFormData.name} added successfully.` });
         resetTaskForm();
         fetchTasks();
       } else {
-        toast.error("Failed to create task.", {
-          description: response?.message || "Something went wrong.",
-        });
+        toast.error("Failed to create task.", { description: response?.message || "Something went wrong." });
       }
     } catch (error) {
-      console.error("Error creating task:", error);
       toast.error("Error creating task.", { description: error.message });
     } finally {
       setTaskLoading(false);
@@ -147,35 +115,23 @@ function Task() {
   const updateTask = async () => {
     try {
       setTaskLoading(true);
-
-      // build payload
       const payload = {
-        id: taskFormData.id || 0,
-        title: taskFormData.name || taskFormData.title || "",
+        id:          taskFormData.id || 0,
+        title:       taskFormData.name || taskFormData.title || "",
         description: taskFormData.description || "",
-        taskGuid: taskFormData.taskGuid || null,
-        projectId: Number(taskFormData.projectId) || 0,
-        assignedBy: taskFormData.assignedBy || 0,
-        assignedTo: Number(taskFormData.assignedTo) || 0,
-        startDate: taskFormData.startDate
-          ? new Date(taskFormData.startDate).toISOString()
-          : null,
-        endDate: taskFormData.endDate
-          ? new Date(taskFormData.endDate).toISOString()
-          : null,
-        status: Number(taskFormData.status) || 0,
-        priority: Number(taskFormData.priority) || 0,
-        ticketId: Number(taskFormData.ticketId) || 0,
-        sprintId: Number(taskFormData.sprintId) || 0,
+        taskGuid:    taskFormData.taskGuid || null,
+        projectId:   Number(taskFormData.projectId) || 0,
+        assignedBy:  taskFormData.assignedBy || 0,
+        assignedTo:  Number(taskFormData.assignedTo) || 0,
+        startDate:   taskFormData.startDate ? new Date(taskFormData.startDate).toISOString() : null,
+        endDate:     taskFormData.endDate   ? new Date(taskFormData.endDate).toISOString()   : null,
+        status:      Number(taskFormData.status) || 0,
+        priority:    Number(taskFormData.priority) || 0,
+        ticketId:    Number(taskFormData.ticketId) || 0,
+        sprintId:    Number(taskFormData.sprintId) || 0,
       };
 
-      // call API
-      const response = await taskService.updateTask(
-        workspaceGuid,
-        taskFormData.taskGuid, // must be the actual GUID of the task
-        payload
-      );
-
+      const response = await taskService.updateTask(workspaceGuid, taskFormData.taskGuid, payload);
       if (response?.success) {
         toast.success("Task Updated ✅", {
           description: `${taskFormData.title || taskFormData.name} updated successfully.`,
@@ -184,20 +140,14 @@ function Task() {
         fetchTasks();
         setTaskOpen(false);
       } else {
-        toast.error("Failed to update task.", {
-          description: response?.message || "Something went wrong.",
-        });
+        toast.error("Failed to update task.", { description: response?.message || "Something went wrong." });
       }
     } catch (error) {
-      console.error("Error updating task:", error.response?.data || error.message);
-      toast.error("Error updating task.", {
-        description: error.message,
-      });
+      toast.error("Error updating task.", { description: error.message });
     } finally {
       setTaskLoading(false);
     }
   };
-
 
   const handleCreateOrUpdate = async () => {
     if (!validateTaskForm()) return;
@@ -206,13 +156,11 @@ function Task() {
     setTaskOpen(false);
   };
 
-  const handleTaskStatusUpdate = async (taskId, updatedFields) => {
+  // FIX: workspaceGuid was not being passed to updateTaskStatus — the backend
+  // uses it to publish events with the correct workspace context.
+  const handleTaskStatusUpdate = async (taskId, status) => {
     try {
-      const response = await taskService.updateTaskStatus(
-        workspaceGuid,
-        taskId,
-        updatedFields
-      );
+      const response = await taskService.updateTaskStatus(workspaceGuid, taskId, status);
       if (response?.success) {
         toast.success("Status Updated ✅");
         fetchTasks();
@@ -220,33 +168,34 @@ function Task() {
         toast.error("Failed to update status.");
       }
     } catch (error) {
-      console.error("Error updating task status:", error);
       toast.error("Something went wrong while updating status.");
     }
   };
 
-  // === EDIT / DELETE ===
+  // FIX: guard edit — Viewer must not be able to trigger the edit dialog
   const handleEditTask = (task) => {
-    if (!task) return;
+    if (!task || !canManageTasks) return;
     setActionType("edit");
     setTaskFormData({
-      taskId: task.id,
-      name: task.title || "",
+      taskId:      task.id,
+      name:        task.title || "",
       description: task.description || "",
-      assignedTo: task.assignedTo || "",
-      priority: task.priority?.toString() || "",
-      projectId: task.projectId || "",
-      sprintId: task.sprintId || "",
-      ticketId: task.ticketId || "",
-      startDate: task.startDate || null,
-      endDate: task.endDate || null,
-      taskGuid:task.taskGuid,
-      status: task.status?.toString() || "",
+      assignedTo:  task.assignedTo || "",
+      priority:    task.priority?.toString() || "",
+      projectId:   task.projectId || "",
+      sprintId:    task.sprintId || "",
+      ticketId:    task.ticketId || "",
+      startDate:   task.startDate || null,
+      endDate:     task.endDate || null,
+      taskGuid:    task.taskGuid,
+      status:      task.status?.toString() || "",
     });
     setTaskOpen(true);
   };
 
+  // FIX: guard delete — Viewer must not be able to trigger the delete dialog
   const handleDeleteTask = (task) => {
+    if (!task || !canManageTasks) return;
     setTaskToDelete(task);
     setDeleteDialogOpen(true);
   };
@@ -254,7 +203,6 @@ function Task() {
   const confirmDeleteTask = async () => {
     if (!taskToDelete) return;
     try {
-      console.log(taskToDelete);
       const response = await taskService.deleteTask(taskToDelete.taskGuid);
       if (response?.success) {
         toast.success("Task deleted successfully!");
@@ -262,7 +210,7 @@ function Task() {
       } else {
         toast.error("Failed to delete task.");
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong deleting the task.");
     } finally {
       setDeleteDialogOpen(false);
@@ -276,11 +224,10 @@ function Task() {
     try {
       setTaskLoading(true);
       const response = await taskService.getTasksAssignedToUser(workspaceGuid);
-      console.log(response);
-      if (response.success && response.data) {
+      if (response?.success && response.data) {
         setTasks(response.data);
       } else {
-        console.warn("Failed to fetch tasks:", response.message);
+        console.warn("Failed to fetch tasks:", response?.message);
       }
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -322,19 +269,14 @@ function Task() {
   useEffect(() => {
     if (!hasFetchedProjects.current || !hasFetchedUsers.current) {
       hasFetchedProjects.current = true;
-      hasFetchedUsers.current = true;
+      hasFetchedUsers.current   = true;
       fetchProjects();
       fetchWorkspaceUsers();
     }
-  }, [workspaceGuid,activeTab]);
+  }, [workspaceGuid, activeTab]);
 
-  useEffect(() => {
-    fetchSprintsByProject();
-  }, [taskFormData.projectId]);
-
-  useEffect(() => {
-    fetchTicketsBySprintId();
-  }, [taskFormData.sprintId]);
+  useEffect(() => { fetchSprintsByProject(); }, [taskFormData.projectId]);
+  useEffect(() => { fetchTicketsBySprintId(); }, [taskFormData.sprintId]);
 
   // === UI ===
   return (
@@ -346,17 +288,21 @@ function Task() {
             Break down work into manageable actions to stay productive and accountable.
           </p>
         </div>
+
         <div className="flex items-center space-x-2">
-          <Button
-            className="text-white"
-            onClick={() => {
-              setActionType("create");
-              resetTaskForm();
-              setTaskOpen(true);
-            }}
-          >
-            <PlusIcon className="w-3 h-3 mr-2" /> Add Task
-          </Button>
+          {/* FIX: "Add Task" button is hidden from Viewers — they have no create permission */}
+          {canManageTasks && (
+            <Button
+              className="text-white"
+              onClick={() => {
+                setActionType("create");
+                resetTaskForm();
+                setTaskOpen(true);
+              }}
+            >
+              <PlusIcon className="w-3 h-3 mr-2" /> Add Task
+            </Button>
+          )}
         </div>
       </div>
 
@@ -374,8 +320,10 @@ function Task() {
           <ListView
             taskData={tasks}
             onTaskUpdate={handleTaskStatusUpdate}
-            onEditTask={handleEditTask}
-            onDeleteTask={handleDeleteTask}
+            // FIX: pass null handlers to child when Viewer — child components
+            // should check whether the handler is defined before rendering buttons
+            onEditTask={canManageTasks ? handleEditTask : null}
+            onDeleteTask={canManageTasks ? handleDeleteTask : null}
           />
         </TabsContent>
 
@@ -383,29 +331,31 @@ function Task() {
           <KanbanView
             tasksData={tasks}
             onTaskUpdate={handleTaskStatusUpdate}
-            onEditTask={handleEditTask}
-            onDeleteTask={handleDeleteTask}
+            onEditTask={canManageTasks ? handleEditTask : null}
+            onDeleteTask={canManageTasks ? handleDeleteTask : null}
           />
         </TabsContent>
       </Tabs>
 
-      {/* Create/Edit Task Dialog */}
-      <TaskDialog
-        open={taskOpen}
-        setOpen={setTaskOpen}
-        loading={taskLoading}
-        setLoading={setTaskLoading}
-        projects={projects}
-        sprints={sprints}
-        tickets={tickets}
-        workspaceUsers={users}
-        formData={taskFormData}
-        setFormData={setTaskFormData}
-        errors={errors}
-        actionType={actionType}
-        onClose={() => setTaskOpen(false)}
-        onSubmit={handleCreateOrUpdate}
-      />
+      {/* Create / Edit Task Dialog — only mount if user has permission */}
+      {canManageTasks && (
+        <TaskDialog
+          open={taskOpen}
+          setOpen={setTaskOpen}
+          loading={taskLoading}
+          setLoading={setTaskLoading}
+          projects={projects}
+          sprints={sprints}
+          tickets={tickets}
+          workspaceUsers={users}
+          formData={taskFormData}
+          setFormData={setTaskFormData}
+          errors={errors}
+          actionType={actionType}
+          onClose={() => setTaskOpen(false)}
+          onSubmit={handleCreateOrUpdate}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

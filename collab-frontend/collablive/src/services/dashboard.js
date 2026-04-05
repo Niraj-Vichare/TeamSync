@@ -68,6 +68,17 @@ class DashboardService {
       throw error;
     }
   }
+  async getOrgMetrics(workspaceGuid) {
+    if (!workspaceGuid) throw new Error("Workspace GUID is required");
+    try {
+      const response = await axiosInstance.get(`/dashboard/org-metrics?workspaceGuid=${workspaceGuid}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error while getting org metrics", error);
+      throw error;
+    }
+  }
+
   async getUserRankingHistory(workspaceGuid) {
     if (!workspaceGuid) throw new Error("Workspace GUID is required");
     try {

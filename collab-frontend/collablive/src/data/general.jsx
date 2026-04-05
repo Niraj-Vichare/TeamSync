@@ -885,3 +885,30 @@ export const WorkspacePositionLabels = {
   //     attachments: 4
   //   }
   // ]);
+
+
+ export const mapTicketDetail = (apiTicket) => {
+  if (!apiTicket) return null;
+
+  return {
+    ...apiTicket,
+    tags: typeof apiTicket.tags === "string"
+      ? apiTicket.tags.split(",").map((t) => t.trim()).filter(Boolean)
+      : [],
+
+    comments: Array.isArray(apiTicket.comments)
+      ? apiTicket.comments.map((comment) => ({
+          ...comment,
+          id: comment.id,
+          text: comment.commentText ?? "",
+          authorName: comment.authorName ?? "Unknown",
+          authorAvatarUrl: comment.authorAvatarUrl ?? null,
+          createdAt: comment.createdAt ?? null,
+          createdAtInString: comment.createdAtInString ?? "",
+          attachments: comment.attachments ?? [],
+          media: comment.media ?? null,
+          isCurrentUser: Boolean(comment.isCurrentUser),
+        }))
+      : [],
+  };
+};

@@ -1,11 +1,11 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import {  Calendar, Eye, Flag, Tag, Target, User } from 'lucide-react';
+import {  Calendar, Eye, Flag, Pencil, Tag, Target, User, View } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 
-const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
-  console.log("Rendering StoryCard with story:", story);
+const StoryCard = ({ story ,canManageSprints,onIncludeInSprint, onViewDetail,onEditClick }) => {
+  console.log("Rendering StoryCard with story:", story,canManageSprints);
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'open': return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -92,24 +92,34 @@ const StoryCard = ({ story, onIncludeInSprint, onViewDetails }) => {
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button 
+          {canManageSprints && <Button 
             variant="outline" 
             className="flex-1"
-            onClick={() => onViewDetails(story)}
+            onClick={() => onEditClick(story)}
           >
-            <Eye className="w-4 h-4 mr-1" />
-            View Details
-          </Button>
-          {!story.sprintId && (
-            console.log("Include in Sprint Button Rendered",story.ticketGuid),
+            <Pencil className="w-4 h-4 mr-1" />
+            Edit
+          </Button>}
+
+          <Button
+            variant="outline"
+            onClick={() => onViewDetail(story.ticketGuid)}
+            className="flex items-center gap-1"
+          >
+          <View className="w-4 h-4" />
+          View Detail
+        </Button>
+
+          {!story.sprintId && canManageSprints ? (
+            console.log("Include in Sprint Button Rendered",story.ticketGuid,story.projectId),
             <Button 
               className="flex-1 text-white"
-              onClick={() => onIncludeInSprint(story.ticketGuid)}
+              onClick={() => onIncludeInSprint(story.ticketGuid,story.projectId)}
             >
               <Calendar className="w-4 h-4 mr-1" />
               Include in Sprint
             </Button>
-          )}
+          ) : null}
         </div>
       </CardContent>
     </Card>

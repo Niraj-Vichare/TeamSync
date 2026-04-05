@@ -14,10 +14,14 @@ class SprintService {
 
     async getAllSprints(workspaceGuid,searchTerm,status,projectId,pageNumber,pageSize) {
         try {
-            console.log(workspaceGuid,searchTerm,status,projectId,pageNumber,pageSize);
-            const response = await axiosInstance.get("/sprints",{
-                params:{workspaceGuid,searchTerm,status,projectId,pageNumber,pageSize}
-            });
+            // BUG FIX: passing all params unconditionally sent the literal string "undefined"
+            // to the backend when filters were empty, causing wrong DB matches.
+            // Only include filter params when they actually have a value.
+            const params = { workspaceGuid, pageNumber, pageSize };
+            if (searchTerm) params.searchTerm = searchTerm;
+            if (status)     params.status = status;
+            if (projectId)  params.projectId = projectId;
+            const response = await axiosInstance.get("/sprints", { params });
             return response.data;
         } catch (error) {
             console.error("Error fetching sprints:", error);
@@ -40,10 +44,11 @@ class SprintService {
 
     async AddTicketToSprint(workspaceGuid, sprintId, ticketGuid, selectedMember) {
         try {
-            console.log("AddTicketToSprint", workspaceGuid, sprintId, ticketGuid, selectedMember);
             const response = await axiosInstance.post(
                 `/sprints/${sprintId}/tickets/${ticketGuid}`,
-                selectedMember  // Send the number directly, not wrapped in an object
+                // BUG FIX: Select value is always a string; backend [FromBody] int expects a number.
+                // Parse here as a safety net (sprints.jsx also parses on store).
+                parseInt(selectedMember, 10)
             );
             return response.data;
         } catch (error) {
@@ -127,7 +132,7 @@ class SprintService {
 
     async getSprintsByProject(projectId){
         try {
-            const response = await axiosInstance.get(`/projects/${projectId}/sprints`);
+            const response = await axiosInstance.get(`/sprints/projects/${projectId}/sprints`);
             return response.data;
         } catch (error) {
             console.error("Error fetching sprints by project:", error);

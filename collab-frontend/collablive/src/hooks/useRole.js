@@ -22,6 +22,7 @@ export function useRole() {
     canManageTeam: roleId <= 2, // Owner or Admin
     canManageProjects: roleId <= 3, // Owner, Admin, or Manager
     canManageSprints: roleId <= 3,
+    canManageTickets: roleId <= 3, 
     canManageTasks: roleId <= 4, // Everyone except Viewer
     canViewAnalytics: roleId <= 2,
     canViewReports: roleId <= 2,

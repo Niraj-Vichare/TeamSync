@@ -20,6 +20,7 @@ import { GenericPieChart } from '@/components/chartComponents/GenericPieChart'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import sprintService from '@/services/sprint'
 import { useAuth } from '@/context/AuthContext'
+import { useRole } from '@/hooks/useRole'
 
 // ============================================================================
 // CONSTANTS
@@ -99,6 +100,7 @@ export default function Sprint() {
     const params = useParams()
     const navigate = useNavigate()
     const { getCurrentWorkspaceId } = useAuth()
+    const { canManageSprints } = useRole()
     
     const sprintGuid = params.sprintId
     const workspaceGuid = getCurrentWorkspaceId()
@@ -485,8 +487,13 @@ export default function Sprint() {
                         <MoveLeftIcon className="w-4 h-4" />
                         Back to Sprints
                     </Button>
-                    <Button className="text-white bg-black border-1">Pause Sprint</Button>
-                    <Button variant="destructive">Close Sprint</Button>
+                    {/* Only Owner/Admin/Manager can pause or close a sprint */}
+                    {canManageSprints && (
+                        <>
+                            <Button className="text-white bg-black border-1">Pause Sprint</Button>
+                            <Button variant="destructive">Close Sprint</Button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -672,7 +679,7 @@ export default function Sprint() {
                                                             variant="primary" 
                                                             className="bg-black text-white w-20" 
                                                             size="sm" 
-                                                            onClick={() => handleViewTicket(ticketId)}
+                                                            onClick={() => handleViewTicket(ticket.ticketGuid)}
                                                         >
                                                             View
                                                         </Button>
@@ -744,6 +751,28 @@ export default function Sprint() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* BUG FIX: chart was imported and progressChartData was computed but JSX was missing entirely */}
+                    {progressChartData.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Sprint Progress</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <LineChart data={progressChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                                        <YAxis tick={{ fontSize: 11 }} />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="completed" stroke="#10b981" dot={false} name="Completed" />
+                                        <Line type="monotone" dataKey="pending" stroke="#ef4444" dot={false} name="Pending" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Sprint Activity */}
                     <Card>

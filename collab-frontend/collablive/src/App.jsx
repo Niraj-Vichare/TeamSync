@@ -21,6 +21,7 @@ import { LoginForm } from './pages/login-form';
 import Sprint from './pages/sprint';
 import Leaderboard from './pages/leaderboard';
 import { OAuthCallback } from './pages/oauth-callback';
+import TicketDetail from './pages/ticket-details';
 
 function App() {
   const { isAuthenticated,workspaceId,loading } = useAuth();
@@ -91,6 +92,7 @@ function InnerApp({ isAuthenticated,workspaceId,loading }) {
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/tickets/:ticketGuid" element={<TicketDetail/>}/>
       </Route>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

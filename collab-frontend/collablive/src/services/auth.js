@@ -39,7 +39,7 @@ class AuthService {
         throw new Error(response.data.message || 'Signup failed');
       }
     } catch (error) {
-      console.error('Signup error:', error);
+      console.log('Signup error:', error);
       throw new Error(error.response?.data?.message || 'Signup failed');
     }
   }
@@ -77,7 +77,7 @@ class AuthService {
         throw new Error(response.data.message || 'Signin failed');
       }
     } catch (error) {
-      console.error('Signin error:', error);
+      console.log('Signin error:', error);
       throw new Error(error.response?.data?.message || 'Signin failed');
     }
   }
@@ -87,7 +87,7 @@ class AuthService {
     try {
       return await oauthService.signInWithGoogle();
     } catch (error) {
-      console.error('Google signin error:', error);
+      console.log('Google signin error:', error);
       throw new Error('Google signin failed');
     }
   }
@@ -107,7 +107,7 @@ class AuthService {
         throw new Error(response.data.message || 'Password reset failed');
       }
     } catch (error) {
-      console.error('Password reset error:', error);
+      console.log('Password reset error:', error);
       throw new Error(error.response?.data?.message || 'Password reset failed');
     }
   }
@@ -125,7 +125,7 @@ class AuthService {
 
       return { success: true };
     } catch (error) {
-      console.error('Signout error:', error);
+      console.log('Signout error:', error);
       // Even if backend call fails, clear local data
       this.currentUser = null;
       this.currentWorkspaceId = null;
@@ -142,7 +142,7 @@ class AuthService {
       const response = await axiosInstance.get('/user/profile');
       return response.data;
     } catch (error) {
-      console.error('Get profile error:', error);
+      console.log('Get profile error:', error);
       throw error;
     }
   }
@@ -153,8 +153,9 @@ class AuthService {
       const response = await axiosInstance.get('/user/data');
       return response.data;
     } catch (error) {
-      console.error('Get user data error:', error);
-      throw error;
+      console.log('Get user data error:', error);
+      // throw error;
+      return;
     }
   }
 
@@ -169,7 +170,7 @@ class AuthService {
       this.currentUser = profile.data;
       return { profile, userData };
     } catch (error) {
-      console.error('Refresh user data error:', error);
+      console.log('Refresh user data error:', error);
       throw error;
     }
   }
@@ -260,7 +261,7 @@ class AuthService {
       }
       return [];
     } catch (error) {
-      console.error('Get permissions error:', error);
+      console.log('Get permissions error:', error);
       return [];
     }
   }

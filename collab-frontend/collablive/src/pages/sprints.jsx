@@ -25,6 +25,7 @@ import { globalSprint, projectWithName, teamWithName } from '@/data/general';
 import { toast } from 'sonner';
 import TicketDialog from '@/components/sprintComponents/TicketDialog';
 import { useAuth } from '@/context/AuthContext';
+import { useRole } from '@/hooks/useRole';
 import { Skeleton } from '@/components/ui/skeleton';
 import ticketService from '@/services/ticket';
 import { AnimatePresence,motion } from 'framer-motion';
@@ -47,6 +48,8 @@ function Sprints() {
 
   const [tabs, setTabs] = useState("sprints");
   const { getCurrentWorkspaceId } = useAuth();
+  const { canManageSprints, canManageTasks,roleId,canManageTickets,isAdmin,isManager } = useRole();
+  {console.log("User Role ID in Sprints Page:", roleId, "Can Manage Sprints:", canManageSprints, "Can Manage Tasks:", canManageTasks)}
   const navigate = useNavigate();
 
   // Generic States
@@ -217,6 +220,14 @@ function Sprints() {
       setSprintLoading(false);
     }
   };
+  const resetIncludeSprintDialog = () => {
+    setSelectedSprintId(null);
+    setSprintSelectedMember(null);
+    setSprintMembers([]);
+    setIncludeTicketGuid(null);
+    setIncludeProjectId(null);
+    setErrors({});
+  };
 
 
   
@@ -265,7 +276,7 @@ function Sprints() {
       setErrors({}); // reset previous
       console.log(err);
 
-      // 🧩 Handle ASP.NET validation (400)
+      // Handle ASP.NET validation (400)
       if (err.response?.status === 400 && err.response.data?.errors) {
         const serverErrors = err.response.data.errors;
         const fieldErrors = {};
@@ -333,6 +344,13 @@ function Sprints() {
     }
   };
 
+  const onViewDetail = (ticketGuid) => {
+    handleViewDetail(ticketGuid);
+  };
+
+  const handleViewDetail = (ticketGuid) => {
+    navigate(`/tickets/${ticketGuid}`);
+  };
 
  
   // Create Ticket
@@ -515,6 +533,7 @@ function Sprints() {
       if(response.success){
         toast.success("Ticket added to sprint successfully");
         setSprintDialogOpen(false);
+        resetIncludeSprintDialog();
       }
     }catch(error){
       console.error("Error including ticket in sprint",error);
@@ -651,7 +670,8 @@ function Sprints() {
         <TabsContent value="sprints" className="mt-3">
           {/* Toolbar Row */}
           <div className="flex items-center justify-between pb-2">
-            {/* Left: Add Button */}
+            {/* Left: Add Button — only Owner/Admin/Manager can create sprints */}
+            {canManageSprints ? (
             <Dialog open={sprintOpen} onOpenChange={handleSprintDialogChange}>
               <DialogTrigger asChild>
                 <Button className="text-white">
@@ -866,6 +886,7 @@ function Sprints() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            ) : <div />}
 
             {/* Right: Search & Filter */}
             <div className="flex items-center gap-3">
@@ -873,7 +894,8 @@ function Sprints() {
                 <Input
                   type="text"
                   placeholder="Search sprints..."
-                  value={(e)=>setSprintSearchTerm(e.target.value)}
+                  value={sprintSearchTerm}
+                  onChange={(e)=>setSprintSearchTerm(e.target.value)}
                   className="pl-8 pr-3 py-2 border rounded-md text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Search className="w-4 h-4 absolute left-2 top-2.5 text-gray-400" />
@@ -946,12 +968,16 @@ function Sprints() {
           {/* Toolbar Row */}
           <div className="flex items-center justify-between pb-2">
             {/* Left: Add Button */}
+            {canManageTickets && (
             <Button className={'text-white'} onClick={() => handleTicketDialogChange("create", "user story")}>
               <PlusIcon className="w-3 h-3" />
               Add New Story
             </Button>
+            )}
             <TicketDialog
               open={ticketOpen}
+              roleId={roleId}
+              canManageTickets = {canManageTickets}
               setOpen={setTicketOpen}
               loading={ticketLoading}
               setLoading={setTicketLoading}
@@ -1027,14 +1053,14 @@ function Sprints() {
                   >
                     <UserStoryCard
                       story={story}
-                      onViewClick={(story) =>
-                        console.log("View / Generate Steps for bug:", story)
-                      }
-                      onViewDetails={(ticket) =>
+                      canManageSprints={canManageSprints}
+                      onViewDetail = {(ticketGuid)=>onViewDetail(ticketGuid)}
+                      onEditClick={(ticket) =>
                         handleEditClick("user story",ticket)
                       }
-                      onIncludeInSprint={(ticketGuid) => setSprintDialogOpen(true) & setIncludeTicketGuid(ticketGuid)
-                      }
+                      onIncludeInSprint={(ticketGuid,projectId) => {
+                        handleOnIncludeSprint(ticketGuid,projectId);
+                      }}
                     />
                   </motion.div>
                 ))
@@ -1061,6 +1087,7 @@ function Sprints() {
            {/* Toolbar Row */}
           <div className="flex items-center justify-between pb-2">
             {/* Left: Add Button */}
+            {canManageTickets && (
             <Button
               className="text-white"
               onClick={() => handleTicketDialogChange("create","bug")}
@@ -1068,9 +1095,12 @@ function Sprints() {
               <PlusIcon className="w-3 h-3" />
               Add New Bug
             </Button>
+            )}
 
             <TicketDialog
               open={ticketOpen}
+              roleId={roleId}
+              canManageTickets = {canManageTickets}
               setOpen={setTicketOpen}
               loading={ticketLoading}
               setLoading={setTicketLoading}
@@ -1147,6 +1177,9 @@ function Sprints() {
                   >
                     <BugCard
                       bug={bug}
+                      onViewDetail = {(ticketGuid)=>onViewDetail(ticketGuid)}
+                      canManageSprints ={canManageSprints}
+                      
                       onStepViewClick={(ticketGuid) =>
                         handleStepViewClick(ticketGuid)
                       }
@@ -1258,7 +1291,13 @@ function Sprints() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={sprintDialogOpen} onOpenChange={setSprintDialogOpen}>
+      <Dialog open={sprintDialogOpen} onOpenChange={(open) => {
+        setSprintDialogOpen(open);
+        if (!open) {
+          resetIncludeSprintDialog(); // ✅ clear everything on close
+        }
+      }}
+      >
         <DialogContent className="sm:max-w-[600px] p-6">
           <DialogHeader className="px-2 border-b-2 py-2">
             <DialogTitle className="text-xl font-semibold flex items-center gap-2">
@@ -1274,7 +1313,7 @@ function Sprints() {
                   <div className="space-y-2">
                     <Label>Select Sprint</Label>
                     <Select
-                      value={selectedSprintId ? selectedSprintId.toString() : null}
+                      value={selectedSprintId?.toString()}
                       onValueChange={(value) => fetchTeamMembers(value) & setSelectedSprintId(value)}
                     >
                       <SelectTrigger className="w-full">
@@ -1297,24 +1336,28 @@ function Sprints() {
                   </div>
                   <div className="space-y-2">
                     <Label>Select Team Member</Label>
-                    <Select
-                      value={sprintSelectedMember}
-                      onValueChange={(value) => setSprintSelectedMember(value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select Team Member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sprintMembers?.map((member) => (
-                          <SelectItem
-                            key={member.memberId}
-                            value={member.memberId}
-                          >
-                            {member.memberName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <Select
+                        value={sprintSelectedMember?.toString()}
+                        onValueChange={(value) => {
+                          console.log(value);
+                          setSprintSelectedMember(parseInt(value, 10));
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Team Member" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {sprintMembers?.map((member) => (
+                            <SelectItem
+                              key={member.memberId}
+                              value={member.memberId.toString()} // important
+                            >
+                              {member.memberName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                   </div>
                 </div>
               )}
@@ -1323,7 +1366,10 @@ function Sprints() {
           <DialogFooter className="px-6 py-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setSprintDialogOpen(false) & setIncludeTicketGuid(null)}
+              onClick={() => {
+                setSprintDialogOpen(false);
+                resetIncludeSprintDialog();
+              }}
               disabled={sprintDialogLoading}
             >
               Cancel

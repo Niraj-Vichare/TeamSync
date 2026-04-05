@@ -1,16 +1,17 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircleDot, Pencil, CalendarPlus } from "lucide-react";
+import { CircleDot, Pencil, CalendarPlus, View } from "lucide-react";
 import { Button } from "../ui/button";
 
 const BugCard = ({
   bug,
+    canManageSprints,
   onStepViewClick,
   onEditClick,
+  onViewDetail,
   onIncludeInSprint
 }) => {
-  {console.log("Rendering BugCard with bug:", bug)}
   const getStatusBadge = () => {
     switch (bug.statusInString.toLowerCase()) {
       case "open": return "bg-red-600 text-white";
@@ -61,16 +62,18 @@ const BugCard = ({
 
       {/* Footer */}
       <CardFooter className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          onClick={() => onEditClick(bug)}
-          className="flex items-center gap-1"
-        >
+        {canManageSprints && (
+          <Button
+            variant="outline"
+            onClick={() => onEditClick(bug)}
+            className="flex items-center gap-1"
+          >
           <Pencil className="w-4 h-4" />
           Edit
         </Button>
+      )}
 
-        {!bug.sprintId && (
+        {!bug.sprintId && canManageSprints && (
           <Button
             variant="outline"
             onClick={() => onIncludeInSprint(bug.ticketGuid,bug.projectId)}
@@ -82,12 +85,23 @@ const BugCard = ({
         )}
 
         <Button
-          variant="default"
-          className="text-white"
-          onClick={() => onStepViewClick(bug)}
-        >
-          View / Generate Steps
+            variant="outline"
+            onClick={() => onViewDetail(bug.ticketGuid)}
+            className="flex items-center gap-1"
+          >
+          <View className="w-4 h-4" />
+          View Detail
         </Button>
+
+        {!canManageSprints && (
+          <Button
+            variant="default"
+            className="text-white"
+            onClick={() => onStepViewClick(bug)}
+          >
+            View / Generate Steps
+          </Button>
+          )}
       </CardFooter>
     </Card>
   );
