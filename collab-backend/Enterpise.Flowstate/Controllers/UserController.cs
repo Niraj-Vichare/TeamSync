@@ -69,7 +69,7 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpGet("work")]
         public async Task<ApiResponseModel<object>> GetUserWork([FromQuery] string workspaceGuid)
-        {
+       {
             try
             {
                 var identity = HttpContext.User.Identity as ClaimsIdentity;

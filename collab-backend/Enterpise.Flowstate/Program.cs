@@ -14,6 +14,7 @@ using Supabase;
 using System.Text;
 using DotNetEnv;
 using Microsoft.AspNetCore.HttpOverrides;
+using Enterprise.Flowstate.BAL.Hubs;
 
 Env.Load();
 
@@ -61,6 +62,9 @@ builder.Services.AddScoped<IOmniRepository, OmniRepository>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IOmniService, OmniService>();
 builder.Services.AddSingleton<ICache, CacheService>();
+
+builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
+builder.Services.AddHostedService<NotificationConsumer>();
 builder.Services.AddSingleton<ILeaderboardHubService, LeaderboardHubService>();
 builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
 builder.Services.AddSingleton<IEventPublisher, MessagePublisher>();
@@ -96,7 +100,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 // SignalR hub reads token from query string; everything else uses the cookie
                 context.Token = (!string.IsNullOrEmpty(accessToken) &&
-                                  path.StartsWithSegments("/hubs/leaderboard"))
+                                  path.StartsWithSegments("/hubs/leaderboard") || path.StartsWithSegments("/hub/notifications"))
                     ? accessToken.ToString()
                     : context.Request.Cookies["authToken"];
 
@@ -138,6 +142,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapHub<LeaderboardHub>("/hubs/leaderboard");
+app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapControllers();
 
 app.Run();

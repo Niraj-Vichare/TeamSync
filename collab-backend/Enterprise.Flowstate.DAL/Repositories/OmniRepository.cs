@@ -18,12 +18,14 @@ namespace Enterprise.Flowstate.DAL.Repositories
         public ITicketRepository TicketRepository { get; set; }
         public IDashboardRepository DashboardRepository { get; set; }
         public ILeaderBoardRepository LeaderBoardRepository { get; set; }
+        public INotificationRepository NotificationRepository { get; set; }
         private readonly Supabase.Client _supabaseClient;
 
         public OmniRepository(Supabase.Client supabaseClient)
         {
             _supabaseClient = supabaseClient;
             TeamRepository = new TeamRepository(_supabaseClient);
+            NotificationRepository = new NotificationRepository(_supabaseClient);
             TaskRepository = new TaskRepository(_supabaseClient);
             ProfileRepository = new ProfileRepository(_supabaseClient);
             WorkspaceRepository = new WorkspaceRepository(_supabaseClient);

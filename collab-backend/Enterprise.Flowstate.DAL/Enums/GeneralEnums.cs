@@ -98,6 +98,45 @@ namespace Enterprise.Flowstate.DAL.Enums
             NotClockedIn,
             InvalidWorkspaceOrUser
         }
+        public enum NotificationType
+        {
+            TaskAssigned = 1,
+            TaskUpdated = 2,
+
+            TicketAssigned = 3,
+            TicketUpdated = 4,
+            TicketClosed = 5,
+            TicketCloseRequested = 6,
+
+            CommentAdded = 7,
+            Mentioned = 8,
+
+            TeamMemberAdded = 9,
+
+            ProjectCreated = 10,
+            ProjectUpdated = 11,
+
+            SprintCreated = 12,
+            SprintClosed = 13
+        }
+
+        public enum NotificationEntityType
+        {
+            Task = 1,
+            Ticket = 2,
+            Project = 3,
+            Sprint = 4,
+            Team = 5,
+            Workspace = 6,
+            Comment = 7
+        }
+
+        public enum NotificationStatus
+        {
+            Unread = 0,
+            Read = 1
+        }
+
 
     }
 }

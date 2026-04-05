@@ -4,7 +4,6 @@
     {
         #region RabbitMQ
         public const string RANKING_EXCHANGE = "ranking.exchange";
-        public const string NOTIFICATION_EXCHANGE = "notification.exchange";
         public const string RANKING_QUEUE = "ranking.queue";
         public const string RANKING_ROUTING_KEY = "ranking.update";
         public const string RANKING_RETRY_EXCHANGE = "ranking.retry.exchange";
@@ -13,6 +12,17 @@
         public const string RANKING_DLX_EXCHANGE = "ranking.dlx.exchange";
         public const string RANKING_DLX_QUEUE = "ranking.dlq";
         public const string RANKING_DLX_ROUTING_KEY = "ranking.dlq";
+
+        public const string NOTIFICATION_EXCHANGE = "notification.exchange";
+        public const string NOTIFICATION_QUEUE = "notification.queue";
+        public const string NOTIFICATION_ROUTING_KEY = "notification.send";
+        public const string NOTIFICATION_RETRY_EXCHANGE = "notification.retry.exchange";
+        public const string NOTIFICATION_RETRY_QUEUE = "notification.retry.queue";
+        public const string NOTIFICATION_RETRY_ROUTING_KEY = "notification.retry";
+        public const string NOTIFICATION_DLX_EXCHANGE = "notification.dlx.exchange";
+        public const string NOTIFICATION_DLX_QUEUE = "notification.dlq";
+        public const string NOTIFICATION_DLX_ROUTING_KEY = "notification.dlq";
+        public const string UserGroupKey = "user:{0}";
         #endregion
 
         #region Misc

@@ -10,11 +10,12 @@ namespace Enterprise.Flowstate.DAL.DTOs
     /// </summary>
     public class TicketDetailDto : TicketDto
     {
-        public string? AssignedToGuid { get; set; }
-        public string? AssignedToAvatarUrl { get; set; }
-        public string? ReportedByName { get; set; }
-        public string? ReportedByGuid { get; set; }
-        public List<string> StepsList { get; set; } = new();
+        public string AssignedToAvatarUrl { get; set; } 
+        public string AssignedByAvatarUrl { get; set; }
+        public string AssignedToGuid { get; set;}
+        public string AssignedByGuid { get; set; }
+        public string AssignedToEmail { get; set; }
+        public string AssignedByEmail { get; set; }
         public bool CloseRequested { get; set; }
         public List<TicketCommentDto> Comments { get; set; } = new();
     }
@@ -31,6 +32,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public string? AuthorName { get; set; }
         public string? AuthorAvatarUrl { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? CreatedAtInString => CreatedAt.ToString("dd MM yyyy HH:mm");
         public string Media { get; set; }
         public List<IFormFile>? Attachments { get; set; } = new();
         public bool IsCurrentUser { get; set; }  
@@ -42,6 +44,8 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public string WorkspaceGuid { get; set; }  
         public string CommentText { get; set; } = string.Empty;
         public List<IFormFile> Attachments { get; set; } = new();
+        public DateTime CommentedTime { get; set; }
+        public string? CommentedTimeInString => CommentedTime.ToString("dd MM yyyy HH:mm");
     }
 
     public class CloseRequestPayload

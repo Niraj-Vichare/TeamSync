@@ -233,7 +233,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
             {
                 return -1;
             }
-            var mappingRepsonse = await _supabaseClient.From<WorkspaceUserMapping>().Where(mpp => mpp.UserId == profileId && workspaceId == workspaceId).Get();
+            var mappingRepsonse = await _supabaseClient.From<WorkspaceUserMapping>().Where(mpp => mpp.UserId == profileId && mpp.WorkspaceId == workspaceId).Get();
             return (int)mappingRepsonse.Models.FirstOrDefault().RoleId;
         }
     }

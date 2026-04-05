@@ -402,6 +402,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpGet("dropdown")]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager,RoleEnum.Member)]
         public async Task<List<ProjectDropdownModel>> GetProjectDropdowns([FromQuery]string workspaceGuid)
         {
             try
@@ -429,7 +430,7 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpGet("{projectGuid}/sprints")]
-        public async Task<ApiResponseModel<object>> GetProjectSprints([FromQuery] string projectGuid)
+        public async Task<ApiResponseModel<object>> GetProjectSprints([FromRoute] string projectGuid)
         {
             try
             {

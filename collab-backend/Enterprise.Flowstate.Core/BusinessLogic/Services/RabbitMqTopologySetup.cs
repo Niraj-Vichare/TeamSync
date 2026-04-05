@@ -105,7 +105,41 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 FlowStateConstants.RANKING_DLX_EXCHANGE,
                 FlowStateConstants.RANKING_DLX_ROUTING_KEY);
 
-            _logger.LogInformation("RabbitMQ topology setup completed successfully");
+            // ── Notification pipeline (new) ──────────────────────────────
+            await DeclareExchangeAsync(channel, FlowStateConstants.NOTIFICATION_EXCHANGE);
+            await DeclareExchangeAsync(channel, FlowStateConstants.NOTIFICATION_RETRY_EXCHANGE);
+            await DeclareExchangeAsync(channel, FlowStateConstants.NOTIFICATION_DLX_EXCHANGE);
+
+            await channel.QueueDeclareAsync(
+                FlowStateConstants.NOTIFICATION_QUEUE, durable: true, exclusive: false, autoDelete: false,
+                arguments: new Dictionary<string, object>
+                {
+                    { "x-dead-letter-exchange",    FlowStateConstants.NOTIFICATION_RETRY_EXCHANGE },
+                    { "x-dead-letter-routing-key", FlowStateConstants.NOTIFICATION_RETRY_ROUTING_KEY }
+                });
+            await channel.QueueBindAsync(FlowStateConstants.NOTIFICATION_QUEUE,
+                FlowStateConstants.NOTIFICATION_EXCHANGE, FlowStateConstants.NOTIFICATION_ROUTING_KEY);
+
+            await channel.QueueDeclareAsync(
+                FlowStateConstants.NOTIFICATION_RETRY_QUEUE, durable: true, exclusive: false, autoDelete: false,
+                arguments: new Dictionary<string, object>
+                {
+                    { "x-dead-letter-exchange",    FlowStateConstants.NOTIFICATION_EXCHANGE },
+                    { "x-dead-letter-routing-key", FlowStateConstants.NOTIFICATION_ROUTING_KEY },
+                    { "x-message-ttl",             _retryDelayMs }
+                });
+            await channel.QueueBindAsync(FlowStateConstants.NOTIFICATION_RETRY_QUEUE,
+                FlowStateConstants.NOTIFICATION_RETRY_EXCHANGE, FlowStateConstants.NOTIFICATION_RETRY_ROUTING_KEY);
+
+            await channel.QueueDeclareAsync(
+                FlowStateConstants.NOTIFICATION_DLX_QUEUE, durable: true, exclusive: false, autoDelete: false);
+            await channel.QueueBindAsync(FlowStateConstants.NOTIFICATION_DLX_QUEUE,
+                FlowStateConstants.NOTIFICATION_DLX_EXCHANGE, FlowStateConstants.NOTIFICATION_DLX_ROUTING_KEY);
+
+            _logger.LogInformation("RabbitMQ topology setup complete (ranking + notification pipelines)");
         }
+
+        private static Task DeclareExchangeAsync(IChannel ch, string name)
+            => ch.ExchangeDeclareAsync(name, ExchangeType.Direct, durable: true);
     }
 }

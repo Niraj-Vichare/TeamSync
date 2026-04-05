@@ -251,7 +251,7 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("/projects/{projectId}/sprints")]
+        [HttpGet("projects/{projectId}/sprints")]
         [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager, RoleEnum.Member, RoleEnum.Viewer)]
         public async Task<List<SprintDropdownModel>> GetSprintsByProjectId([FromRoute] string projectId)
         {

@@ -33,7 +33,7 @@ namespace Enterprise.Flowstate.DAL.Models
         public int? EntityType { get; set; }
 
         [Column("entity_guid")]
-        public Guid EntityGuid { get; set; }
+        public Guid? EntityGuid { get; set; }
 
         [Column("metadata")]
         public string? Metadata { get; set; }

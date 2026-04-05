@@ -315,8 +315,20 @@ namespace Enterprise.Flowstate.DAL.Repositories
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
                 return null;
-            var ticket = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == guid).Get();
-            return ticket.Models.FirstOrDefault();
+
+            var result = await _supabaseClient
+                .From<Ticket>()
+                .Select(@"
+            *,
+            project:project_id(project_name),
+            sprint:sprint_id(title),
+            assignedByUser:profile!reported_by(display_name,email,guid),
+            assignedToUser:profile!assigned_to(display_name,email,guid)
+        ")
+                .Where(t => t.TicketGuid == guid)
+                .Single();
+
+            return result;
         }
 
         public async Task<Ticket?> UpdateTicketStatus(string workspaceGuid, int ticketId, int status)
@@ -368,7 +380,9 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             ticket.SprintId = sprint.SprintId;
 
-            var updateResponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == guid).Update(ticket);
+            var updateResponse = await _supabaseClient.From<Ticket>()
+                .Select("*,project:project_id(project_name),sprint:sprint_id(title),assignedByUser:profile!reported_by(display_name),assignedToUser:profile!assigned_to(display_name)")
+                .Where(t => t.TicketGuid == guid).Update(ticket);
 
             return updateResponse.Models.Any();
         }
@@ -393,6 +407,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                     AuthorName = comments.Models[i].Author?.DisplayName,
                     AuthorGuid = comments.Models[i].Author?.Guid.ToString(),
                     CommentText = comments.Models[i].CommentText,
+                    CreatedAt = comments.Models[i].CreateDate,
                     Id = (int)comments.Models[i].Id,  
                 };
                 ticketCommentDtos.Add(comment);

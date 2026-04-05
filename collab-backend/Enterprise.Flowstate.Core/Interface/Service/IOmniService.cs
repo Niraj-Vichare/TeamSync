@@ -20,6 +20,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         IDashboardService DashboardService { get; set; }
         ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
         IRoleService RoleService { get; set; }
-        
+        INotificationService NotificationService { get; set; }
     }
 }

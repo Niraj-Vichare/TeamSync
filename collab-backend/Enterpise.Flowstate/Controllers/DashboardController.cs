@@ -23,7 +23,7 @@ namespace Enterprise.Flowstate.Controllers
         }
         [HttpGet]
         [Route("metrics")]
-        
+
         public async Task<ApiResponseModel<object>> GetDashboardCards([FromQuery] string workspaceGuid)
         {
             try
@@ -45,8 +45,8 @@ namespace Enterprise.Flowstate.Controllers
                 {
                     return null;
                 }
-                var result = await _omniService.DashboardService.GetUserMetric(workspaceGuid,userIdClaim);
-                if(result == null)
+                var result = await _omniService.DashboardService.GetUserMetric(workspaceGuid, userIdClaim);
+                if (result == null)
                 {
                     return new ApiResponseModel<object>
                     {
@@ -61,7 +61,7 @@ namespace Enterprise.Flowstate.Controllers
                     Success = true,
                     StatusCode = StatusCodes.Status200OK,
                 };
-                  
+
             }
             catch (Exception ex)
             {
@@ -352,5 +352,30 @@ namespace Enterprise.Flowstate.Controllers
                 };
             }
         }
+
+        [HttpGet("org-metrics")]
+        public async Task<ApiResponseModel<object>> GetOrganizationMetrics([FromQuery] string workspaceGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return new ApiResponseModel<object> { Data = null, Message = "Authentication failed.", Success = false };
+                }
+                if (string.IsNullOrEmpty(workspaceGuid))
+                {
+                    return new ApiResponseModel<object> { Data = null, Message = "Workspace GUID is required.", Success = false };
+                }
+                var result = await _omniService.DashboardService.GetOrganizationMetric(workspaceGuid);
+                return new ApiResponseModel<object> { Success = true, Data = result, StatusCode = StatusCodes.Status200OK };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object> { Data = null, Success = false, Message = ex.Message, StatusCode = StatusCodes.Status500InternalServerError };
+            }
+        }
+
     }
 }

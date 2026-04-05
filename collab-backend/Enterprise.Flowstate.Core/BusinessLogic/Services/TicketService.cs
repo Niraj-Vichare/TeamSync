@@ -337,17 +337,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 StartDate = ticket.StartDate,
                 EndDate = ticket.EndDate,
                 ReportedBy = ticket.ReportedBy,
-                ReportedByName = ticket.AssignedByUser?.DisplayName,
-                ReportedByGuid = ticket.AssignedByUser?.Guid?.ToString(),
+                AssignedByName = ticket.AssignedByUser?.DisplayName,
+                AssignedByGuid = ticket.AssignedByUser?.Guid?.ToString(),
                 AssignedTo = ticket.AssignedTo,
                 AssignedToName = ticket.AssignedToUser?.DisplayName,
+                AssignedByEmail = ticket.AssignedByUser?.Email,
+                AssignedToEmail = ticket.AssignedToUser?.Email,
                 AssignedToGuid = ticket.AssignedToUser?.Guid?.ToString(),
                 AssignedToAvatarUrl = ticket.AssignedToUser?.ProfileImageUrl,
                 TypeId = (TicketEnums.TicketType)(ticket.TypeId ?? 0),
                 CloseRequested = closeRequested,
-                StepsList = string.IsNullOrEmpty(ticket.Steps)
-                                        ? new List<string>()
-                                        : ticket.Steps.Split(",", StringSplitOptions.RemoveEmptyEntries).ToList(),
                 Comments = comments.Select(c => new TicketCommentDto
                 {
                     Id = c.Id,

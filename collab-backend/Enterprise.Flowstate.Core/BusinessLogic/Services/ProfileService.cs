@@ -125,6 +125,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return await _omniRepository.ProfileRepository.GetUserRole(userGuid,workspaceGuid);
         }
 
+        public async Task<int> GetProfileId(string userGuid)
+        {
+            return await _omniRepository.ProfileRepository.GetProfileId(userGuid);
+        }
+
 
     }
 }

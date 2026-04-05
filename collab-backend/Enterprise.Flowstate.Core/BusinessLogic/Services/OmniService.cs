@@ -12,7 +12,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
     public class OmniService : IOmniService
     {
-
         public IAuthService AuthService { get; set; }
         public ITaskService TaskService { get; set; }
         public IWorkspaceService WorkspaceService { get; set; }
@@ -24,17 +23,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public ISprintService SprintService { get; set; }
         public ITicketService TicketService { get; set; }
         private IEventPublisher _eventPublisher;
+        private INotificationPublisher _notificationPublisher { get; set; }
         public IDashboardService DashboardService { get; set; }
         public ILeaderboardComparisonService LeaderboardComparisonService { get; set; }
         public IRoleService RoleService { get; set; }   
-
+        public INotificationService NotificationService { get; set; }
         private IOmniRepository _omniRepository;
         private ICache _cache;
-        public OmniService(IOmniRepository omniRepository,Supabase.Client client,IEventPublisher eventPublish,ICache cache)
+        public OmniService(IOmniRepository omniRepository,Supabase.Client client,IEventPublisher eventPublish,INotificationPublisher notificationPublisher,ICache cache)
         {
             _client = client;
             _omniRepository = omniRepository;
             _eventPublisher = eventPublish;
+            _notificationPublisher = notificationPublisher;
             _cache = cache;
             AuthService = new AuthService(_client);
             TaskService = new TaskService(_omniRepository,_eventPublisher);
@@ -47,6 +48,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             TicketService = new TicketService(_omniRepository,eventPublish);
             DashboardService = new DashboardService(_omniRepository,_eventPublisher);
             RoleService = new RoleService(_omniRepository, _cache);
+            NotificationService = new NotificationService(_omniRepository);
         }
 
     }
