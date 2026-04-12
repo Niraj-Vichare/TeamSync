@@ -16,9 +16,7 @@ class TicketService {
 
   async createTickets(workspaceGuid, ticketDto) {
     try {
-      const response = await axiosInstance.post("/tickets", ticketDto, {
-        params: { workspaceGuid }
-      });
+      const response = await axiosInstance.post(`/tickets?workspaceGuid=${workspaceGuid}`, ticketDto);
       return response.data;
     } catch (error) {
       console.error("Error while creating ticket", error);

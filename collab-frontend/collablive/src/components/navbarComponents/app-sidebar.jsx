@@ -77,7 +77,7 @@ export function AppSidebar(props) {
   const [loading, setLoading] = React.useState(true)
   const filteredNavMain = staticData.navMain.filter((item) => {
     if (item.title === "Projects" && !canManageProjects) {
-      return false
+      return false  
     }
     return true
   })

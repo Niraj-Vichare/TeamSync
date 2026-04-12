@@ -372,7 +372,7 @@ function Sprints() {
           "typeId": type === "bug" ? 1 : 2, // small fix here
         }
         console.log("Ticket Data to be created",ticketData);
-        const response = await ticketService.createTickets(workspaceGuid,type,ticketData);
+        const response = await ticketService.createTickets(workspaceGuid,ticketData);
         setTicketOpen(false);
         resetTicketForm();
         toast("Ticket Created 🎉",{description: `${ticketsFormData.title} has been added successfully.`});
@@ -1016,7 +1016,7 @@ function Sprints() {
               </Select>
             </div>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6 p-6">
+          <div className="grid md:grid-cols-3 lg:grid-cols-3 gap-4 p-6 auto-rows-fr">
             <AnimatePresence mode="wait">
               {ticketLoading ? (
                 // 🟡 Animated Skeleton Loader

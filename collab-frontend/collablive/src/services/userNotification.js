@@ -2,34 +2,30 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import notificationHubService from "@/services/notificationHub";
 import axiosInstance from "@/services/axiosInstance";
 
-/**
- * useNotifications()
- *
- * Drop this into any component that renders the notification bell.
- * It handles:
- *   • Fetching the initial list + unread count on mount
- *   • Prepending real-time pushes from the SignalR hub
- *   • markRead(id)   — PATCH /notifications/{id}/read
- *   • markAllRead()  — PATCH /notifications/read-all
- *   • remove(id)     — DELETE /notifications/{id}
- *
- * Example:
- *   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
- */
+const PAGE_SIZE = 20;
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount,   setUnreadCount]   = useState(0);
-  const [loading,       setLoading]       = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
   const pageRef = useRef(1);
 
-  // ── Initial load ────────────────────────────────────────────────────────
-  const fetchNotifications = useCallback(async (page = 1) => {
+  const fetchNotifications = useCallback(async (page = 1, replace = false) => {
     try {
       const res = await axiosInstance.get("/notifications", {
-        params: { pageNumber: page, pageSize: 20 },
+        params: { pageNumber: page, pageSize: PAGE_SIZE },
       });
+
       if (res.data?.success) {
-        setNotifications(page === 1 ? res.data.data : (p) => [...p, ...res.data.data]);
+        const incoming = Array.isArray(res.data.data) ? res.data.data : [];
+
+        setNotifications((prev) => {
+          const merged = replace || page === 1 ? incoming : [...prev, ...incoming];
+          return Array.from(new Map(merged.map((n) => [n.id, n])).values());
+        });
+
+        setHasMore(incoming.length === PAGE_SIZE);
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -47,28 +43,38 @@ export function useNotifications() {
     }
   }, []);
 
-  // ── Mount: fetch + subscribe to hub ────────────────────────────────────
-  useEffect(() => {
-    fetchNotifications(1);
-    fetchUnreadCount();
-
-    // Hub should already be connected by the time this mounts (connected in AuthContext).
-    // Register the real-time listener and keep the cleanup function.
-    const unsubscribe = notificationHubService.onNotification((incoming) => {
-      setNotifications((prev) => [incoming, ...prev]);
-      setUnreadCount((c) => c + 1);
-    });
-
-    return unsubscribe;   // remove listener when component unmounts
+  const refresh = useCallback(async () => {
+    pageRef.current = 1;
+    setLoading(true);
+    await Promise.all([
+      fetchNotifications(1, true),
+      fetchUnreadCount(),
+    ]);
   }, [fetchNotifications, fetchUnreadCount]);
 
-  // ── Load more (pagination) ───────────────────────────────────────────────
+  useEffect(() => {
+    refresh();
+
+    const unsubscribe = notificationHubService.onNotification((incoming) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === incoming.id)) return prev;
+        return [incoming, ...prev];
+      });
+
+      if (!incoming.isRead) {
+        setUnreadCount((c) => c + 1);
+      }
+    });
+
+    return unsubscribe;
+  }, [refresh]);
+
   const loadMore = useCallback(() => {
+    if (!hasMore || loading) return;
     pageRef.current += 1;
     fetchNotifications(pageRef.current);
-  }, [fetchNotifications]);
+  }, [fetchNotifications, hasMore, loading]);
 
-  // ── Mark one read ───────────────────────────────────────────────────────
   const markRead = useCallback(async (id) => {
     try {
       await axiosInstance.patch(`/notifications/${id}/read`);
@@ -81,7 +87,6 @@ export function useNotifications() {
     }
   }, []);
 
-  // ── Mark all read ────────────────────────────────────────────────────────
   const markAllRead = useCallback(async () => {
     try {
       await axiosInstance.patch("/notifications/read-all");
@@ -92,7 +97,6 @@ export function useNotifications() {
     }
   }, []);
 
-  // ── Delete one ───────────────────────────────────────────────────────────
   const remove = useCallback(async (id) => {
     try {
       await axiosInstance.delete(`/notifications/${id}`);
@@ -110,7 +114,9 @@ export function useNotifications() {
     notifications,
     unreadCount,
     loading,
+    hasMore,
     loadMore,
+    refresh,
     markRead,
     markAllRead,
     remove,

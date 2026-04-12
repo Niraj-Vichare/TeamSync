@@ -309,7 +309,9 @@ function TicketDetail() {
     try {
       setTaskLoading(true);
       const payload = {
-        ticketGuid:  ticketDetails.ticketGuid,
+        ticket: {
+          ticketGuid: ticketDetails.ticketGuid   // MUST match backend property
+        },
         title:       taskFormData.taskName,
         description: taskFormData.taskDescription,
         priority:    Number(taskFormData.priority),
@@ -436,19 +438,29 @@ function TicketDetail() {
                       No comments yet. Be the first to comment on this ticket.
                     </p>
                   ) : (
-                    ticket.comments.map((comment) => (
-                      <div key={comment.id}
-                        className="flex rounded-md border p-3 justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{comment.authorName || "Unknown"}</p>
-                          <p className="text-sm whitespace-pre-line break-words">{comment.text}</p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-xs text-gray-500 mt-1">
-                            {comment.createdAtInString || "—"}
+                      ticket.comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className={`flex flex-col rounded-lg border p-3 gap-1 ${comment.isCurrentUser
+                              ? "bg-blue-50 border-blue-200 items-end"
+                              : "bg-muted/40 border-border items-start"
+                            }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                              {(comment.authorName || "?").charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-semibold text-foreground">
+                              {comment.authorName || "Unknown"}
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-1">
+                              {comment.createdAtInString || "—"}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-line break-words text-foreground pl-9">
+                            {comment.text}
                           </p>
                         </div>
-                      </div>
                     ))
                   )}
                 </div>

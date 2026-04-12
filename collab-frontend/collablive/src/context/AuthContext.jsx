@@ -1,4 +1,5 @@
 import authService from '@/services/auth';
+import notificationHubService from '@/services/notificationHub';
 import { oauthService } from '@/services/oauth';
 import projectService from '@/services/project';
 import workspaceService from '@/services/workspace';
@@ -36,6 +37,19 @@ export function AuthProvider({ children }) {
       getUserProjects();
       loadUserPermissions(); // NEW
     }
+  }, [isAuthenticated, workspaceId]);
+  useEffect(() => {
+    if (isAuthenticated && workspaceId) {
+      getUserWorkspaces();
+      getUserProjects();
+      loadUserPermissions();
+      notificationHubService.connect();   // ← ADD THIS
+    }
+
+    // Disconnect on auth loss
+    return () => {
+      if (!isAuthenticated) notificationHubService.disconnect();
+    };
   }, [isAuthenticated, workspaceId]);
 
   const checkAuthStatus = async () => {

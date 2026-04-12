@@ -5,7 +5,6 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 
 const StoryCard = ({ story ,canManageSprints,onIncludeInSprint, onViewDetail,onEditClick }) => {
-  console.log("Rendering StoryCard with story:", story,canManageSprints);
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'open': return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -26,8 +25,7 @@ const StoryCard = ({ story ,canManageSprints,onIncludeInSprint, onViewDetail,onE
   };
 
   return (
-    <Card className="w-full max-w-md min-h-[360px] hover:shadow-lg transition-shadow duration-200 border-l-4">
-      <CardHeader className="pb-2">
+      <Card className="w-full h-full flex flex-col hover:shadow-lg transition-shadow duration-200 border-l-4 overflow-hidden">      <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h3 className="font-semibold text-lg">{story.title}</h3>
@@ -36,9 +34,9 @@ const StoryCard = ({ story ,canManageSprints,onIncludeInSprint, onViewDetail,onE
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="flex-1 flex flex-col gap-4">
         {/* Project & Sprint */}
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-auto pt-2 flex flex-wrap gap-2">
           <Badge variant="secondary" className="text-xs">
             {story.projectName}
           </Badge>
@@ -91,35 +89,40 @@ const StoryCard = ({ story ,canManageSprints,onIncludeInSprint, onViewDetail,onE
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          {canManageSprints && <Button 
-            variant="outline" 
-            className="flex-1"
-            onClick={() => onEditClick(story)}
-          >
-            <Pencil className="w-4 h-4 mr-1" />
-            Edit
-          </Button>}
+        <div className="mt-auto pt-3 flex flex-col gap-2">
 
-          <Button
-            variant="outline"
-            onClick={() => onViewDetail(story.ticketGuid)}
-            className="flex items-center gap-1"
-          >
-          <View className="w-4 h-4" />
-          View Detail
-        </Button>
+          <div className="flex gap-2">
+            {canManageSprints && (
+              <Button
+                variant="outline"
+                className="flex-1 min-w-0"
+                onClick={() => onEditClick(story)}
+              >
+                <Pencil className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+            )}
 
-          {!story.sprintId && canManageSprints ? (
-            console.log("Include in Sprint Button Rendered",story.ticketGuid,story.projectId),
-            <Button 
-              className="flex-1 text-white"
-              onClick={() => onIncludeInSprint(story.ticketGuid,story.projectId)}
+            <Button
+              variant="outline"
+              className="flex-1 min-w-0"
+              onClick={() => onViewDetail(story.ticketGuid)}
+            >
+              <View className="w-4 h-4 mr-1" />
+              View
+            </Button>
+          </div>
+
+          {!story.sprintId && canManageSprints && (
+            <Button
+              className="w-full"
+              onClick={() => onIncludeInSprint(story.ticketGuid, story.projectId)}
             >
               <Calendar className="w-4 h-4 mr-1" />
               Include in Sprint
             </Button>
-          ) : null}
+          )}
+
         </div>
       </CardContent>
     </Card>

@@ -85,6 +85,7 @@ function Leaderboard() {
         fetchLeaderboard(page);
     };
 
+    
     // Setup SignalR connection
     useEffect(() => {
         if (!workspaceId) return;
