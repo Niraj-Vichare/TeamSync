@@ -13,15 +13,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public IOmniRepository _omniRepository;
         private readonly Supabase.Client _supabaseClient;
         private ICache _cache;
-        public TeamService(IOmniRepository omniRepository, Supabase.Client supabaseClient,ICache cache)
+        private INotificationService _notificationService;
+        public TeamService(IOmniRepository omniRepository, Supabase.Client supabaseClient,ICache cache,INotificationService notificationService)
         {
             _omniRepository = omniRepository;
             _supabaseClient = supabaseClient;
             _cache = cache;
+            _notificationService = notificationService;
         }
         public async Task<bool> AddMember(string workspaceGuid,TeamMemberDto teamMemberDto)
         {
-            //var encryptedPassword = EncryptionService.EncryptData(teamMemberDto.Profile.Password);
             
             var user = await _supabaseClient.Auth.SignUp(teamMemberDto.Profile.Email, teamMemberDto.Profile.Password);
             if(user.User == null)
@@ -52,6 +53,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 return false;
             }
             await _omniRepository.ProfileRepository.UpdateCurrentWorkspace(user.User.Id, workspaceGuid);
+
+            await _notificationService.CreateForUserAsync(recipientProfileId: (int)profileId,recipientProfileGuid: profile.Guid,actorProfileId: null,
+    notificationType: (int)GeneralEnums.NotificationType.MemberAddedToWorkspace,
+    title: "Welcome to the workspace",
+    body: $"You have been added to the workspace. You can now access all projects and sprints.",
+    entityType: (int)GeneralEnums.NotificationEntityType.Workspace,
+    entityGuid: Guid.TryParse(workspaceGuid, out var wg) ? wg : null
+);
+
+
+            var allMembers = await _omniRepository.WorkspaceRepository.GetAllActiveWorkspaceUser(workspaceId);
+            
+
 
             int memberCount = await _omniRepository.WorkspaceRepository.GetWorkspaceMemberCount(workspaceGuid);
 
@@ -115,7 +129,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             }
             return result;
         }
-
+        public async Task<List<TeamSummaryDto>> GetTeamsBySprintDtos(List<int> workingTeamIds)
+        {
+            var result = await _omniRepository.TeamRepository.GetTeamsBySprintDtos(workingTeamIds);
+            return result;
+        }
         public async Task<List<TeamMemberDto>> GetTeamMembers(string workspaceGuid)
         {
             var result = await _omniRepository.TeamRepository.GetTeamMembers(workspaceGuid);

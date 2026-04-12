@@ -15,7 +15,7 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("comment")]
         public string CommentText { get; set; } = string.Empty;
         [Column("created_at")]
-        public DateTime CreateDate { get;set; } = DateTime.UtcNow;
+        public DateTime? CreateDate { get;set; }
         [Column("commented_by")]
         public int AuthorId { get; set; }
         [Column("media_url")]

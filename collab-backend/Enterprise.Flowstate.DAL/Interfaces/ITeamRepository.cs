@@ -26,5 +26,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         System.Threading.Tasks.Task AddTeamMemberMapping(TeamMemberMapping mapping);
         System.Threading.Tasks.Task<bool> RemoveTeamMemberMapping(TeamMemberMapping mapping);
         System.Threading.Tasks.Task<ConcurrentDictionary<int,int>> GetRoleProfileMapping(List<int> profileIds);
+        Task<List<TeamSummaryDto>> GetTeamsBySprintDtos(List<int> workingTeamIds);
     }
 }

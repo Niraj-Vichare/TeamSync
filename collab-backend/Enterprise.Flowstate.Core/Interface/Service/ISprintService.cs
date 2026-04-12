@@ -19,5 +19,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<List<SprintProgressModel>> GetSprintProgress(string sprintGuid);
         Task<SprintBreakdownModel> GetSprintBreakdown(string sprintGuid);
         Task<List<TeamMemberDropdownDto>> GetSprintTeamMembers(string sprintGuid);
+        Task<List<SprintDto>> GetSprintDueOn(DateOnly dueDate);
     }
 }

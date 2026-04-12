@@ -13,7 +13,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
     public class DatabaseSyncService : BackgroundService
     {
         private readonly ILogger<DatabaseSyncService> _logger;
-        private readonly TimeSpan _syncInterval = TimeSpan.FromHours(3); // Sync every 3 hours
+        //private readonly TimeSpan _syncInterval = TimeSpan.FromHours(3); // Sync every 3 hours
+        private readonly TimeSpan _syncInterval = TimeSpan.FromMinutes(60); // Sync every 3 minutes
         private readonly IConfiguration _configuration;
         private readonly IServiceScopeFactory _scopeFactory;
 

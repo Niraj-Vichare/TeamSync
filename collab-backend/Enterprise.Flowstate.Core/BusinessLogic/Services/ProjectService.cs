@@ -169,6 +169,55 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return projectDto;
         }
 
+        public async Task<ProjectCard> GetProjectDashboardCard(string projectGuid)
+        {
+            var sprintDtos = await _omniRepository.SprintRepository.GetProjectSprintStats(projectGuid);
+
+            List<int> sprintIds = sprintDtos.Select(s => s.Id).ToList();
+
+            var ticketDtos = await _omniRepository.TicketRepository.GetSprintTicketsDtos(sprintIds);
+
+            SprintStats sprintStats = new SprintStats
+            {
+                ActiveSprint = sprintDtos.Count(s => s.Status == SprintEnums.SprintStatus.Active),
+                TotalSprints = sprintDtos.Count(),
+                CompletedSprint = sprintDtos.Count(s => s.Status == SprintEnums.SprintStatus.Completed)
+            };
+
+            TicketStats ticketStats = new TicketStats
+            {
+                ActiveTickets = ticketDtos.Count(t => t.Status == TicketEnums.TicketStatus.Open),
+
+                CloseTickets = ticketDtos.Count(t => t.Status == TicketEnums.TicketStatus.Closed),
+
+                CompletedStoryPoints = ticketDtos
+                    .Where(t => t.Status == TicketEnums.TicketStatus.Closed)
+                    .Sum(t => t.Points ?? 0),
+
+                TotalStoryPoints = ticketDtos.Sum(t => t.Points ?? 0),
+
+                TotalTickets = ticketDtos.Count(),
+
+                TotalBugs = ticketDtos.Count(t => t.TypeId == TicketEnums.TicketType.Bug),
+
+                TotalUserStories = ticketDtos.Count(t => t.TypeId == TicketEnums.TicketType.UserStories),
+            };
+
+            return new ProjectCard
+            {
+                SprintStats = sprintStats,
+                TicketStats = ticketStats
+            };
+        }
+
+        public async Task<List<TeamSummaryDto>> GetProjectTeams(string projectGuid)
+        {
+            var sprintDtos = await _omniRepository.SprintRepository.GetProjectSprintStats(projectGuid);
+
+            List<int> workingTeamIds = sprintDtos.Select(s => s.WorkingTeamId).ToList();
+            var teamDtos = await _omniRepository.TeamRepository.GetTeamsBySprintDtos(workingTeamIds);
+            return teamDtos;
+        }
         public async Task<(bool, ErrorStatus)> DeleteProject(string workspaceId, string projectGuid)
         {
             var (isDeleted,status) = await _omniRepository.ProjectRepository.DeleteProject(workspaceId,projectGuid);

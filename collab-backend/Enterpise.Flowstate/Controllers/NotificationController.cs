@@ -36,6 +36,16 @@ namespace Enterprise.Flowstate.Controllers
             }
 
             var notifications = await _omniService.NotificationService.GetUserNotificationsAsync(profileId, pageNumber, pageSize);
+            if (!notifications.Any())
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = "No notification",
+                    Success = false,
+                    StatusCode = StatusCodes.Status404NotFound
+                };
+            }
 
             return new ApiResponseModel<object>
             {

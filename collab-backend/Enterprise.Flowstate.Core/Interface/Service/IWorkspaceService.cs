@@ -21,5 +21,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<List<string>> GetAllActiveWorkspaceGuid();
 
         Task<List<WorkspaceInfoDto>> GetAllWorkspaceInfo();
+        Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUserGroup(string workspaceGuid);
     }
 }

@@ -48,7 +48,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }
             return false;
         }
-            public async Task<bool> DeleteTicket(string ticketGuid)
+        public async Task<bool> DeleteTicket(string ticketGuid)
         {
             if (!Guid.TryParse(ticketGuid, out var guid))
                 return false; // invalid ticketGuid
@@ -118,7 +118,15 @@ namespace Enterprise.Flowstate.DAL.Repositories
             }).ToList();
             return ticketDropdowns;
         }
-
+        public async Task<Ticket> GetTicket(int? ticketId)
+        {
+            if(ticketId == null || ticketId == 0)
+            {
+                return null;
+            }
+            var ticketReponse = await _supabaseClient.From<Ticket>().Where(t => t.TicketId == ticketId).Get();
+            return ticketReponse.Models.FirstOrDefault();
+        }
         public async Task<List<Ticket>> GetUserTickets(string workspaceGuid, string userGuid)
         {
             var userResponse = await _supabaseClient.From<Profile>().Where(user => user.Guid == userGuid).Get();
@@ -398,7 +406,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             {
                 return null;
             }
-            var comments = await _supabaseClient.From<TicketComment>().Where(c => c.TicketId == ticketId).Select("*,profile:commented_by(display_name,avatar_url,guid)").Get();
+            var comments = await _supabaseClient.From<TicketComment>().Where(c => c.TicketId == ticketId).Select("*,profile:commented_by(id,display_name,avatar_url,guid,email)").Get();
             for(int i = 0; i < comments.Models.Count; i++)
             {
                 TicketCommentDto comment = new TicketCommentDto()
@@ -407,12 +415,19 @@ namespace Enterprise.Flowstate.DAL.Repositories
                     AuthorName = comments.Models[i].Author?.DisplayName,
                     AuthorGuid = comments.Models[i].Author?.Guid.ToString(),
                     CommentText = comments.Models[i].CommentText,
-                    CreatedAt = comments.Models[i].CreateDate,
+                    CreatedAt = comments.Models[i].CreateDate ?? DateTime.UtcNow,
                     Id = (int)comments.Models[i].Id,  
                 };
                 ticketCommentDtos.Add(comment);
             }
             return ticketCommentDtos;
+        }
+
+        public async Task<int> GetSprintTicketsCount(List<int> sprintIds)
+        {
+            var response = await _supabaseClient.From<Ticket>()
+                .Where(t => t.SprintId != null && sprintIds.Contains(t.SprintId.Value)).Get();
+            return response.Models.Count;
         }
 
         public async Task<bool> IsAssignedUser(string ticketGuid, string userGuid)
@@ -485,6 +500,58 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             await _supabaseClient.From<TicketCloseRequest>().Insert(closeRequest);
             return true;
+        }
+
+        public async Task<bool> AssignedTicketToUser(string ticketGuid, string userGuid)
+        {
+            if (!Guid.TryParse(ticketGuid, out var parsedTicketGuid))
+                return false;
+
+            var result = await _supabaseClient.From<Ticket>().Where(ticket => ticket.TicketGuid == parsedTicketGuid).Get();
+            if (!result.Models.Any())
+                return false; // ticket not found
+            var ticket = result.Models.FirstOrDefault();
+
+            var user = await _supabaseClient.From<Profile>().Where(pr => pr.Guid == userGuid).Get();
+            if(user == null || !user.Models.Any())
+                return false; // user not found
+            var userId = user.Models.FirstOrDefault().Id;
+            ticket.AssignedTo = userId;
+
+            var res = await _supabaseClient.From<Ticket>().Where(t => t.TicketGuid == parsedTicketGuid).Update(ticket);
+            return res.Models.Any();
+
+        }
+
+        public async Task<List<TicketDto>> GetSprintTicketsDtos(List<int> sprintIds)
+        {
+            if (sprintIds == null || !sprintIds.Any())
+            {
+                return new List<TicketDto>();
+            }
+
+            var response = await _supabaseClient
+                .From<Ticket>()
+                .Select("ticket_id,title,status,sprint_id,points,type")
+                .Filter("sprint_id", Supabase.Postgrest.Constants.Operator.In, sprintIds)
+                .Get();
+
+            if (!response.Models.Any())
+            {
+                return new List<TicketDto>();
+            }
+
+            var ticketDtos = response.Models.Select(t => new TicketDto
+            {
+                TicketId = t.TicketId,
+                Title = t.Title,
+                Points = t.Points,
+                TypeId = (TicketEnums.TicketType)t.TypeId,
+                Status = (TicketEnums.TicketStatus)t.StatusId,
+                SprintId = t.SprintId
+            }).ToList();
+
+            return ticketDtos;
         }
     }
 }

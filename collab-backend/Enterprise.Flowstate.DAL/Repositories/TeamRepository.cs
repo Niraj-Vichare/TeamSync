@@ -349,7 +349,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return true;
         }
 
-        // ✅ Update role in workspace_user_mapping (separate from members)
+        // Update role in workspace_user_mapping (separate from members)
         public async Task<bool> UpdateUserRole(string workspaceGuid, int profileId, int roleId)
         {
             var workspace = await _supabaseClient.From<Workspace>()
@@ -376,7 +376,70 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return true;
         }
 
+        public async Task<List<TeamSummaryDto>> GetTeamsBySprintDtos(List<int> workingTeamIds)
+        {
+            if (workingTeamIds == null || !workingTeamIds.Any())
+                return new List<TeamSummaryDto>();
 
+            var result = await _supabaseClient
+                .From<TeamMemberMapping>()
+                .Select(@"
+            id,
+            team_id,
+            member_id,
+            is_leader,
+            team:team (
+                team_id,
+                team_name,
+                tagline,
+                team_uuid
+            ),
+            member:members (
+                id,
+                profile:profile (
+                    display_name,
+                    avatar_url,
+                    email,
+                    guid
+                )
+            )
+        ")
+                .Filter("team_id", Supabase.Postgrest.Constants.Operator.In, workingTeamIds)
+                .Get();
+
+            if (result.Models == null || !result.Models.Any())
+                return new List<TeamSummaryDto>();
+
+            var teamSummaries = result.Models
+                .Where(x => x.Team != null)
+                .GroupBy(x => x.TeamId)
+                .Select(group =>
+                {
+                    var team = group.First().Team;
+
+                    return new TeamSummaryDto
+                    {
+                        TeamId = team.TeamId,
+                        TeamName = team.TeamName,
+                        TeamDescription = team.Tagline,
+                        TeamGuid = team.TeamGuid.ToString(),
+
+                        Members = group
+                            .Where(x => x.Member?.Profile != null)
+                            .Select(x => new TeamMemberSummaryDto
+                            {
+                                DisplayName = x.Member.Profile.DisplayName,
+                                Email = x.Member.Profile.Email,
+                                Guid = x.Member.Profile.Guid,
+                                AvatarUrl = x.Member.Profile.ProfileImageUrl
+                            })
+                            .ToList()
+                    };
+                })
+                .ToList();
+
+            return teamSummaries;
+        }
         public async Task<ConcurrentDictionary<int, int>> GetRoleProfileMapping(List<int> profileIds)
         {
             if (profileIds == null || !profileIds.Any())

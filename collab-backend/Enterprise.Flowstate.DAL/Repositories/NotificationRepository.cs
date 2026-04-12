@@ -1,4 +1,5 @@
-﻿using Enterprise.Flowstate.DAL.Interfaces;
+﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Supabase;
 using Supabase.Interfaces;
@@ -50,30 +51,30 @@ public class NotificationRepository : INotificationRepository
 
     public async System.Threading.Tasks.Task MarkAsReadAsync(long notificationId)
     {
-        var notification = new Notification
+        
+        var notification = await _supabaseClient.From<Notification>().Where(notification => notification.Id == notificationId).Get();
+        if(notification == null)
         {
-            Id = notificationId,
-            IsRead = true,
-            ReadAt = DateTime.UtcNow
-        };
+            return;
+        }
+        var notificationResponse = notification.Models.FirstOrDefault();
+        notificationResponse.IsRead = true;
+        notificationResponse.ReadAt = DateTime.UtcNow;
 
         await _supabaseClient
             .From<Notification>()
             .Where(x => x.Id == notificationId)
-            .Update(notification);
+            .Update(notificationResponse);
     }
 
     public async System.Threading.Tasks.Task MarkAllAsReadAsync(int profileId)
     {
-        var notification = new Notification
-        {
-            IsRead = true,
-            ReadAt = DateTime.UtcNow
-        };
-
         await _supabaseClient
             .From<Notification>()
-            .Where(x => x.RecipientProfileId == profileId && x.IsRead == false)
-            .Update(notification);
+            .Where(x => x.RecipientProfileId == profileId)
+            .Where(x=>x.IsRead == false)
+            .Set(x => x.IsRead, true)
+            .Set(x => x.ReadAt, DateTime.UtcNow)
+            .Update();
     }
 }

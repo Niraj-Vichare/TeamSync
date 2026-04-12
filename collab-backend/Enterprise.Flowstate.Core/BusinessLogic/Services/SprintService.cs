@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.BAL.Interface.Service;
+using Enterprise.Flowstate.DAL.Constants;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
@@ -15,9 +16,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     public class SprintService : ISprintService
     {
         private IOmniRepository _omniRepository;
-        public SprintService(IOmniRepository omniRepository)
+        private IEventPublisher _eventPublisher;
+        public SprintService(IOmniRepository omniRepository,IEventPublisher eventPublisher)
         {
             _omniRepository = omniRepository;
+            _eventPublisher = eventPublisher;
         }
 
         public async Task<bool> CreateSprint(string userId, SprintDto sprintDto)
@@ -80,6 +83,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             var result = await _omniRepository.SprintRepository.GetTeamMembers(sprintGuid);
             return result;
+        }
+
+        public async Task<List<SprintDto>> GetSprintDueOn(DateOnly dueDate)
+        {
+            var result = await _omniRepository.SprintRepository.GetSprintDueOn(dueDate);
+            return result; 
         }
 
         public async Task<List<SprintDropdownModel>> GetSprintsByProjectId(string projectId)
@@ -255,6 +264,64 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             };
 
             return sprintBreakdown;
+        }
+
+        public async Task<bool> UpdateSprintStatus(string sprintGuid, SprintEnums.SprintStatus status, string userGuid)
+        {
+            var sprint = await _omniRepository.SprintRepository.GetSprint(sprintGuid);
+            if (sprint == null) return false;
+
+            bool updated = await _omniRepository.SprintRepository.UpdateSprintStatus(sprintGuid, status);
+            if (!updated) return false;
+
+            // Only trigger scoring when sprint is COMPLETED
+            if (status == SprintEnums.SprintStatus.Completed)
+            {
+                var teamMembers = await _omniRepository.SprintRepository.GetTeamMembers(sprintGuid);
+
+                if (teamMembers != null && teamMembers.Any())
+                {
+                    int totalReward = FlowStateConstants.CONTRIBUTIONPOINT; 
+                    int perMemberReward = totalReward / teamMembers.Count;
+
+                    foreach (var member in teamMembers)
+                    {
+                        var eventGuid = Guid.NewGuid().ToString();
+
+                        // DB Log
+                        await _omniRepository.ProfileRepository.AddEventLog(new EventsLog
+                        {
+                            SprintGuid = sprintGuid,
+                            EventDescription = "Sprint completed",
+                            CreatedAt = DateTime.UtcNow,
+                            EventGuid = eventGuid,
+                            UserGuid = member.MemberProfileGuid,
+                            EventTypeId = (int)GeneralEnums.EventType.SprintCompleted,
+                            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                            {
+                                points = perMemberReward
+                            })
+                        });
+
+                        // Event Bus
+                        await _eventPublisher.PublishAsync(new EventsLogDto
+                        {
+                            SprintGuid = sprintGuid,
+                            EventDescription = "Sprint completed",
+                            CreatedAt = DateTime.UtcNow,
+                            EventGuid = eventGuid,
+                            UserGuid = member.MemberProfileGuid,
+                            EventTypeId = (int)GeneralEnums.EventType.SprintCompleted,
+                            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                            {
+                                points = perMemberReward
+                            })
+                        }, 0);
+                    }
+                }
+            }
+
+            return true;
         }
     }
 }

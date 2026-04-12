@@ -79,9 +79,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 // SignalR hub reads token from query string; everything else uses the cookie
                 context.Token = (!string.IsNullOrEmpty(accessToken) &&
-                                  path.StartsWithSegments("/hubs/leaderboard") || path.StartsWithSegments("/hub/notifications"))
-                    ? accessToken.ToString()
-                    : context.Request.Cookies["authToken"];
+                (path.StartsWithSegments("/hubs/leaderboard") ||
+                 path.StartsWithSegments("/hubs/notifications")))
+    ? accessToken.ToString()
+    : context.Request.Cookies["authToken"];
 
                 return System.Threading.Tasks.Task.CompletedTask;
             }

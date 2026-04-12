@@ -7,6 +7,7 @@ using Enterprise.Flowstate.DAL.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 
 namespace Enterprise.Flowstate.Controllers
 {
@@ -20,7 +21,8 @@ namespace Enterprise.Flowstate.Controllers
         }
 
         [HttpPost]
-        [RequireAuthorization(AuthEnums.RoleEnum.Owner,AuthEnums.RoleEnum.Admin,AuthEnums.RoleEnum.Manager)]
+        [RequireAuthorization(RoleEnum.Owner, RoleEnum.Admin, RoleEnum.Manager)]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]   
         public async Task<ApiResponseModel<object>> CreateTicket([FromQuery] string workspaceGuid, [FromBody] TicketDto ticketDto)
         {
             try
@@ -643,6 +645,16 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
+                if (string.IsNullOrEmpty(payload.WorkspaceGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Message = "Workspace GUID is required.",
+                        Success = false
+                    };
+                }
+
                 bool isAssignee = await _omniService.TicketService.IsAssignedUser(ticketGuid, userId.ToString());
                 if (!isAssignee)
                 {
@@ -654,7 +666,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                bool requested = await _omniService.TicketService.RequestTicketClose(
+                bool requested = await _omniService.TicketService.RequestTicketClose(payload.WorkspaceGuid,
                     ticketGuid, userId.ToString(), payload?.Reason ?? string.Empty);
                 if (!requested)
                 {

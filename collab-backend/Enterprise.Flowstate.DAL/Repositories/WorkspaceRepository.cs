@@ -63,7 +63,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
             int profileId = profile.Models.FirstOrDefault().Id;
             if (profileId > 0)
             {
-                var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping => mapping.UserId == profileId)
+                var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Select("*,profile:profile_id(display_name,bio,guid),workspace:workspace_id(name,description,workspace_guid)").Where(mapping => mapping.UserId == profileId)
                     .Get();
                 return workspaces.Models.ToList();
             }
@@ -96,10 +96,22 @@ namespace Enterprise.Flowstate.DAL.Repositories
         }
         public async Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUser(int workspaceId)
         {
-            var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping => mapping.WorkspaceId == workspaceId).Get();
+            var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Select("*,profile:profile_id(id,display_name,guid),workspace:workspace_id(id,name,workspace_guid)").Where(mapping => mapping.WorkspaceId == workspaceId).Get();
             return workspaces.Models.ToList();
         }
 
+        public async Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUserGroup(string workspaceGuid)
+        {
+            var workspace = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get(); 
+            if(workspace == null)
+            {
+                return null;
+            }
+            int workspaceId = workspace.Models.FirstOrDefault().Id;
+
+            var workspaces = await _supabaseClient.From<WorkspaceUserMapping>().Select("*,profile:profile_id(id,display_name,guid),workspace:workspace_id(id,name,workspace_guid)").Where(mapping => mapping.WorkspaceId == workspaceId).Get();
+            return workspaces.Models.ToList();
+        }
         public async Task<int> GetUserWorkspaceInfo(string workspaceGuid, string userGuid)
         {
             var workspaceResponse = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
@@ -176,6 +188,33 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 WorkspaceGuid = wo.WorkspaceGuid,
                 WorkspaceId = wo.Id
             }).ToList();
+
+        }
+
+        public async Task<List<ProfileDto>> GetAllWorkspaceAdmins(string workspaceGuid)
+        {
+            var workspaces = await _supabaseClient.From<Workspace>().Where(workspace => workspace.WorkspaceGuid == workspaceGuid).Get();
+            if (workspaces == null || !workspaces.Models.Any())
+            {
+                return null;
+            }
+            int workspaceId = workspaces.Models.FirstOrDefault().Id;
+
+            var profiles = await _supabaseClient.From<WorkspaceUserMapping>()
+                .Select("*,profile:profile_id(guid,display_name)")
+                .Where(mpp=>mpp.WorkspaceId == workspaceId && mpp.RoleId <=3).Get();
+
+            if (!profiles.Models.Any())
+            {
+                return null;
+            }
+            return profiles.Models.Select(mpp => new ProfileDto
+            {
+                Guid = mpp.Profile.Guid,
+                Id = mpp.UserId,
+                DisplayName = mpp.Profile.DisplayName
+            }).ToList();
+
 
         }
 

@@ -20,10 +20,10 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("role_id")]
         public long RoleId { get; set; }
 
-        [Reference(typeof(Workspace))]
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Workspace? Workspace { get; set; }
 
-        [Reference(typeof(Profile))]
+        [Column(ignoreOnInsert: true, ignoreOnUpdate: true)]
         public Profile? Profile { get; set; }
     }
 }

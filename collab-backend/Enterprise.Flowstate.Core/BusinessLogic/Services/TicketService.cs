@@ -11,24 +11,15 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
     {
         private readonly IOmniRepository _omniRepository;
         private readonly IEventPublisher _eventPublisher;
-
-        public TicketService(IOmniRepository omniRepository, IEventPublisher eventPublisher)
+        private readonly INotificationService _notificationService;
+        public TicketService(IOmniRepository omniRepository, IEventPublisher eventPublisher,INotificationService notificationService)
         {
             _omniRepository = omniRepository;
             _eventPublisher = eventPublisher;
+            _notificationService = notificationService; 
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // EDIT
-        // FIX: original did `var ticketGuid = Guid.NewGuid()` and then
-        // set `TicketGuid = ticketGuid` on the ticket being EDITED.
-        // This overwrote the existing ticket's GUID with a brand new one
-        // on every edit, breaking all foreign key references in events_logs,
-        // task, sprint etc. that pointed to the original GUID.
-        //
-        // The ticketId parameter IS the existing GUID — we pass it straight
-        // to the repository. We do NOT touch TicketGuid on the model.
-        // ─────────────────────────────────────────────────────────────
+
         public async Task<bool> EditTicket(string ticketId, string userId, TicketDto ticketDto)
         {
             Ticket ticket = new Ticket
@@ -46,58 +37,66 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 AssignedTo = ticketDto.AssignedTo,
                 Tags = ticketDto.Tags,
                 UpdatedAt = DateTime.UtcNow
-                // FIX: TicketGuid intentionally NOT set here.
-                // The repository uses ticketId (the existing GUID) to locate the record.
             };
 
             bool isEdited = await _omniRepository.TicketRepository.EditTicket(ticketId, userId, ticket);
 
-            if (isEdited)
+            if (!isEdited)
+                return false;
+
+            var eventGuid = Guid.NewGuid().ToString();
+
+            if (ticketDto.Status == TicketEnums.TicketStatus.Closed)
             {
-                EventsLog eventLog;
-
-                if (ticketDto.Status == TicketEnums.TicketStatus.Closed)
+                var completedEvent = new EventsLog
                 {
-                    eventLog = new EventsLog
+                    EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Ticket closed",
+                    TicketGuid = ticketId,
+                    UserGuid = userId,
+                    WorkspaceGuid = ticketDto.WorkspaceGuid,
+                    EventGuid = eventGuid,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
                     {
-                        EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
-                        CreatedAt = DateTime.UtcNow,
-                        EventDescription = "Ticket closed",
-                        TicketGuid = ticketId,
-                        UserGuid = userId,
-                        WorkspaceGuid = ticketDto.WorkspaceGuid,
-                        EventGuid = Guid.NewGuid().ToString(),
-                    };
+                        points = ticketDto.Points ?? 0
+                    })
+                };
 
-                    await _eventPublisher.PublishAsync(new EventsLogDto
-                    {
-                        EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
-                        CreatedAt = DateTime.UtcNow,
-                        EventDescription = "Ticket closed",
-                        TicketGuid = ticketId,
-                        UserGuid = userId,
-                        WorkspaceGuid = ticketDto.WorkspaceGuid,
-                        EventGuid = Guid.NewGuid().ToString(),
-                    }, 0);
-                }
-                else
+                await _omniRepository.ProfileRepository.AddEventLog(completedEvent);
+
+                await _eventPublisher.PublishAsync(new EventsLogDto
                 {
-                    eventLog = new EventsLog
+                    EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Ticket closed",
+                    TicketGuid = ticketId,
+                    UserGuid = userId,
+                    WorkspaceGuid = ticketDto.WorkspaceGuid,
+                    EventGuid = eventGuid,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
                     {
-                        EventTypeId = (int)GeneralEnums.EventType.TicketUpdated,
-                        CreatedAt = DateTime.UtcNow,
-                        EventDescription = "Ticket updated",
-                        TicketGuid = ticketId,
-                        UserGuid = userId,
-                        WorkspaceGuid = ticketDto.WorkspaceGuid,
-                        EventGuid = Guid.NewGuid().ToString(),
-                    };
-                }
+                        points = ticketDto.Points ?? 0
+                    })
+                }, 0);
+            }
+            else
+            {
+                var updatedEvent = new EventsLog
+                {
+                    EventTypeId = (int)GeneralEnums.EventType.TicketUpdated,
+                    CreatedAt = DateTime.UtcNow,
+                    EventDescription = "Ticket updated",
+                    TicketGuid = ticketId,
+                    UserGuid = userId,
+                    WorkspaceGuid = ticketDto.WorkspaceGuid,
+                    EventGuid = eventGuid
+                };
 
-                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+                await _omniRepository.ProfileRepository.AddEventLog(updatedEvent);
             }
 
-            return isEdited;
+            return true;
         }
 
         public async Task<bool> DeleteTicket(string ticketId)
@@ -125,14 +124,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             {
                 Points = ticketDto.Points,
                 Description = ticketDto.Description,
-                PriorityId = (int)ticketDto.Priority,
+                PriorityId = (int?)ticketDto.Priority,
                 ProjectId = ticketDto.ProjectId,
                 SprintId = ticketDto.SprintId,
-                StatusId = (int)ticketDto.Status,
+                StatusId = (int?)ticketDto.Status,
                 Steps = ticketDto.Steps,
                 ReportedBy = ticketDto.ReportedBy,
                 Title = ticketDto.Title,
-                TypeId = (int)ticketDto.TypeId,
+                TypeId = (int?)ticketDto.TypeId,
                 TicketGuid = Guid.NewGuid(),
                 Tags = ticketDto.Tags,
                 CreatedAt = DateTime.UtcNow
@@ -140,20 +139,46 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             bool isCreated = await _omniRepository.TicketRepository.CreateTicket(ticket);
 
-            if (isCreated)
+            if (!isCreated)
+                return false;
+
+            //  Event Log
+            await _omniRepository.ProfileRepository.AddEventLog(new EventsLog
             {
-                await _omniRepository.ProfileRepository.AddEventLog(new EventsLog
+                EventGuid = Guid.NewGuid().ToString(),
+                CreatedAt = DateTime.UtcNow,
+                EventTypeId = (int)GeneralEnums.EventType.TicketCreated,
+                EventDescription = "Ticket created",
+                TicketGuid = ticket.TicketGuid.ToString(),
+                WorkspaceGuid = workspaceGuid,
+            });
+
+            // Notify Admins
+            var admins = await _omniRepository.WorkspaceRepository.GetAllWorkspaceAdmins(workspaceGuid);
+
+            if (admins != null && admins.Any())
+            {
+                int? actorId = null;
+
+                if (ticketDto.ReportedBy != null)
+                    actorId = ticketDto.ReportedBy;
+
+                foreach (var admin in admins)
                 {
-                    EventGuid = Guid.NewGuid().ToString(),
-                    CreatedAt = DateTime.UtcNow,
-                    EventTypeId = (int)GeneralEnums.EventType.TicketCreated,
-                    EventDescription = "Ticket created",
-                    TicketGuid = ticket.TicketGuid.ToString(),
-                    WorkspaceGuid = workspaceGuid,
-                });
+                    await _notificationService.CreateForUserAsync(
+                        recipientProfileId: admin.Id,
+                        recipientProfileGuid: admin.Guid,
+                        actorProfileId: actorId,
+                        notificationType: (int)GeneralEnums.NotificationType.TicketCreated,
+                        title: "New ticket created",
+                        body: $"A new ticket \"{ticket.Title}\" has been created.",
+                        entityType: (int)GeneralEnums.NotificationEntityType.Ticket,
+                        entityGuid: ticket.TicketGuid
+                    );
+                }
             }
 
-            return isCreated;
+            return true;
         }
 
         public async Task<PaginationResponse<TicketDto>> GetTickets(
@@ -273,31 +298,68 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task<bool> UpdateTicketStatus(string workspaceGuid, int ticketId, int status)
         {
             Ticket? updatedTicket = await _omniRepository.TicketRepository.UpdateTicketStatus(workspaceGuid, ticketId, status);
-            if (updatedTicket == null) return false;
+            if (updatedTicket == null)
+                return false;
 
-            await _eventPublisher.PublishAsync(new EventsLogDto
+            if (status == (int)TicketEnums.TicketStatus.Closed)
             {
-                TicketGuid = updatedTicket.TicketGuid.ToString(),
-                EventDescription = "Ticket status updated",
-                WorkspaceGuid = workspaceGuid,
-                EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
-                CreatedAt = DateTime.UtcNow,
-                EventGuid = Guid.NewGuid().ToString(),
-            }, 0);
+                await _eventPublisher.PublishAsync(new EventsLogDto
+                {
+                    TicketGuid = updatedTicket.TicketGuid.ToString(),
+                    EventDescription = "Ticket closed",
+                    WorkspaceGuid = workspaceGuid,
+                    EventTypeId = (int)GeneralEnums.EventType.TicketCompleted,
+                    CreatedAt = DateTime.UtcNow,
+                    EventGuid = Guid.NewGuid().ToString(),
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        points = updatedTicket.Points ?? 0
+                    })
+                }, 0);
+            }
+            else
+            {
+                await _eventPublisher.PublishAsync(new EventsLogDto
+                {
+                    TicketGuid = updatedTicket.TicketGuid.ToString(),
+                    EventDescription = "Ticket status updated",
+                    WorkspaceGuid = workspaceGuid,
+                    EventTypeId = (int)GeneralEnums.EventType.TicketUpdated,
+                    CreatedAt = DateTime.UtcNow,
+                    EventGuid = Guid.NewGuid().ToString()
+                }, 0);
+            }
 
             return true;
         }
-
         public async Task<bool> UpdateTicketStatus(string ticketGuid, TicketEnums.TicketStatus status)
         {
             // Overload used by the Ticket View Page feature (Feature 1) for close requests
             throw new NotImplementedException("Use UpdateTicketStatus(workspaceGuid, ticketId, status) instead.");
         }
 
-        public async Task<bool> AssignTicketToUser(string ticketGuid, string userId)
+        public async Task<bool> AssignTicketToUser(string ticketGuid, string assigneeUserId)
         {
-            // Placeholder — Notification Feature (Feature 2) will hook into this
-            throw new NotImplementedException();
+            bool assigned = await _omniRepository.TicketRepository.AssignedTicketToUser(ticketGuid, assigneeUserId);
+            if (!assigned) return false;
+
+            var ticket = await _omniRepository.TicketRepository.GetTicket(ticketGuid);
+            var assignee = await _omniRepository.ProfileRepository.GetProfile(assigneeUserId);
+
+            if (assignee == null) return true; // still a success; notification is best-effort
+
+            await _notificationService.CreateForUserAsync(
+                recipientProfileId: assignee.Id,
+                recipientProfileGuid: assigneeUserId,
+                actorProfileId: ticket?.ReportedBy,
+                notificationType: (int)GeneralEnums.NotificationType.TicketAssigned,
+                title: "Ticket assigned to you",
+                body: $"You have been assigned to \"{ticket?.Title ?? ticketGuid}\".",
+                entityType: (int)GeneralEnums.NotificationEntityType.Ticket,
+                entityGuid: ticket?.TicketGuid
+            );
+
+            return true;
         }
 
         public async Task<bool> AddTicketToSprint(string ticketGuid, string sprintId)
@@ -382,6 +444,28 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             bool saved = await _omniRepository.TicketRepository.AddComment(ticketGuid, userId, request);
 
+            var ticket = await _omniRepository.TicketRepository.GetTicket(ticketGuid);
+            var commenter = await _omniRepository.ProfileRepository.GetProfileId(userId); // int
+
+            // Notify assignee if they are not the one who commented
+            if (ticket?.AssignedTo != null && ticket.AssignedTo != commenter)
+            {
+                var assignee = await _omniRepository.ProfileRepository.GetProfile(ticket.AssignedToUser.Guid);
+                if (assignee != null)
+                {
+                    await _notificationService.CreateForUserAsync(
+                        recipientProfileId: assignee.Id,
+                        recipientProfileGuid: assignee.Guid?.ToString() ?? string.Empty,
+                        actorProfileId: commenter,
+                        notificationType: (int)GeneralEnums.NotificationType.CommentAdded,
+                        title: "New comment on your ticket",
+                        body: $"A comment was added to \"{ticket.Title ?? ticketGuid}\".",
+                        entityType: (int)GeneralEnums.NotificationEntityType.Comment,
+                        entityGuid: ticket.TicketGuid
+                    );
+                }
+            }
+
             if (saved)
             {
                 await _omniRepository.ProfileRepository.AddEventLog(new EventsLog
@@ -398,7 +482,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return saved;
         }
 
-        public async Task<bool> RequestTicketClose(string ticketGuid, string userId, string reason)
+        public async Task<bool> RequestTicketClose(string workspaceGuid, string ticketGuid, string userId, string reason)
         {
             // Prevent duplicate requests
             bool alreadyRequested = await _omniRepository.TicketRepository.IsCloseRequested(ticketGuid);
@@ -428,6 +512,24 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     UserGuid = userId,
                     EventGuid = Guid.NewGuid().ToString(),
                 });
+
+                var ticketDetail = await _omniRepository.TicketRepository.GetTicket(ticketGuid);
+
+                var admins = await _omniRepository.WorkspaceRepository.GetAllWorkspaceAdmins(workspaceGuid);
+
+                foreach (var admin in admins)
+                {
+                    await _notificationService.CreateForUserAsync(
+                        recipientProfileId: admin.Id,
+                        recipientProfileGuid: admin.Guid,
+                        actorProfileId: await _omniRepository.ProfileRepository.GetProfileId(userId),
+                        notificationType: (int)GeneralEnums.NotificationType.TicketCloseRequested,
+                        title: "Ticket close request",
+                        body: $"A team member requested to close ticket \"{ticketGuid}\". Reason: {reason}",
+                        entityType: (int)GeneralEnums.NotificationEntityType.Ticket,
+                        entityGuid: Guid.TryParse(ticketGuid, out var tg) ? tg : null
+                    );
+                }
             }
 
             return logged;

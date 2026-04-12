@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -92,6 +93,9 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         /// <param name="projectGuid"></param>
         /// <returns></returns>
         Task<List<SprintDto>> GetProjectSprints(string projectGuid);
+
+        Task<ProjectCard> GetProjectDashboardCard(string projectGuid);
+        Task<List<TeamSummaryDto>> GetProjectTeams(string projectGuid);
     }
 
 

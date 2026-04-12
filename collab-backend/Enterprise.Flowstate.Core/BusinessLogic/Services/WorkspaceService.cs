@@ -4,8 +4,6 @@ using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Constants;
-using static System.Formats.Asn1.AsnWriter;
-using Supabase.Gotrue;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 {
@@ -122,6 +120,11 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 OwnerId = mapping.UserId
             }).ToList();
             return workspaces;
+        }
+
+        public async Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUserGroup(string workspaceGuid)
+        {
+            return await _omniRepository.WorkspaceRepository.GetAllActiveWorkspaceUserGroup(workspaceGuid);
         }
         public async Task<bool> HasWorkspace(string email)
         {

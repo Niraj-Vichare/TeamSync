@@ -117,7 +117,15 @@ namespace Enterprise.Flowstate.DAL.Enums
             ProjectUpdated = 11,
 
             SprintCreated = 12,
-            SprintClosed = 13
+            SprintClosed = 13,
+            TaskDeadline = 14,   
+            SprintDeadline = 15,   
+            TicketCloseApproved = 16,   
+            TicketCloseRejected = 17,   
+            SprintCompleted = 18,   
+            ProjectCompleted = 19,   
+            MemberAddedToWorkspace = 20,
+            TicketCreated = 21
         }
 
         public enum NotificationEntityType

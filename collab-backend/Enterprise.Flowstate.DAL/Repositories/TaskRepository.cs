@@ -269,5 +269,37 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 .Get();
             return result.Models.ToList();
         }
+
+        public async Task<List<TaskDto>> GetTaskDueOn(DateOnly date)
+        {
+            var response = await _supabaseClient.From<Task>()
+                .Select("*,profile:assigned_by(display_name,guid), profile:assigned_to(display_name,guid)")
+                .Filter("end_date", Supabase.Postgrest.Constants.Operator.Equals, date.ToString("yyyy-MM-dd"))
+                .Get();
+
+            var tasks = response.Models.Select(t => new TaskDto
+            {
+                AssignedBy = t.AssignedBy,
+                AssignedTo = t.AssignedTo,
+                Id = t.TaskId,
+                ProjectId = t.ProjectId,
+                SprintId = t.SprintId,
+                TicketId = t.TicketId,
+                Title = t.Title,
+                TaskGuid = t.TaskGuid,
+                AssignedByUser = new ProfileDto
+                {
+                    DisplayName = t.AssignedByUser?.DisplayName,
+                    Guid = t.AssignedByUser?.Guid
+                },
+                AssignedToUser = new ProfileDto
+                {
+                    DisplayName = t.AssignedToUser?.DisplayName,
+                    Guid = t.AssignedToUser?.Guid
+                }
+            }).ToList();
+
+            return tasks;
+        }
     }
 }

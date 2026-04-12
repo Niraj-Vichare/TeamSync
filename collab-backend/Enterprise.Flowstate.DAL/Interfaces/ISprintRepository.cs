@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,9 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<EventsLog>> GetSprintActivities(string sprintGuid, int pagNumber, int pageSize);
         Task<SprintMetric> GetSprintBreakdown(string sprintGuid);
         Task<List<TeamMemberDropdownDto>> GetTeamMembers(string sprintGuid);
+        Task<List<SprintDto>> GetSprintDueOn(DateOnly dueDate);
+        Task<bool> UpdateSprintStatus(string sprintGuid, SprintEnums.SprintStatus status);
+        Task<List<SprintDto>> GetProjectSprintStats(string projectGuid);
 
     }
 }

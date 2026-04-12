@@ -23,7 +23,7 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public SprintEnums.SprintStatus Status { get; set; }
         public int? ProjectId { get; set; }
         public string? ProjectName { get; set; }
-
+        public int WorkingTeamId { get; set; }
         public string StatusDescription
         {
             get

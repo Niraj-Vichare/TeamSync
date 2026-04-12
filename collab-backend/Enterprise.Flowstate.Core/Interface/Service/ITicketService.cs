@@ -24,7 +24,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<List<TicketDto>> GetSprintTickets(string sprintId);
         Task<bool> UpdateTicketStatus(string workspaceGuid, int ticketId, int status);
         Task<bool> AddTicketToSprint(string ticketGuid, string sprintId);
-        Task<bool> RequestTicketClose(string ticketGuid, string userId, string reason);
+        Task<bool> RequestTicketClose(string workspaceGuid,string ticketGuid, string userId, string reason);
         Task<bool> AddComment(string ticketGuid, string userId, AddCommentRequest request);
         Task<bool> IsAssignedUser(string ticketGuid, string userId);
         Task<bool> CanUserComment(string workspaceGuid, string ticketGuid, string userId);

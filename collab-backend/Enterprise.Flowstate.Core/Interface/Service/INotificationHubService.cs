@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Enterprise.Flowstate.BAL.Interface.Service
 {
     public interface INotificationHubService
-    {
-        Task SendToUserAsync(string profileGuid, NotificationDto notification);
+    {        
+        Task SendToUserAsync(string recipientProfileId, NotificationDto notification);
     }
 }

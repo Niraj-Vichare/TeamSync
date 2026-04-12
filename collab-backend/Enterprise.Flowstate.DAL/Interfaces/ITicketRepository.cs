@@ -15,6 +15,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> EditTicket(string ticketGuid,string userId,Ticket ticketDto);
         Task<bool> CreateTicket(Ticket ticketDto);
         Task<Ticket> GetTicket(string ticketGuid);
+        Task<Ticket> GetTicket(int? ticketId);
         Task<int> GetTicketsCountAsync(string workspaceId, string type, string searchTerm, string status, string project);
         Task<List<Ticket>> GetTicketsAsync(string workspaceGuid,string searchTerm,string type,string statusFilter,string priorityFilter,int pageNumber,int pageSize);
         Task<string> GetTicketSteps(string ticketGuid);
@@ -31,7 +32,8 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> IsAssignedUser(string ticketGuid, string userGuid);
         Task<bool> AddComment(string ticketGuid,string userId,AddCommentRequest commentRequest);
         Task<bool> LogCloseRequest(string workspaceGuid,string ticketGuid,string reason);
-
+        Task<bool> AssignedTicketToUser(string ticketGuid, string userGuid);
+        Task<List<TicketDto>> GetSprintTicketsDtos(List<int> sprintIds);
 
     }
 

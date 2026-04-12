@@ -33,9 +33,9 @@ namespace Enterprise.Flowstate.DAL.Models
         [Column("end_date")]
         public DateTime? EndDate { get; set; }
         [Column("sprint_id")]
-        public int SprintId { get; set; }
+        public int? SprintId { get; set; }
         [Column("ticket_id")]
-        public int TicketId { get; set; }
+        public int? TicketId { get; set; }
         [Column("status")]
         public int Status { get; set; }
         [Column("priority")]

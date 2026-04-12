@@ -77,9 +77,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
                 var metric = await _cache.GetUserMetricAsync(eventLogDto.WorkspaceGuid, eventLogDto.UserGuid);
 
-                if (metric == null)
+                if (metric == null || metric.UserId == 0 || string.IsNullOrEmpty(metric.UserName))
                 {
-                    metric = new RankingCacheModel
+                    var profile = await _omniService.ProfileService.GetProfile(eventLogDto.UserGuid);
+
+                    if (profile == null)
+                    {
+                        _logger.LogWarning("Profile not found for {UserGuid}; skipping metric init", eventLogDto.UserGuid);
+                        return false;   // drop the message — don't cache a null-name record
+                    }
+
+                    metric ??= new RankingCacheModel
                     {
                         Score = 0,
                         Efficiency = 0,
@@ -88,8 +96,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                         TotalHours = 0,
                         TotalTicketCompleted = 0
                     };
-                }
 
+                    // Always refresh identity fields in case they were null previously
+                    metric.UserId = profile.Id;
+                    metric.UserName = profile.DisplayName ?? "Unknown";
+                    metric.UserProfilePic = profile.ProfileImageUrl ?? string.Empty;
+                }
                 UpdateMetricFromEvent(eventLogDto, metric);
 
 
@@ -158,16 +170,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         private static float ComputeScore(RankingCacheModel m)
         {
-            double eff = m.Efficiency;
-            double pts = (float)m.ContributionPoint;
-            double cs = (float)m.Score;
-            double hrs = m.TotalHours;
+            double baseScore = m.ContributionPoint ?? 0; // raw work
+            double efficiency = m.Efficiency;
+            double hours = m.TotalHours;
 
             var score =
-                (eff * 0.4) +
-                (pts * 0.3) +
-                (cs * 0.2) +
-                (hrs * 0.1);
+                (baseScore * 0.75) +     // main driver
+                (efficiency * 0.2) +     // quality
+                (hours * 0.05);          // consistency
 
             return (float)Math.Round(score, 2);
         }
@@ -178,21 +188,83 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             switch (eventLog.EventTypeId)
             {
+
                 case (int)GeneralEnums.EventType.TicketCompleted:
-                    rankingCacheModel.ContributionPoint += 10;
-                    rankingCacheModel.TotalTicketCompleted += 1;
-                    break;
+                    {
+                        if (!string.IsNullOrEmpty(eventLog.Metadata))
+                        {
+                            var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(eventLog.Metadata);
+
+                            float points = 0;
+
+                            if (metadata != null && metadata.ContainsKey("points"))
+                            {
+                                points = Convert.ToSingle(metadata["points"]);
+                            }
+
+                            rankingCacheModel.ContributionPoint += points;
+                            rankingCacheModel.TotalTicketCompleted += 1;
+                            rankingCacheModel.Score += points;
+                        }
+
+                        break;
+                    }
                 case (int)GeneralEnums.EventType.SprintCompleted:
-                    rankingCacheModel.ContributionPoint += 50;
-                    break;
+                    {
+                        if (!string.IsNullOrEmpty(eventLog.Metadata))
+                        {
+                            var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(eventLog.Metadata);
+
+                            float reward = 0;
+
+                            if (metadata != null && metadata.ContainsKey("reward"))
+                            {
+                                reward = Convert.ToSingle(metadata["reward"]);
+                            }
+
+                            rankingCacheModel.ContributionPoint += reward;
+                            rankingCacheModel.Score += reward;
+                        }
+
+                        break;
+                    }
+
                 case (int)GeneralEnums.EventType.CheckIn:
-                    rankingCacheModel.ContributionPoint += 1;
-                    break;
+                    {
+                        // Keep minimal or remove completely
+                        rankingCacheModel.ContributionPoint += 0.5f;
+                        rankingCacheModel.Score += 0.5f;
+                        break;
+                    }
+
+                case (int)GeneralEnums.EventType.CheckOut:
+                    {
+                        if (!string.IsNullOrEmpty(eventLog.Metadata))
+                        {
+                            var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(eventLog.Metadata);
+
+                            if (metadata != null && metadata.ContainsKey("sessionHours"))
+                            {
+                                float sessionHours = Convert.ToSingle(metadata["sessionHours"]);
+
+                                rankingCacheModel.TotalHours += (int)sessionHours;
+
+                                // OPTIONAL (low weight)
+                                float scoreGain = sessionHours * 0.5f;
+
+                                rankingCacheModel.Score += scoreGain;
+                                rankingCacheModel.ContributionPoint += scoreGain;
+                            }
+                        }
+
+                        break;
+                    }
+
                 default:
                     break;
             }
         }
-        
+
         #endregion
     }
 

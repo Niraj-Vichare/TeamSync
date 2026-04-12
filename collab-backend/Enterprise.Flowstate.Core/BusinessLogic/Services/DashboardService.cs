@@ -109,40 +109,65 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
         #region Clock In/Out    
-        public async Task<ClockActionResult> ClockOut(string workspaceGuid, string userGuid,bool isAutomatic)
+        public async Task<ClockActionResult> ClockOut(string workspaceGuid, string userGuid, bool isAutomatic)
         {
             var result = await _omniRepository.DashboardRepository.ClockOut(workspaceGuid, userGuid, isAutomatic);
-            if (result == ClockActionResult.Success)
+
+            if (result != ClockActionResult.Success)
+                return result;
+
+            // Get today's log
+            var todayLog = await _omniRepository.DashboardRepository.GetTodayLogging(workspaceGuid, userGuid);
+
+            float sessionHours = 0f;
+
+            if (todayLog?.CheckIn != null && todayLog.CheckOut != null)
             {
+                var timeSpan = todayLog.CheckOut.Value - todayLog.CheckIn.Value;
 
-                EventsLog eventLog = new EventsLog
-                {
-                    EventTypeId = (int)EventType.CheckOut,
-                    CreatedAt = DateTime.UtcNow,
-                    EventDescription = "User Clock out",
-                    UserGuid = userGuid,
-                    WorkspaceGuid = workspaceGuid,
-                    EventGuid = Guid.NewGuid().ToString(),
-                };
+                // Handle cross-midnight safely
+                if (timeSpan.TotalSeconds < 0)
+                    timeSpan = timeSpan.Add(TimeSpan.FromHours(24));
 
-                await _omniRepository.ProfileRepository.AddEventLog(eventLog);
-
-                #region Event Publishing
-                EventsLogDto eventLogDto = new EventsLogDto
-                {
-                    EventTypeId = (int)EventType.CheckOut,
-                    CreatedAt = DateTime.UtcNow,
-                    EventDescription = "User Clock out",
-                    UserGuid = userGuid,
-                    WorkspaceGuid = workspaceGuid,
-                    EventGuid = Guid.NewGuid().ToString(),
-                };
-                string json = System.Text.Json.JsonSerializer.Serialize(eventLog);
-                byte[] body = Encoding.UTF8.GetBytes(json);
-                await _eventPublisher.PublishAsync(eventLogDto, 0);
-                #endregion 
-
+                sessionHours = (float)timeSpan.TotalHours;
             }
+            var eventGuid = Guid.NewGuid().ToString();
+
+            EventsLog eventLog = new EventsLog
+            {
+                EventGuid = eventGuid,
+                CreatedAt = DateTime.UtcNow,
+                EventDescription = "User Clock out",
+                EventTypeId = (int)EventType.CheckOut,
+                UserGuid = userGuid,
+                WorkspaceGuid = workspaceGuid,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    sessionHours = sessionHours,
+                    isAutomatic = isAutomatic
+                })
+            };
+
+            await _omniRepository.ProfileRepository.AddEventLog(eventLog);
+
+            
+            EventsLogDto eventLogDto = new EventsLogDto
+            {
+                EventGuid = eventGuid, // SAME GUID → idempotency safe
+                EventTypeId = (int)EventType.CheckOut,
+                UserGuid = userGuid,
+                WorkspaceGuid = workspaceGuid,
+                CreatedAt = DateTime.UtcNow,
+                EventDescription = $"Clocked out after {sessionHours:F1}h",
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    sessionHours = sessionHours,
+                    isAutomatic = isAutomatic
+                })
+            };
+
+            await _eventPublisher.PublishAsync(eventLogDto, 0);
+
             return result;
         }
         public async Task<ClockActionResult> ClockIn(string workspaceGuid, string userGuid)

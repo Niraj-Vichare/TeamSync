@@ -29,7 +29,11 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
 
             // Try Redis first
             var currentRankings = await _cache.GetWorkspaceRankingsAsync(workspaceId, pageNumber, pageSize);
-
+            bool fromRedis = currentRankings != null && currentRankings.Count > 0 && currentRankings.Count <= pageSize;
+            var pagedRankings = fromRedis
+                ? currentRankings
+                : currentRankings.Skip((pageNumber - 1) * pageSize).Take(pageSize)
+                    .ToDictionary(k => k.Key, v => v.Value);
             // Cache miss — load from DB and warm the cache atomically
             if (currentRankings == null || currentRankings.Count == 0)
             {
@@ -42,10 +46,7 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
             }
 
             // Page the in-memory result (already paged if from Redis, apply manually if from DB)
-            var pagedRankings = currentRankings
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToDictionary(k => k.Key, v => v.Value);
+            
 
             var userRankings = new List<UserRankingWithComparison>();
 
@@ -190,7 +191,7 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
 
     private async Task<Dictionary<string, RankingCacheModel>> WarmCacheFromDatabaseAsync(
         string workspaceId, DateTime currentStart, DateTime currentEnd)
-    {
+        {
         var dbRankings = await _omniRepository.LeaderBoardRepository
             .GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
 

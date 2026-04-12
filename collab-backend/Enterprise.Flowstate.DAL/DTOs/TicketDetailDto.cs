@@ -51,5 +51,6 @@ namespace Enterprise.Flowstate.DAL.DTOs
     public class CloseRequestPayload
     {
         public string Reason { get; set; } = string.Empty;
+        public string WorkspaceGuid { get; set; }
     }
 }

@@ -21,6 +21,7 @@ namespace Enterprise.Flowstate.Extensions
             // Hosted Service
             services.AddHostedService<DatabaseSyncService>();
             services.AddHostedService<WeeklyPeriodResetService>();
+            services.AddHostedService<DeadlineNotificationService>();
 
             // Processors
             services.AddScoped<INotificationProcessor, NotificationProcessor>();

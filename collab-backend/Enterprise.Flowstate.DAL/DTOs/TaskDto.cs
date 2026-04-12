@@ -24,8 +24,8 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public DateTime? EndDate { get; set; }
         public TaskStatus Status { get; set; }
         public TaskPriority Priority { get; set; }
-        public int TicketId { get; set; }
-        public int SprintId { get; set; }
+        public int? TicketId { get; set; }
+        public int? SprintId { get; set; }
         public ProjectDto? Project { get; set; }
         public ProfileDto? AssignedByUser { get; set; }
         public ProfileDto? AssignedToUser { get; set; }

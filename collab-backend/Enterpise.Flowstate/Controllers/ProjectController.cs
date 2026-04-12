@@ -487,5 +487,127 @@ namespace Enterpise.Flowstate.Controllers
                 };
             }
         }
+
+        [HttpGet("{projectGuid}/overview")]
+        public async Task<ApiResponseModel<object>> GetProjectDashboardCards(string projectGuid)
+        {
+            try
+            {
+
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+
+                if (string.IsNullOrEmpty(projectGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Not a valid project id",
+                        StatusCode = StatusCodes.Status404NotFound
+                    };
+                }
+
+                var result = await _omniService.ProjectService.GetProjectDashboardCard(projectGuid);
+                if(result == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "No data found for the project",
+                        StatusCode = StatusCodes.Status404NotFound
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Successfully retrieved project overview data.",
+                    Data = result
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
+        [HttpGet("{projectGuid}/teams")]
+        public async Task<ApiResponseModel<object>> GetProjectTeams(string projectGuid)
+        {
+            try
+            {
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+
+                if (string.IsNullOrEmpty(projectGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Not a valid project id",
+                        StatusCode = StatusCodes.Status404NotFound
+                    };
+                }
+
+                var result = await _omniService.ProjectService.GetProjectTeams(projectGuid);
+                if (result == null || result.Count<0)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "No teams found for the project",
+                        StatusCode = StatusCodes.Status404NotFound
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Success = true,
+                    Message = "",
+                    Data = result,
+                    StatusCode = StatusCodes.Status200OK
+                };
+
+
+
+            } catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
     }
 }

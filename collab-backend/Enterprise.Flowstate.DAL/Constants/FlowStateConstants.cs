@@ -26,6 +26,7 @@
         #endregion
 
         #region Misc
+        public const int CONTRIBUTIONPOINT = 100;
         public const int WORK_DAY_SECONDS = 9 * 60 * 60;
         public const int MAX_AUTO_CLOCKOUTS = 3;
         public const int SCORE_PENALTY = 1;

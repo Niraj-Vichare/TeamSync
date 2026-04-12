@@ -14,5 +14,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> UpdateTaskStatus(string workspaceGuid,string userGuid, int taskId, string taskStatus);
 
         Task<List<TaskDto>> GetOngoingUserTask(string userGuid, string workspaceGuid);
+        Task<List<TaskDto>> GetTasksDueOn(DateOnly dueDate);
     }
 }

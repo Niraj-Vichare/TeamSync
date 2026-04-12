@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
 using System;
@@ -250,9 +251,79 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var teamMembers = teamMembersResponse.Models.Select(tm => new TeamMemberDropdownDto
             {
                 MemberId = tm.Member.Profile.Id,
+                MemberProfileGuid = tm.Member.Profile.Guid,
                 MemberName = tm.Member.Profile.DisplayName
             }).ToList();
             return teamMembers;
+        }
+
+        public async Task<bool> UpdateSprintStatus(string sprintGuid, SprintEnums.SprintStatus status)
+        {
+            var response = await _supabaseClient.From<Sprint>()
+                .Where(sprint => sprint.SprintGuid == sprintGuid)
+                .Get();
+            var sprintToUpdate = response.Models.FirstOrDefault();
+            if (sprintToUpdate == null)
+            {
+                return false;
+            }
+            sprintToUpdate.StatusId = (int)status;
+
+            await _supabaseClient.From<Sprint>().Update(sprintToUpdate);
+            return true;
+        }
+        public async Task<List<SprintDto>> GetSprintDueOn(DateOnly dueDate)
+        {
+            var response = await _supabaseClient.From<Sprint>()
+                .Select("id,sprint_guid,working_team_id,title")
+                .Filter("end_date", Supabase.Postgrest.Constants.Operator.Equals, dueDate.ToString("yyyy-MM-dd"))
+                .Get();
+
+            return response.Models.Select(s=>new SprintDto
+            {
+                Title = s.Title,
+                Id = s.SprintId,
+                SprintGuid = s.SprintGuid,
+                WorkingTeamId = (int)s.WorkingTeamId
+            }).ToList();    
+            
+        }
+
+        public async Task<List<SprintDto>> GetProjectSprintStats(string projectGuid)
+        {
+            var projectResponse = await _supabaseClient
+                .From<Project>()
+                .Where(p => p.ProjectGuid == projectGuid)
+                .Get();
+
+            if (!projectResponse.Models.Any())
+            {
+                return new List<SprintDto>();
+            }
+
+            int projectId = projectResponse.Models.First().ProjectId;
+
+            var response = await _supabaseClient
+                .From<Sprint>()
+                .Select("sprint_id,status,sprint_guid,working_team_id")
+                .Where(sprint => sprint.ProjectId == projectId)
+                .Get();
+
+            if (!response.Models.Any())
+            {
+                return new List<SprintDto>();
+            }
+
+            // Transform to DTOs
+            var sprintDtos = response.Models.Select(s => new SprintDto
+            {
+                Id = s.SprintId,
+                SprintGuid = s.SprintGuid,
+                WorkingTeamId = (int)s.WorkingTeamId,
+                Status = (SprintEnums.SprintStatus)s.StatusId,
+            }).ToList();
+
+            return sprintDtos;
         }
     }
 }

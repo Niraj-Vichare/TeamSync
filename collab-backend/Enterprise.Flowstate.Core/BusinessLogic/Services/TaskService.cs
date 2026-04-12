@@ -25,6 +25,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         {
             task.AssignedBy = await _omniRepository.ProfileRepository.GetProfileId(userGuid);
             task.AssignedTo = task.AssignedBy;
+            var ticketGuid = task.Ticket.TicketGuid.ToString();
+            var ticketDetail = await _omniRepository.TicketRepository.GetTicket(ticketGuid);
             var taskGuid = Guid.NewGuid();
             Task taskDB = new Task()
             {
@@ -33,9 +35,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 CreatedAt = task.CreateAt,
                 Description = task.Description,
                 EndDate = task.EndDate,
-                SprintId = task.SprintId,
-                ProjectId = task.ProjectId,
-                TicketId = task.TicketId,
+                SprintId = ticketDetail.SprintId,
+                ProjectId = (int)ticketDetail.ProjectId,
+                TicketId = ticketDetail.TicketId,
                 StartDate = task.StartDate,
                 Title = task.Title,
                 TaskGuid = taskGuid,
@@ -375,6 +377,10 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             return tasks;
         }
 
-
+        public async Task<List<TaskDto>> GetTasksDueOn(DateOnly dueDate)
+        {
+            var result = await _omniRepository.TaskRepository.GetTaskDueOn(dueDate);
+            return result;
+        }
     }
 }

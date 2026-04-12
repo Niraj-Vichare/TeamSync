@@ -23,6 +23,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> RemoveUserFromWorkspace(string workspaceGuid, int profileId);
         Task<List<string>> GetAllActiveWorkspaceGuid();
         Task<List<WorkspaceInfoDto>> GetAllWorkspaceInfo();
-
+        Task<List<ProfileDto>> GetAllWorkspaceAdmins(string workspaceGuid);
+        Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUserGroup(string workspaceGuid);
     }
 }
