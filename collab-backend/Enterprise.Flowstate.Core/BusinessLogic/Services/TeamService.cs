@@ -287,20 +287,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 WorkspaceId = workspaceId,
             };
             var teamId = await _omniRepository.TeamRepository.AddTeam(teamCustom);
-            var teamMemberList = team.Members.Select(member => member.MemberId).ToList();
+            //var teamMemberList = team.Members.Select(member => member.MemberId).ToList();
             if (teamId > 0)
             {
-                foreach (var memberId in teamMemberList)
+                foreach (var member in team.Members)
                 {
                     TeamMemberMapping mapping = new TeamMemberMapping
                     {
                         TeamId = teamId,
-                        MemberId = memberId,
-                        IsLeader = false,
+                        MemberId = member.MemberId,
+                        IsLeader = member.IsLeader,
                     };
                     await _omniRepository.TeamRepository.AddTeamMemberMapping(mapping);
-                }
 
+                }
+                // Need to notify the members of the group...
                 EventsLog eventsLog = new EventsLog
                 {
                     EventGuid = Guid.NewGuid().ToString(),

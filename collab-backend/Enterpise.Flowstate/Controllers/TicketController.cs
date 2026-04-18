@@ -4,6 +4,7 @@ using Enterprise.Flowstate.Configuration;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
@@ -699,5 +700,142 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
+
+
+        [HttpPatch("{ticketGuid}/priority")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+        public async Task<ApiResponseModel<object>> UpdateTicketPriority([FromRoute] string ticketGuid,[FromBody] UpdateStatusModel statusModel)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Ticket GUID is required."
+                    };
+                }
+
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                if (string.IsNullOrEmpty(statusModel.WorkspaceGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Message = "Workspace GUID is required.",
+                        Success = false
+                    };
+                }
+
+                bool statusChanges = await _omniService.TicketService.UpdateTicketStatus(ticketGuid, (TicketEnums.TicketStatus)statusModel.Status);
+                if (!statusChanges)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Ticket Status is not able to updated",
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Message = "Ticket status is able to updated",
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
+
+        [HttpPatch("{ticketGuid}/status")]
+        [EnableRateLimiting(RateLimitingConfiguration.Write)]
+        public async Task<ApiResponseModel<object>> UpdateTicketStatus([FromRoute] string ticketGuid, UpdatePriorityModel priorityModel)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ticketGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Ticket GUID is required."
+                    };
+                }
+
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                if (string.IsNullOrEmpty(priorityModel.WorkspaceGuid))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Message = "Workspace GUID is required.",
+                        Success = false
+                    };
+                }
+
+                bool statusChanges = await _omniService.TicketService.UpdateTicketPriority(ticketGuid, (TicketEnums.TicketPriority)priorityModel.Priority);
+                if (!statusChanges)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Ticket Status is not able to updated",
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
+                }
+
+                return new ApiResponseModel<object>
+                {
+                    Message = "Ticket status is able to updated",
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = ex,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
+        }
     }
 }

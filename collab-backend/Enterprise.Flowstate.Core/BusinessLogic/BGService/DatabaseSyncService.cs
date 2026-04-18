@@ -1,8 +1,8 @@
 ﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
 using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.DTO;
+using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,160 +10,248 @@ using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 {
+    /// <summary>
+    /// Single background service that owns the full leaderboard lifecycle.
+    /// WeeklyPeriodResetService is DELETED — this handles everything.
+    ///
+    /// Responsibilities:
+    ///   1. Startup  — prime Redis if cold (fixes blank leaderboard on fresh start)
+    ///   2. Every 60 min — flush Redis pending set → Supabase DB
+    ///   3. New week detected — carry reputation forward, clear Redis, reseed scores
+    /// </summary>
     public class DatabaseSyncService : BackgroundService
     {
         private readonly ILogger<DatabaseSyncService> _logger;
-        //private readonly TimeSpan _syncInterval = TimeSpan.FromHours(3); // Sync every 3 hours
-        private readonly TimeSpan _syncInterval = TimeSpan.FromMinutes(60); // Sync every 3 minutes
-        private readonly IConfiguration _configuration;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly TimeSpan _syncInterval = TimeSpan.FromMinutes(60);
+        private readonly TimeSpan _startupDelay = TimeSpan.FromSeconds(30);
 
-        public DatabaseSyncService(
-        ILogger<DatabaseSyncService> logger,
-        IConfiguration configuration, IServiceScopeFactory scopeFactory)
+        public DatabaseSyncService(ILogger<DatabaseSyncService> logger, IServiceScopeFactory scopeFactory)
         {
             _logger = logger;
-            _configuration = configuration;
-            _scopeFactory = scopeFactory; 
+            _scopeFactory = scopeFactory;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken ct)
         {
-            _logger.LogInformation("Database Sync Service started - syncing every {Interval} seconds",
-                _syncInterval.TotalSeconds);
+            _logger.LogInformation("DatabaseSyncService starting — first run in {Delay}s", _startupDelay.TotalSeconds);
+            await Task.Delay(_startupDelay, ct);
 
-            // Wait a bit before first sync to let app initialize
-            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+            // ── Startup: prime Redis if cold ──────────────────────────────────
+            await EnsureRedisPrimedAsync(ct);
 
-            while (!stoppingToken.IsCancellationRequested)
+            // ── Periodic loop ─────────────────────────────────────────────────
+            while (!ct.IsCancellationRequested)
             {
                 try
                 {
                     using var scope = _scopeFactory.CreateScope();
-                    var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
                     var cache = scope.ServiceProvider.GetRequiredService<ICache>();
+                    var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+                    var recalc = scope.ServiceProvider.GetRequiredService<IScoreRecalculationService>();
 
-                    await PerformSyncAsync(omniService,cache,stoppingToken);
+                    // Check for week rollover BEFORE syncing
+                    await HandleWeekRolloverAsync(cache, omniService, recalc, ct);
 
-                    _logger.LogInformation("Next sync scheduled in {Interval} hours", _syncInterval.TotalHours);
-                    await Task.Delay(_syncInterval, stoppingToken);
+                    // Flush Redis → DB
+                    await RunSyncCycleAsync(cache, omniService, ct);
                 }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogInformation("Database Sync Service is stopping");
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in database sync service");
-                    // Wait 5 minutes before retry on error
-                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
-                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception ex) { _logger.LogError(ex, "DatabaseSyncService error"); }
+
+                await Task.Delay(_syncInterval, ct);
             }
 
-            _logger.LogInformation("Database Sync Service stopped");
+            _logger.LogInformation("DatabaseSyncService stopped");
         }
 
-        private async Task PerformSyncAsync(IOmniService omniService,ICache cache,CancellationToken stoppingToken)
-        {
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            _logger.LogInformation("Starting database sync...");
+        // ── 1. Startup: prime Redis if empty ─────────────────────────────────
 
+        private async Task EnsureRedisPrimedAsync(CancellationToken ct)
+        {
             try
             {
-                var workspaceInfos = await omniService.WorkspaceService.GetAllWorkspaceInfo();
-                int totalSynced = 0;
-                int totalErrors = 0;
+                using var scope = _scopeFactory.CreateScope();
+                var cache = scope.ServiceProvider.GetRequiredService<ICache>();
+                var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
+                var recalc = scope.ServiceProvider.GetRequiredService<IScoreRecalculationService>();
 
-                foreach (var workspaceInfo in workspaceInfos)
+                var workspaces = await omniService.WorkspaceService.GetAllWorkspaceInfo();
+                bool anyEmpty = false;
+
+                foreach (var ws in workspaces)
                 {
-                    if (stoppingToken.IsCancellationRequested)
-                        break;
-
-                    try
-                    {
-                        var synced = await SyncWorkspaceDataAsync(workspaceInfo.WorkspaceGuid,workspaceInfo.WorkspaceId, cache,omniService,stoppingToken);
-                        totalSynced += synced;
-                    }
-                    catch (Exception ex)
-                    {
-                        totalErrors++;
-                        _logger.LogError(ex, "Error syncing workspace {WorkspaceId}", workspaceInfo.WorkspaceId);
-                    }
+                    var rankings = await cache.GetWorkspaceRankingsAsync(ws.WorkspaceGuid, 1, 1);
+                    if (rankings == null || rankings.Count == 0) { anyEmpty = true; break; }
                 }
 
-                stopwatch.Stop();
-                _logger.LogInformation(
-                    "Database sync completed: {Synced} users synced, {Errors} errors, Duration: {Duration}s",
-                    totalSynced, totalErrors, stopwatch.Elapsed.TotalSeconds);
-
-
+                if (anyEmpty)
+                {
+                    _logger.LogWarning("Redis is cold on startup — running full score recalculation");
+                    await recalc.RecalculateAllWorkspacesAsync(ct);
+                    _logger.LogInformation("Startup recalculation complete — leaderboard is now populated");
+                }
+                else
+                {
+                    _logger.LogInformation("Redis already warm — no startup recalculation needed");
+                }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Startup prime check failed — periodic sync will still run");
+            }
+        }
 
+        // ── 2. New week detection + rollover ─────────────────────────────────
+
+        private async Task HandleWeekRolloverAsync(
+            ICache cache, IOmniService omniService, IScoreRecalculationService recalc, CancellationToken ct)
+        {
+            try
+            {
+                var (weekStart, _) = PeriodHelper.GetCurrentWeekPeriod();
+                var weekKey = "system:current_week_start";
+                var weekStartStr = weekStart.ToString("yyyy-MM-dd");
+
+                var stored = await cache.GetStringAsync(weekKey);
+                if (stored == weekStartStr) return; // same week, nothing to do
+
+                _logger.LogInformation("New week detected — rolling over from {Prev} to {Curr}", stored, weekStartStr);
+
+                var workspaces = await omniService.WorkspaceService.GetAllWorkspaceInfo();
+
+                foreach (var ws in workspaces)
+                {
+                    if (ct.IsCancellationRequested) break;
+                    try { await RolloverWorkspaceAsync(ws.WorkspaceGuid, ws.WorkspaceId, cache, ct); }
+                    catch (Exception ex) { _logger.LogError(ex, "Rollover failed for workspace {Guid}", ws.WorkspaceGuid); }
+                }
+
+                // Stamp new week BEFORE recalculation so a crash mid-recalc doesn't re-rollover
+                await cache.SetStringAsync(weekKey, weekStartStr);
+
+                // Seed new week with fresh scores (carries reputation forward internally)
+                _logger.LogInformation("Seeding new week scores");
+                await recalc.RecalculateAllWorkspacesAsync(ct);
+
+                _logger.LogInformation("Week rollover complete");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Week rollover check failed");
+            }
+        }
+
+        private async Task RolloverWorkspaceAsync(
+            string workspaceGuid, int workspaceId, ICache cache, CancellationToken ct)
+        {
+            // 1. Carry reputation into each user's metric before clearing
+            var rankings = await cache.GetWorkspaceRankingsAsync(workspaceGuid, 1, 1000);
+
+            foreach (var (userGuid, metric) in rankings)
+            {
+                if (ct.IsCancellationRequested) break;
+
+                metric.ReputationPoints += (float)((metric.Score) * 0.1f);
+                metric.CumulativeScore += metric.Score;
+
+                await _cache_UpsertUserMetric(cache, workspaceGuid, userGuid, metric);
+                await cache.AddPendingUpdateAsync(workspaceGuid, userGuid); // persist to DB before clear
             }
 
-        }
-        private async Task<int> SyncWorkspaceDataAsync(string workspaceGuid,int workspaceId,ICache cache,IOmniService omniService,CancellationToken stoppingToken)
-        {
-            var pendingUserGuids = await cache.GetAndClearPendingUpdatesAsync(workspaceGuid,workspaceId);
+            // 2. Final flush of this week's data before clearing Redis
+            // (the sync cycle that follows HandleWeekRollover will do this — no need to duplicate)
 
-            if (!pendingUserGuids.Any())
+            // 3. Clear current week rankings — new week starts fresh
+            var ws = cache.Workspace(workspaceGuid, workspaceId);
+            await ws.Ranking.ClearAsync();
+
+            _logger.LogInformation(
+                "Rolled over {Count} users for workspace {Guid}", rankings.Count, workspaceGuid);
+        }
+
+        // Thin wrapper to avoid ambiguity — cache.UpsertUserMetricAsync is the real call
+        private static Task _cache_UpsertUserMetric(ICache cache, string workspaceGuid, string userGuid, RankingCacheModel metric)
+            => cache.UpsertUserMetricAsync(workspaceGuid, userGuid, metric);
+
+        // ── 3. Periodic sync: Redis pending set → Supabase DB ────────────────
+
+        private async Task RunSyncCycleAsync(ICache cache, IOmniService omniService, CancellationToken ct)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var workspaces = await omniService.WorkspaceService.GetAllWorkspaceInfo();
+            int totalSynced = 0, totalErrors = 0;
+
+            foreach (var ws in workspaces)
             {
-                _logger.LogDebug("No pending updates for workspace {WorkspaceId}", workspaceId);
+                if (ct.IsCancellationRequested) break;
+                try { totalSynced += await SyncWorkspaceAsync(ws.WorkspaceGuid, ws.WorkspaceId, cache, omniService, ct); }
+                catch (Exception ex) { totalErrors++; _logger.LogError(ex, "Sync failed for workspace {Guid}", ws.WorkspaceGuid); }
+            }
+
+            sw.Stop();
+            _logger.LogInformation("Sync complete — {Synced} users, {Errors} errors, {Duration:F1}s",
+                totalSynced, totalErrors, sw.Elapsed.TotalSeconds);
+        }
+
+        private async Task<int> SyncWorkspaceAsync(
+            string workspaceGuid, int workspaceId,
+            ICache cache, IOmniService omniService, CancellationToken ct)
+        {
+            // Atomically grab-and-clear pending set (rename trick = no double-processing)
+            var pending = await cache.GetAndClearPendingUpdatesAsync(workspaceGuid, workspaceId);
+            if (!pending.Any())
+            {
+                _logger.LogDebug("No pending updates for {WorkspaceGuid}", workspaceGuid);
                 return 0;
             }
-            _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceId}",
-            pendingUserGuids.Count, workspaceId);
 
-            var (currentWeekStart,currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
-            int syncedCount = 0;
-            foreach(var userGuid in pendingUserGuids)
+            _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceGuid}", pending.Count, workspaceGuid);
+
+            var (weekStart, weekEnd) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
+            int synced = 0;
+
+            foreach (var userGuid in pending)
             {
-                if (stoppingToken.IsCancellationRequested)
-                    break;
+                if (ct.IsCancellationRequested) break;
                 try
                 {
-                    RankingCacheModel metric = await cache.GetUserMetricAsync(workspaceGuid, userGuid);
-
+                    var metric = await cache.GetUserMetricAsync(workspaceGuid, userGuid);
                     if (metric == null)
                     {
-                        _logger.LogWarning("Metric not found in Redis for user {UserId} workspace {WorkspaceId}",
-                            userGuid, workspaceGuid);
+                        _logger.LogWarning("Metric missing in Redis for {UserGuid} — skipping", userGuid);
                         continue;
                     }
-                    var rank = await cache.GetUserRankAsync(workspaceGuid, userGuid);
 
+                    var rank = await cache.GetUserRankAsync(workspaceGuid, userGuid);
                     int userId = await cache.GetUserId(workspaceGuid, userGuid);
 
-                    WeeklyUserStatsDto userMetric = new WeeklyUserStatsDto
+                    await omniService.ProfileService.UpertWeeklyUserMetric(new WeeklyUserStatsDto
                     {
+                        UserId = userId,
+                        WorkspaceId = workspaceId,
                         ContributionPoint = metric.ContributionPoint,
                         Efficiency = metric.Efficiency,
-                        CreatedAt = DateTime.UtcNow,
-                        Score = (float?)metric.Score,
+                        Score = (float)metric.Score,
                         TotalHours = metric.TotalHours,
                         RankPosition = (int)(rank ?? 0),
                         TicketsCompleted = metric.TotalTicketCompleted,
-                        UserId = userId,
-                        WorkspaceId = workspaceId,
-                        EndPeriod = currentWeekEnd,
-                        StartPeriod = currentWeekStart,
-                    };
-                    // Upesert the metric to database
-                    await omniService.ProfileService.UpertWeeklyUserMetric(userMetric);
+                        StartPeriod = weekStart,
+                        EndPeriod = weekEnd,
+                        CreatedAt = DateTime.UtcNow,
+                        ReputationPoints = metric.ReputationPoints,
+                        CumulativeScore = metric.CumulativeScore,
+                    });
 
-                    syncedCount++;
+                    synced++;
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error syncing user {UserId} in workspace {WorkspaceId}",
-                    userGuid, workspaceGuid);
+                    _logger.LogError(ex, "Error persisting {UserGuid}", userGuid);
                 }
             }
-            return syncedCount;
 
+            return synced;
         }
     }
 }

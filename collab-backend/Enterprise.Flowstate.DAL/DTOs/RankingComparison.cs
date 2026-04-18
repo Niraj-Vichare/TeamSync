@@ -14,11 +14,11 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public RankChangeType RankChangeType { get; set; } // Up, Down, Same, New
 
         // Score Changes
-        public double ScoreChange { get; set; }
+        public double ScoreChange { get; set; } = 0.0f;
         public double ScoreChangePercentage { get; set; }
 
         // Metric Changes
-        public float PointsChange { get; set; }
+        public float? PointsChange { get; set; }
         public int TicketsCompletedChange { get; set; }
         public int HoursChange { get; set; }
         public double EfficiencyChange { get; set; }

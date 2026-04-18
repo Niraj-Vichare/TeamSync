@@ -8,10 +8,10 @@ namespace Enterprise.Flowstate.DAL.DTOs
 {
     public class TeamDto
     {
-        public long TeamId { get; set; }
+        public int TeamId { get; set; }
         public List<TeamMemberDto> Members { get; set; }
         public string Name { get; set; }
-        public string TeamGuid { get; set; }
+        public string? TeamGuid { get; set; }
         public List<int> MemberIds { get; set; } = new();
         public string? WorkspaceGuid { get; set; }
         public string Tagline { get; set; }

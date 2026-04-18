@@ -11,8 +11,8 @@ namespace Enterprise.Flowstate.DAL.Models
     [Table("team")]
     public class Team:BaseModel
     {
-        [Column("team_id")]
-        public long TeamId { get; set; }
+        [PrimaryKey("team_id")]
+        public int TeamId { get; set; }
         [Column("team_name")]
         public string TeamName { get; set; }
         [Column("created_at")]

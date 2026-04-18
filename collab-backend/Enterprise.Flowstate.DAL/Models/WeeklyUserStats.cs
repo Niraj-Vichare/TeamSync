@@ -24,10 +24,10 @@ namespace Enterprise.Flowstate.DAL.Models
         public int? TicketCompleted { get; set; }
 
         [Column("score")]
-        public float? Score { get; set; }
+        public float Score { get; set; } = 0.0f;
 
         [Column("contribution_points")]
-        public float? ContributionPoints { get; set; }  
+        public float ContributionPoints { get; set; } = 0.0f;
 
         [Column("start_period")]
         public DateOnly? StartPeriod { get; set; }      

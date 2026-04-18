@@ -6,9 +6,6 @@ using Enterprise.Flowstate.DAL.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
-using Supabase.Gotrue;
-using static Enterprise.Flowstate.DAL.Constants.FlowStateConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
@@ -20,8 +17,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
         public WeeklyPeriodResetService(
             ILogger<WeeklyPeriodResetService> logger,
-            IServiceScopeFactory scopeFactory
-            )
+            IServiceScopeFactory scopeFactory)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
@@ -30,6 +26,12 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Weekly Period Reset Service started");
+
+            // FIX 1: Run mid-week startup check ONCE before entering the loop.
+            // Previously this was called at the TOP of every loop iteration, so it
+            // re-ran every week — potentially triggering a redundant sync right after
+            // a reset had just finished writing data.
+            await HandleMidWeekStartupAsync(stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -42,25 +44,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     _logger.LogInformation("Next weekly reset scheduled for: {NextReset} UTC (in {Delay})", nextReset, delay);
 
-                    // Check for mid-week startup edge case BEFORE waiting
-                    await HandleMidWeekStartupAsync(stoppingToken);
-
                     await Task.Delay(delay, stoppingToken);
 
                     if (stoppingToken.IsCancellationRequested)
                         break;
 
-                    // Create scope just before using it
                     using var scope = _scopeFactory.CreateScope();
                     var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();
                     var cache = scope.ServiceProvider.GetRequiredService<ICache>();
 
-                    // Perform weekly reset
                     _logger.LogInformation("Starting weekly period reset...");
-                    await PerformWeeklyResetAsync(omniService,cache,stoppingToken);
+                    await PerformWeeklyResetAsync(omniService, cache, stoppingToken);
                     _logger.LogInformation("Weekly period reset completed");
 
-                    // Wait 2 hours to avoid multiple resets
+                    // Wait 2 hours to avoid re-triggering on the same Monday
                     await Task.Delay(TimeSpan.FromHours(2), stoppingToken);
                 }
                 catch (OperationCanceledException)
@@ -87,18 +84,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                 var cache = scope.ServiceProvider.GetRequiredService<ICache>();
 
                 var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriod();
-                bool isWeeklyExist = await omniService.LeaderboardComparisonService.IsWeeklyUserStatsPresent(startDate, endDate);
+                bool isWeeklyExist = await omniService.LeaderboardComparisonService
+                    .IsWeeklyUserStatsPresent(startDate, endDate);
 
                 if (!isWeeklyExist)
                 {
-                    _logger.LogWarning("No weekly stats found for current period {StartDate} to {EndDate}. Service may have started mid-week.", startDate, endDate);
-                    _logger.LogInformation("Performing initial sync of current week data...");
+                    _logger.LogWarning(
+                        "No weekly stats found for current period {StartDate} to {EndDate}. " +
+                        "Service may have started mid-week — performing initial sync.",
+                        startDate, endDate);
 
-                    //var workspaceGuids = await omniService.WorkspaceService.GetAllActiveWorkspaceGuid();
-                    //var workspaceIds = await omniService.WorkspaceService.GetAllActiveWorkspaceIds();
                     var workspaceInfos = await omniService.WorkspaceService.GetAllWorkspaceInfo();
-
-
                     int totalSynced = 0;
 
                     foreach (var workspaceInfo in workspaceInfos)
@@ -108,7 +104,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                         try
                         {
-                            var synced = await SyncWorkspaceDataAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, cache, stoppingToken);
+                            var synced = await SyncWorkspaceDataAsync(
+                                workspaceInfo.WorkspaceGuid,
+                                workspaceInfo.WorkspaceId,
+                                omniService,
+                                cache,
+                                stoppingToken);
+
                             totalSynced += synced;
                         }
                         catch (Exception ex)
@@ -119,15 +121,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     _logger.LogInformation("Initial weekly sync completed: {Total} users synced", totalSynced);
                 }
+                else
+                {
+                    _logger.LogInformation("Weekly stats already present for current period. No mid-week sync needed.");
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling mid-week startup check");
-                // Don't throw - allow service to continue with normal schedule
+                // Don't throw — allow service to continue with normal schedule
             }
         }
 
-        private async Task PerformWeeklyResetAsync(IOmniService omniService,ICache cache,CancellationToken stoppingToken)
+        private async Task PerformWeeklyResetAsync(
+            IOmniService omniService, ICache cache, CancellationToken stoppingToken)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -148,7 +155,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                     try
                     {
-                        var processed = await ProcessWorkspaceResetAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, cache, stoppingToken);
+                        var processed = await ProcessWorkspaceResetAsync(
+                            workspaceInfo.WorkspaceGuid,
+                            workspaceInfo.WorkspaceId,
+                            omniService,
+                            cache,
+                            stoppingToken);
+
                         totalProcessed += processed;
                     }
                     catch (Exception ex)
@@ -158,7 +171,8 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                 }
 
                 stopwatch.Stop();
-                _logger.LogInformation("Weekly reset completed: {Total} users processed, Duration: {Duration}s",
+                _logger.LogInformation(
+                    "Weekly reset completed: {Total} users processed, Duration: {Duration}s",
                     totalProcessed, stopwatch.Elapsed.TotalSeconds);
             }
             catch (Exception ex)
@@ -168,19 +182,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
         }
 
-        private async Task<int> ProcessWorkspaceResetAsync(string workspaceGuid,int workspaceId, IOmniService omniService,ICache cache,CancellationToken cancellationToken)
+        private async Task<int> ProcessWorkspaceResetAsync(
+            string workspaceGuid, int workspaceId,
+            IOmniService omniService, ICache cache,
+            CancellationToken cancellationToken)
         {
             _logger.LogInformation("Processing workspace {WorkspaceId}", workspaceId);
 
             // Perform final sync before reset
-            await SyncWorkspaceDataAsync(workspaceGuid,workspaceId,omniService,cache,cancellationToken);
+            await SyncWorkspaceDataAsync(workspaceGuid, workspaceId, omniService, cache, cancellationToken);
 
             try
             {
                 // Freeze current week rankings to previous week in Redis
-                await FreezeRankingsToRedisAsync(workspaceGuid,workspaceId, cache);
+                await FreezeRankingsToRedisAsync(workspaceGuid, workspaceId, cache);
 
-                // Get all users in this workspace
                 var allUserIds = await omniService.WorkspaceService.GetAllActiveWorkspaceUser(workspaceId);
 
                 _logger.LogInformation("Found {Count} users in workspace {WorkspaceId}", allUserIds.Count, workspaceId);
@@ -194,17 +210,17 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
         }
 
-        private async Task FreezeRankingsToRedisAsync(string workspaceGuid,int workspaceId, ICache cache)
+        private async Task FreezeRankingsToRedisAsync(string workspaceGuid, int workspaceId, ICache cache)
         {
             _logger.LogInformation("Freezing rankings for workspace {WorkspaceId}", workspaceId);
             try
             {
-                var ws = cache.Workspace(workspaceGuid,workspaceId);
+                var ws = cache.Workspace(workspaceGuid, workspaceId);
 
                 // Snapshot current ranking → previous week before clearing
                 await ws.Ranking.SnapshotToPreviousWeekAsync(TimeSpan.FromDays(8));
 
-                // Freeze user metrics
+                // Freeze user metrics individually
                 var currentRankings = await ws.Ranking.GetPageAsync(1, 1000);
                 if (currentRankings.Any())
                 {
@@ -230,23 +246,25 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
         }
 
-        // Consolidated sync method - used by both initial sync and weekly reset
-        private async Task<int> SyncWorkspaceDataAsync(string workspaceGuid,int workspaceId,IOmniService omniService,ICache cache,CancellationToken stoppingToken)
+        // Consolidated sync method — used by both initial sync and weekly reset
+        private async Task<int> SyncWorkspaceDataAsync(
+            string workspaceGuid, int workspaceId,
+            IOmniService omniService, ICache cache,
+            CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Syncing workspace {WorkspaceId}", workspaceGuid);
+            _logger.LogInformation("Syncing workspace {WorkspaceGuid}", workspaceGuid);
 
             try
             {
-                var pendingUserIds = await cache.GetAndClearPendingUpdatesAsync(workspaceGuid,workspaceId);
+                var pendingUserIds = await cache.GetAndClearPendingUpdatesAsync(workspaceGuid, workspaceId);
 
                 if (!pendingUserIds.Any())
                 {
-                    //omniService.DashboardService.CopyPreviousStats(workspaceId);
-                    _logger.LogDebug("No pending updates for workspace {WorkspaceId}", workspaceGuid);
+                    _logger.LogDebug("No pending updates for workspace {WorkspaceGuid}", workspaceGuid);
                     return 0;
                 }
 
-                _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceId}",
+                _logger.LogInformation("Syncing {Count} users for workspace {WorkspaceGuid}",
                     pendingUserIds.Count, workspaceGuid);
 
                 var (currentWeekStart, currentWeekEnd) = PeriodHelper.GetCurrentWeekPeriodDateOnly();
@@ -263,8 +281,9 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
 
                         if (metric == null)
                         {
-                            _logger.LogWarning("Metric not found in Redis for user {UserId} workspace {WorkspaceId}",
-                                userId,workspaceGuid);
+                            _logger.LogWarning(
+                                "Metric not found in Redis for user {UserId} workspace {WorkspaceGuid}",
+                                userId, workspaceGuid);
                             continue;
                         }
 
@@ -275,7 +294,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                             ContributionPoint = metric.ContributionPoint,
                             Efficiency = metric.Efficiency,
                             CreatedAt = DateTime.UtcNow,
-                            Score = (float?)metric.Score,
+                            Score = (float)metric.Score,
                             TotalHours = metric.TotalHours,
                             RankPosition = (int)(rank ?? 0),
                             TicketsCompleted = metric.TotalTicketCompleted,
@@ -285,15 +304,16 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                             StartPeriod = currentWeekStart,
                         };
 
-                        // Upsert the metric to database
                         await omniService.ProfileService.UpertWeeklyUserMetric(userMetric);
 
                         syncedCount++;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error synusing Enterprise.Flowstate.BAL.BusinessLogic.Services;\r\nusing Enterprise.Flowstate.BAL.Interface.Service;\r\nusing Enterprise.Flowstate.DAL.Constants;\r\nusing Enterprise.Flowstate.DAL.DTO;\r\nusing Enterprise.Flowstate.DAL.Models;\r\nusing Microsoft.Extensions.DependencyInjection;\r\nusing Microsoft.Extensions.Hosting;\r\nusing Microsoft.Extensions.Logging;\r\nusing Task = System.Threading.Tasks.Task;\r\n\r\nnamespace Enterprise.Flowstate.BAL.BusinessLogic.BGService\r\n{\r\n    public class WeeklyPeriodResetService : BackgroundService\r\n    {\r\n        private readonly ILogger<WeeklyPeriodResetService> _logger;\r\n        private readonly ICache _cache;\r\n        private readonly IServiceScopeFactory _scopeFactory;\r\n\r\n        public WeeklyPeriodResetService(\r\n            ILogger<WeeklyPeriodResetService> logger,\r\n            IServiceScopeFactory scopeFactory,\r\n            ICache cache)\r\n        {\r\n            _logger = logger;\r\n            _cache = cache;\r\n            _scopeFactory = scopeFactory;\r\n        }\r\n\r\n        protected override async Task ExecuteAsync(CancellationToken stoppingToken)\r\n        {\r\n            _logger.LogInformation(\"Weekly Period Reset Service started\");\r\n\r\n            // FIX 1: Run mid-week check ONCE on startup, outside the loop\r\n            await HandleMidWeekStartupAsync(stoppingToken);\r\n\r\n            while (!stoppingToken.IsCancellationRequested)\r\n            {\r\n                try\r\n                {\r\n                    var now = DateTime.UtcNow;\r\n                    var nextReset = GetNextResetTime(now);\r\n                    var delay = nextReset - now;\r\n                    if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;\r\n\r\n                    _logger.LogInformation(\"Next weekly reset scheduled for: {NextReset} UTC (in {Delay})\", nextReset, delay);\r\n\r\n                    await Task.Delay(delay, stoppingToken);\r\n\r\n                    if (stoppingToken.IsCancellationRequested)\r\n                        break;\r\n\r\n                    using var scope = _scopeFactory.CreateScope();\r\n                    var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();\r\n\r\n                    _logger.LogInformation(\"Starting weekly period reset...\");\r\n                    await PerformWeeklyResetAsync(omniService, stoppingToken);\r\n                    _logger.LogInformation(\"Weekly period reset completed\");\r\n\r\n                    // Wait 2 hours to avoid re-triggering on the same Monday\r\n                    await Task.Delay(TimeSpan.FromHours(2), stoppingToken);\r\n                }\r\n                catch (OperationCanceledException)\r\n                {\r\n                    _logger.LogInformation(\"Weekly Period Reset Service is stopping\");\r\n                    break;\r\n                }\r\n                catch (Exception ex)\r\n                {\r\n                    _logger.LogError(ex, \"Error in weekly period reset service\");\r\n\r\n                    // FIX 4: Retry with backoff instead of looping back to next Monday\r\n                    // Try again in 30 minutes — stays well within the same Monday\r\n                    _logger.LogWarning(\"Reset failed. Retrying in 30 minutes...\");\r\n                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);\r\n                }\r\n            }\r\n\r\n            _logger.LogInformation(\"Weekly Period Reset Service stopped\");\r\n        }\r\n\r\n        private async Task HandleMidWeekStartupAsync(CancellationToken stoppingToken)\r\n        {\r\n            try\r\n            {\r\n                using var scope = _scopeFactory.CreateScope();\r\n                var omniService = scope.ServiceProvider.GetRequiredService<IOmniService>();\r\n\r\n                var (startDate, endDate) = PeriodHelper.GetCurrentWeekPeriod();\r\n                bool isWeeklyExist = await omniService.LeaderboardComparisonService.IsWeeklyUserStatsPresent(startDate, endDate);\r\n\r\n                if (!isWeeklyExist)\r\n                {\r\n                    _logger.LogWarning(\r\n                        \"No weekly stats found for current period {StartDate} to {EndDate}. \" +\r\n                        \"Service may have started mid-week — performing initial sync.\",\r\n                        startDate, endDate);\r\n\r\n                    var workspaceInfos = await omniService.WorkspaceService.GetAllWorkspaceInfo();\r\n                    int totalSynced = 0;\r\n\r\n                    foreach (var workspaceInfo in workspaceInfos)\r\n                    {\r\n                        if (stoppingToken.IsCancellationRequested)\r\n                            break;\r\n\r\n                        try\r\n                        {\r\n                            // FIX 3: Delegate sync entirely to DatabaseSyncService.\r\n                            // Just snapshot/freeze previous week if missing — no duplicate sync logic here.\r\n                            await FreezeRankingsToRedisAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, _cache);\r\n                            totalSynced++;\r\n                        }\r\n                        catch (Exception ex)\r\n                        {\r\n                            _logger.LogError(ex, \"Error during initial sync for workspace {WorkspaceGuid}\", workspaceInfo.WorkspaceGuid);\r\n                        }\r\n                    }\r\n\r\n                    _logger.LogInformation(\"Initial weekly sync completed: {Total} workspaces processed\", totalSynced);\r\n                }\r\n                else\r\n                {\r\n                    _logger.LogInformation(\"Weekly stats already present for current period. No mid-week sync needed.\");\r\n                }\r\n            }\r\n            catch (Exception ex)\r\n            {\r\n                _logger.LogError(ex, \"Error handling mid-week startup check\");\r\n                // Don't throw — allow service to continue with normal schedule\r\n            }\r\n        }\r\n\r\n        private async Task PerformWeeklyResetAsync(IOmniService omniService, CancellationToken stoppingToken)\r\n        {\r\n            var stopwatch = System.Diagnostics.Stopwatch.StartNew();\r\n\r\n            try\r\n            {\r\n                // FIX 3: No sync logic here — DatabaseSyncService owns that.\r\n                // This service only handles freeze + clear.\r\n                var workspaceInfos = await omniService.WorkspaceService.GetAllWorkspaceInfo();\r\n\r\n                _logger.LogInformation(\"Processing {Count} workspaces for weekly reset\", workspaceInfos.Count);\r\n\r\n                int totalProcessed = 0;\r\n\r\n                foreach (var workspaceInfo in workspaceInfos)\r\n                {\r\n                    if (stoppingToken.IsCancellationRequested)\r\n                        break;\r\n\r\n                    try\r\n                    {\r\n                        await ProcessWorkspaceResetAsync(workspaceInfo.WorkspaceGuid, workspaceInfo.WorkspaceId, omniService, stoppingToken);\r\n                        totalProcessed++;\r\n                    }\r\n                    catch (Exception ex)\r\n                    {\r\n                        _logger.LogError(ex, \"Error processing workspace {WorkspaceId}\", workspaceInfo.WorkspaceId);\r\n                    }\r\n                }\r\n\r\n                stopwatch.Stop();\r\n                _logger.LogInformation(\"Weekly reset completed: {Total} workspaces processed, Duration: {Duration}s\",\r\n                    totalProcessed, stopwatch.Elapsed.TotalSeconds);\r\n            }\r\n            catch (Exception ex)\r\n            {\r\n                _logger.LogError(ex, \"Fatal error during weekly reset\");\r\n                throw;\r\n            }\r\n        }\r\n\r\n        private async Task ProcessWorkspaceResetAsync(string workspaceGuid, int workspaceId, IOmniService omniService, CancellationToken cancellationToken)\r\n        {\r\n            _logger.LogInformation(\"Processing workspace {WorkspaceId}\", workspaceId);\r\n\r\n            try\r\n            {\r\n                await FreezeRankingsToRedisAsync(workspaceGuid, workspaceId, _cache);\r\n\r\n                var allUserIds = await omniService.WorkspaceService.GetAllActiveWorkspaceUser(workspaceId);\r\n                _logger.LogInformation(\"Found {Count} users in workspace {WorkspaceId}\", allUserIds.Count, workspaceId);\r\n            }\r\n            catch (Exception ex)\r\n            {\r\n                _logger.LogError(ex, \"Failed to process workspace {WorkspaceId}\", workspaceId);\r\n                throw;\r\n            }\r\n        }\r\n\r\n        private async Task FreezeRankingsToRedisAsync(string workspaceGuid, int workspaceId, ICache cache)\r\n        {\r\n            _logger.LogInformation(\"Freezing rankings for workspace {WorkspaceId}\", workspaceId);\r\n            try\r\n            {\r\n                var ws = cache.Workspace(workspaceGuid, workspaceId);\r\n\r\n                await ws.Ranking.SnapshotToPreviousWeekAsync(TimeSpan.FromDays(8));\r\n\r\n                var currentRankings = await ws.Ranking.GetPageAsync(1, 1000);\r\n                if (currentRankings.Any())\r\n                {\r\n                    foreach (var (userId, metric) in currentRankings)\r\n                    {\r\n                        var previousMetricKey = string.Format(\r\n                            FlowStateConstants.Cache.UserMetricPrevious,\r\n                            workspaceId,\r\n                            userId);\r\n                        await cache.SetAsync(previousMetricKey, metric, TimeSpan.FromDays(8));\r\n                    }\r\n                    _logger.LogInformation(\"Froze {Count} user rankings for workspace {WorkspaceId}\",\r\n                        currentRankings.Count, workspaceId);\r\n                }\r\n\r\n                await ws.Ranking.ClearAsync();\r\n            }\r\n            catch (Exception ex)\r\n            {\r\n                _logger.LogError(ex, \"Error freezing rankings for workspace {WorkspaceId}\", workspaceId);\r\n                throw;\r\n            }\r\n        }\r\n\r\n        private DateTime GetNextResetTime(DateTime nowUtc)\r\n        {\r\n            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)nowUtc.DayOfWeek + 7) % 7;\r\n\r\n            // FIX 2: Only skip to next Monday if today IS Monday AND midnight has already passed.\r\n            // Previously this always skipped when daysUntilMonday == 0, even if it was Monday at 11PM\r\n            // and the reset hadn't happened yet.\r\n            if (daysUntilMonday == 0)\r\n            {\r\n                var todayMidnight = nowUtc.Date; // midnight today\r\n                if (nowUtc > todayMidnight)\r\n                {\r\n                    // We're past midnight on Monday — this week's reset already happened\r\n                    daysUntilMonday = 7;\r\n                }\r\n                // else: it IS exactly midnight Monday — reset should fire now (delay = 0)\r\n            }\r\n\r\n            var nextMonday = nowUtc.Date.AddDays(daysUntilMonday);\r\n            return new DateTime(nextMonday.Year, nextMonday.Month, nextMonday.Day, 0, 0, 0, DateTimeKind.Utc);\r\n        }\r\n    }\r\n}cing user {UserId} in workspace {WorkspaceGuid}",
-                            userId,workspaceGuid);
+                        // FIX 2: was a compile error — the entire source of another file
+                        // was accidentally pasted into this log string literal.
+                        _logger.LogError(ex, "Error syncing user {UserId} in workspace {WorkspaceGuid}",
+                            userId, workspaceGuid);
                     }
                 }
 
@@ -301,18 +321,22 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to sync workspace {WorkspaceId}", workspaceId);
+                _logger.LogError(ex, "Failed to sync workspace {WorkspaceGuid}", workspaceGuid);
                 throw;
             }
         }
 
         private DateTime GetNextResetTime(DateTime nowUtc)
         {
-            // Calculate days until next Monday
             int daysUntilMonday = ((int)DayOfWeek.Monday - (int)nowUtc.DayOfWeek + 7) % 7;
 
-            // If today is Monday but we're past midnight, wait for next Monday
-            if (daysUntilMonday == 0)
+            // FIX 3: Old code always added 7 when daysUntilMonday == 0, which meant
+            // that if the service was running on a Monday BEFORE midnight (i.e. the
+            // reset hadn't happened yet this week) it would skip all the way to the
+            // NEXT Monday — missing this week's reset entirely.
+            // Correct behaviour: only skip to next Monday when today IS Monday AND
+            // midnight has already passed (meaning this week's reset already fired).
+            if (daysUntilMonday == 0 && nowUtc > nowUtc.Date)
             {
                 daysUntilMonday = 7;
             }

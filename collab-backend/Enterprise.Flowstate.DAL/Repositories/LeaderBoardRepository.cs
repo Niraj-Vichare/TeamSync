@@ -114,7 +114,7 @@ namespace Enterprise.Flowstate.DAL.Repositories
                 var profile = profileResponse.Models.FirstOrDefault(p => p.Id == stat.UserId);
                 var rankingCacheModel = new RankingCacheModel
                 {
-                    Score = stat.Score.HasValue ? stat.Score.Value : 0,
+                    Score = stat.Score,
                     Efficiency = stat.Efficiency,
                     ContributionPoint = stat.ContributionPoints,
                     Ranking = stat.RankPosition,
@@ -157,6 +157,46 @@ namespace Enterprise.Flowstate.DAL.Repositories
             var previousRecords = weeklyStatsResponse.Models;
         }
 
+        public async Task<List<EventsLog>> GetUserWeeklyEventsAsync(string workspaceGuid,string userGuid,DateTime weekStart,DateTime weekEnd)
+        {
+            var response = await _supabaseClient
+                .From<EventsLog>()
+                .Where(x => x.WorkspaceGuid == workspaceGuid && x.UserGuid == userGuid)
+                .Filter(x => x.CreatedAt.ToString("yyyy-MM-dd"), Operator.GreaterThanOrEqual, weekStart.ToString("yyyy-MM-dd"))
+                .Filter(x => x.CreatedAt.ToString("yyyy-MM-dd"), Operator.LessThanOrEqual, weekEnd.ToString("yyyy-MM-dd"))
+                .Get();
 
+            return response.Models;
+        }
+
+
+        public async Task<List<DailyLogging>> GetUserWeeklyLoggingAsync(string workspaceGuid,string userGuid,DateTime weekStart,DateTime weekEnd)
+        {
+            var workspaceResponse = await _supabaseClient
+                .From<Workspace>()
+                .Where(x => x.WorkspaceGuid == workspaceGuid)
+                .Get();
+
+            var userResponse = await _supabaseClient
+                .From<Profile>()
+                .Where(x => x.Guid == userGuid)
+                .Get();
+
+            if (userResponse.Models.Count == 0 || workspaceResponse.Models.Count == 0)
+                return new List<DailyLogging>(); // avoid nulls in APIs
+
+            int workspaceId = workspaceResponse.Models.First().Id;
+            int userId = userResponse.Models.First().Id;
+
+            var response = await _supabaseClient
+                .From<DailyLogging>()
+                .Where(x => x.WorkspaceId == workspaceId && x.UserId == userId)
+                .Filter(x => x.CheckingDate.ToString("yyyy-MM-dd"), Operator.GreaterThanOrEqual, weekStart.ToString("yyyy-MM-dd"))
+                .Filter(x => x.CheckingDate.ToString("yyyy-MM-dd"), Operator.LessThanOrEqual, weekEnd.ToString("yyyy-MM-dd"))
+                .Order(x => x.CheckingDate, Ordering.Ascending)
+                .Get();
+
+            return response.Models;
+        }
     }
 }

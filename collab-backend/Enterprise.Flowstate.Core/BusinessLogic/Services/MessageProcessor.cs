@@ -170,7 +170,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         private static float ComputeScore(RankingCacheModel m)
         {
-            double baseScore = m.ContributionPoint ?? 0; // raw work
+            double baseScore = m.ContributionPoint; // raw work
             double efficiency = m.Efficiency;
             double hours = m.TotalHours;
 

@@ -23,5 +23,6 @@ namespace Enterprise.Flowstate.DAL.DTOs
         public string Role => ((RoleEnum)RoleId).ToString();
         public DepartmentDto? DepartmentDto { get; set; }
         public ProfileDto? Profile { get; set; }
+        public bool IsLeader { get; set; }
     }
 }
