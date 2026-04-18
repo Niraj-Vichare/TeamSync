@@ -25,15 +25,14 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         }
 
         // Send full leaderboard update to workspace
-        public async Task SendLeaderboardUpdateAsync(string workspaceId, LeaderboardResponse leaderboard)
+        public async Task SendLeaderboardUpdateAsync(string workspaceId, LeaderboardResponse? leaderboard)
         {
             try
             {
                 await _hubContext.Clients
                     .Group($"workspace_{workspaceId}")
-                    .SendAsync("LeaderboardUpdated", leaderboard);
-
-                _logger.LogDebug("Sent leaderboard update to workspace {WorkspaceId}", workspaceId);
+                    .SendAsync("LeaderboardUpdated", leaderboard); // null is fine — JS gets null, frontend ignores it
+                _logger.LogDebug("Sent leaderboard signal to workspace {WorkspaceId}", workspaceId);
             }
             catch (Exception ex)
             {

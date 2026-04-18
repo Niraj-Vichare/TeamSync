@@ -553,5 +553,60 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             return ticketDtos;
         }
+
+        public async Task<(bool isManaged, int reportedBy)> IsTicketManaged(string ticketGuid, string userGuid, TicketEnums.TicketCloseRequestStatus ticketCloseRequestStatus, string reason)
+        {
+            if (!Guid.TryParse(ticketGuid, out var TicketGuid))
+            {
+                return (false, 0);
+            }
+
+            var ticketCloseRequestResponse = await _supabaseClient
+                .From<TicketCloseRequest>()
+                .Where(t => t.TicketGuid == TicketGuid)
+                .Get();
+
+            var ticketRequestResponse = ticketCloseRequestResponse.Models.FirstOrDefault();
+
+            if (ticketRequestResponse == null)
+            {
+                return (false, 0);
+            }
+
+            if (ticketCloseRequestStatus == TicketEnums.TicketCloseRequestStatus.Approved)
+            {
+                var ticketResponse = await _supabaseClient
+                    .From<Ticket>()
+                    .Where(ti => ti.TicketGuid == TicketGuid)
+                    .Get();
+
+                var ticket = ticketResponse.Models.FirstOrDefault();
+
+                if (ticket != null)
+                {
+                    ticket.StatusId = (int)TicketEnums.TicketStatus.Closed;
+                    ticket.EndDate = DateTime.UtcNow;
+
+                    await _supabaseClient.From<Ticket>().Update(ticket);
+                }
+            }
+            var profileResponse = await _supabaseClient.From<Profile>().Where(profile => profile.Guid == userGuid).Get();
+            int profileId = profileResponse.Models.FirstOrDefault().Id; 
+
+            // Update TicketCloseRequest
+            ticketRequestResponse.Status =  (int)ticketCloseRequestStatus;
+            ticketRequestResponse.Reason = reason;
+            ticketRequestResponse.ReviewedAt =  DateTime.UtcNow;
+            ticketRequestResponse.ReviewedBy = profileId;
+            ticketRequestResponse.UpdatedAt = DateTime.UtcNow;
+
+            await _supabaseClient
+                .From<TicketCloseRequest>()
+                .Update(ticketRequestResponse);
+
+            int ticketAssignedTo = (int)ticketRequestResponse.RequestedBy;
+
+            return (true, ticketAssignedTo);
+        }
     }
 }

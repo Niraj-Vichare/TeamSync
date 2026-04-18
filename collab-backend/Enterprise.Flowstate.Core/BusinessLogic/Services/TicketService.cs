@@ -332,6 +332,51 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             return true;
         }
+
+        public async Task<bool> IsTicketManaged(string ticketGuid,string userGuid,TicketEnums.TicketCloseRequestStatus ticketCloseRequestStatus,string reason)
+        {
+            (bool isSuccess, int reportedBy) =
+                await _omniRepository.TicketRepository
+                    .IsTicketManaged(ticketGuid, userGuid, ticketCloseRequestStatus, reason);
+
+            string profileGuid = await _omniRepository.ProfileRepository
+                .GetProfileGuid(reportedBy);
+
+            Guid? entityGuid = Guid.TryParse(ticketGuid, out var parsedGuid)
+                ? parsedGuid
+                : null;
+
+            if (isSuccess)
+            {
+                await _notificationService.CreateForUserAsync(
+                    recipientProfileId: reportedBy,
+                    recipientProfileGuid: profileGuid,
+                    actorProfileId: null,
+                    notificationType: (int)GeneralEnums.NotificationType.TicketCloseApproved,
+                    title: "Ticket Approved",
+                    body: $"Your ticket close request was approved. Reason: {reason}",
+                    entityType: (int)GeneralEnums.NotificationEntityType.Ticket,
+                    entityGuid: entityGuid
+                );
+
+                return true;
+            }
+            else
+            {
+                await _notificationService.CreateForUserAsync(
+                    recipientProfileId: reportedBy,
+                    recipientProfileGuid: profileGuid,
+                    actorProfileId: null,
+                    notificationType: (int)GeneralEnums.NotificationType.TicketCloseRejected,
+                    title: "Ticket Rejected",
+                    body: $"Your ticket close request was rejected. Reason: {reason}",
+                    entityType: (int)GeneralEnums.NotificationEntityType.Ticket,
+                    entityGuid: entityGuid
+                );
+
+                return false;
+            }
+        }
         public async Task<bool> UpdateTicketStatus(string ticketGuid, TicketEnums.TicketStatus status)
         {
             // Overload used by the Ticket View Page feature (Feature 1) for close requests

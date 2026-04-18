@@ -25,5 +25,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<List<WorkspaceInfoDto>> GetAllWorkspaceInfo();
         Task<List<ProfileDto>> GetAllWorkspaceAdmins(string workspaceGuid);
         Task<List<WorkspaceUserMapping>> GetAllActiveWorkspaceUserGroup(string workspaceGuid);
+        Task<bool> DeleteWorkspace(string workspaceGuid);
+        Task<bool> UpdateWorkspace(WorkspaceDto dto);
     }
 }

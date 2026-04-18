@@ -700,11 +700,68 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
+        public async Task<ApiResponseModel<object>> ReviewCloseRequest(string ticketGuid, TicketEnums.TicketCloseRequestStatus approved, string note)
+        {
+            try
+            {
+                if (ticketGuid == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Ticket GUID is required."
+                    };
+                }
 
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Authentication failed."
+                    };
+                }
+
+                bool isManager = await _omniService.TicketService.IsTicketManaged(ticketGuid, userId.ToString(), approved, note);
+                if (!isManager)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "",
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false
+                    };
+                }
+                return new ApiResponseModel<object>
+                {
+                    Success = true,
+                    Message = "Successful",
+                    StatusCode = StatusCodes.Status200OK,
+                };
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseModel<object>
+                {
+                    Data = null,
+                    Message = ex.Message,
+                    Success = false,
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+
+            }
+        }
 
         [HttpPatch("{ticketGuid}/priority")]
         [EnableRateLimiting(RateLimitingConfiguration.Write)]
-        public async Task<ApiResponseModel<object>> UpdateTicketPriority([FromRoute] string ticketGuid,[FromBody] UpdateStatusModel statusModel)
+        public async Task<ApiResponseModel<object>> UpdateTicketPriority([FromRoute] string ticketGuid,[FromBody] UpdatePriorityModel priorityModel)
         {
             try
             {
@@ -730,7 +787,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                if (string.IsNullOrEmpty(statusModel.WorkspaceGuid))
+                if (string.IsNullOrEmpty(priorityModel.WorkspaceGuid))
                 {
                     return new ApiResponseModel<object>
                     {
@@ -740,8 +797,8 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                bool statusChanges = await _omniService.TicketService.UpdateTicketStatus(ticketGuid, (TicketEnums.TicketStatus)statusModel.Status);
-                if (!statusChanges)
+                bool priortyChanges = await _omniService.TicketService.UpdateTicketPriority(ticketGuid, (TicketEnums.TicketPriority)priorityModel.Priority);
+                if (!priortyChanges)
                 {
                     return new ApiResponseModel<object>
                     {

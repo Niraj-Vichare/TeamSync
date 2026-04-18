@@ -160,12 +160,21 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         private async Task BroadcastLeaderboard(string workspaceId)
         {
-            var leaderboard = await _omniService.LeaderboardComparisonService
-                .GetLeaderboardWithComparisonAsync(workspaceId, 1, 10);
-
-            await _hubService.SendLeaderboardUpdateAsync(workspaceId, leaderboard);
-
-            _debounceTimers.TryRemove(workspaceId, out _);
+            try
+            {
+                // Clients re-fetch their own page on receiving this signal.
+                // No need to build a full leaderboard response here.
+                await _hubService.SendLeaderboardUpdateAsync(workspaceId, null);
+                _logger.LogDebug("Leaderboard change signal sent to workspace {WorkspaceId}", workspaceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send leaderboard signal for workspace {WorkspaceId}", workspaceId);
+            }
+            finally
+            {
+                _debounceTimers.TryRemove(workspaceId, out _);
+            }
         }
 
         private static float ComputeScore(RankingCacheModel m)
@@ -188,7 +197,6 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
             switch (eventLog.EventTypeId)
             {
-
                 case (int)GeneralEnums.EventType.TicketCompleted:
                     {
                         if (!string.IsNullOrEmpty(eventLog.Metadata))
@@ -203,6 +211,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                             }
 
                             rankingCacheModel.ContributionPoint += points;
+                            rankingCacheModel.CumulativeScore += points; // Track total earned over time for potential future use
                             rankingCacheModel.TotalTicketCompleted += 1;
                             rankingCacheModel.Score += points;
                         }
@@ -223,20 +232,20 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                             }
 
                             rankingCacheModel.ContributionPoint += reward;
+                            rankingCacheModel.CumulativeScore += reward; // Track total earned over time for potential future use
                             rankingCacheModel.Score += reward;
                         }
 
                         break;
                     }
-
                 case (int)GeneralEnums.EventType.CheckIn:
                     {
                         // Keep minimal or remove completely
                         rankingCacheModel.ContributionPoint += 0.5f;
+                        rankingCacheModel.CumulativeScore += 0.5f; // Track total earned over time for potential future use
                         rankingCacheModel.Score += 0.5f;
                         break;
                     }
-
                 case (int)GeneralEnums.EventType.CheckOut:
                     {
                         if (!string.IsNullOrEmpty(eventLog.Metadata))
@@ -253,13 +262,13 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                                 float scoreGain = sessionHours * 0.5f;
 
                                 rankingCacheModel.Score += scoreGain;
+                                rankingCacheModel.CumulativeScore+= scoreGain; // Track total earned over time for potential future use
                                 rankingCacheModel.ContributionPoint += scoreGain;
                             }
                         }
 
                         break;
                     }
-
                 default:
                     break;
             }

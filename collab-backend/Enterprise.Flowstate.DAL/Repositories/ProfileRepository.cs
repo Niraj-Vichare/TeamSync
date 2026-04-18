@@ -151,11 +151,11 @@ namespace Enterprise.Flowstate.DAL.Interfaces
                 .Get();
             if (isExist.Models.Any())
             {
-                _supabaseClient.From<WeeklyUserStats>().Update(weeklyUserStats);
+                await _supabaseClient.From<WeeklyUserStats>().Update(weeklyUserStats);
             }
             else
             {
-                _supabaseClient.From<WeeklyUserStats>().Insert(weeklyUserStats);
+                await _supabaseClient.From<WeeklyUserStats>().Insert(weeklyUserStats);
             }
             return true;
         }

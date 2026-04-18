@@ -88,6 +88,47 @@ namespace Enterprise.Flowstate.DAL.Repositories
             return workspace.Models.FirstOrDefault().Id;
         }
 
+        public async Task<bool> DeleteWorkspace(string workspaceGuid) 
+        {
+            var workspace = await _supabaseClient.From<Workspace>().Where(workspace=>workspace.WorkspaceGuid == workspaceGuid).Get();
+            if(workspace == null || !workspace.Models.Any())
+            {
+                return false;
+            }
+            int workspaceId = workspace.Models.FirstOrDefault().Id;
+            await _supabaseClient.From<Workspace>().Where(workspace => workspace.Id == workspaceId).Delete();
+            await _supabaseClient.From<WorkspaceUserMapping>().Where(mapping => mapping.WorkspaceId == workspaceId).Delete();
+            return true;
+        }
+
+        public async Task<bool> UpdateWorkspace(WorkspaceDto dto)
+        {
+            if (dto == null || string.IsNullOrEmpty(dto.WorkspaceGuid))
+                return false;
+
+            var query = _supabaseClient
+                .From<Workspace>()
+                .Where(x => x.WorkspaceGuid == dto.WorkspaceGuid);
+
+            // Only update when values are provided
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                query = query.Set(x => x.Name, dto.Name);
+
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+                query = query.Set(x => x.Description, dto.Description);
+
+            if (!string.IsNullOrWhiteSpace(dto.CompanyLogo))
+                query = query.Set(x => x.CompanyLogo, dto.CompanyLogo);
+
+
+            if (query == null)
+                return false;
+
+            var response = await query.Update();
+
+            return response.Models != null && response.Models.Any();
+        }
+
         public async Task<List<int>> GetAllActiveWorkspaceIds()
         {
             var workspaces = await _supabaseClient.From<Workspace>().Get();

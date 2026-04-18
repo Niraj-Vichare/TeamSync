@@ -124,13 +124,32 @@ namespace Enterpise.Flowstate.Controllers
         }
 
         [HttpDelete]
-        [Route("delete-workspace/{workspaceId}")]
+        [Route("delete-workspace/{workspaceGuid}")]
         [RequireAuthorization(RoleEnum.Owner)]
-        public async Task<ApiResponseModel<object>> DeleteWorkspace(string workspaceId)
+        public async Task<ApiResponseModel<object>> DeleteWorkspace(string workspaceGuid)
         {
             try
             {
+                if(workspaceGuid == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Message = "Invalid workspaceId",
+                        Success = false,
+                    };
+                }
 
+                var deleted = await _omniService.WorkspaceService.DeleteWorkspace(workspaceGuid);
+                if (!deleted)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Failed to delete workspace"
+                    };
+                }
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status200OK,
@@ -139,6 +158,8 @@ namespace Enterpise.Flowstate.Controllers
                     Data = null
 
                 };
+
+
 
             }
             catch (Exception ex)
@@ -181,13 +202,32 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpPost("update-workspace")]
+        [HttpPut("update-workspace")]
         [RequireAuthorization(RoleEnum.Owner)]
-        public async Task<ApiResponseModel<object>> UpdateWorkspaceConfigs()
+        public async Task<ApiResponseModel<object>> UpdateWorkspaceConfigs([FromBody] WorkspaceDto workspaceDto)
         {
             try
             {
-
+                if(workspaceDto.WorkspaceGuid == null)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Data = null,
+                        Message = "Invalid workspaceGuid",
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false
+                    };
+                }
+                var isUpdated = await _omniService.WorkspaceService.UpdateWorkspace(workspaceDto);
+                if (!isUpdated)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Success = false,
+                        Message = "Failed to update workspace information",
+                    };
+                }
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status200OK,

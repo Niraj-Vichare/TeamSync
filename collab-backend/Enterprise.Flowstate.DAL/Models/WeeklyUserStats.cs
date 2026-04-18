@@ -46,6 +46,11 @@ namespace Enterprise.Flowstate.DAL.Models
 
         [Column("rank")]
         public int RankPosition { get; set; }
+        [Column("reputation")]
+        public float ReputationPoints { get; set; } = 0f;
+
+        [Column("cumulative_score")]
+        public float CumulativeScore { get; set; } = 0f;
 
         [Reference(typeof(Profile), useInnerJoin: false)]
         public Profile? User { get; set; }

@@ -116,7 +116,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                 TotalHours = weeklyUserStatsDto.TotalHours,
                 WorkspaceId = weeklyUserStatsDto.WorkspaceId
             };
-            var result = _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
+            var result = await _omniRepository.ProfileRepository.UpertWeeklyUserMetric(weeklyUserStats);
         }
 
 

@@ -1,4 +1,5 @@
 ﻿using Enterprise.Flowstate.DAL.DTOs;
+using Enterprise.Flowstate.DAL.Enums;
 using Enterprise.Flowstate.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -34,6 +35,7 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> LogCloseRequest(string workspaceGuid,string ticketGuid,string reason);
         Task<bool> AssignedTicketToUser(string ticketGuid, string userGuid);
         Task<List<TicketDto>> GetSprintTicketsDtos(List<int> sprintIds);
+        Task<(bool isManaged, int reportedBy)> IsTicketManaged(string ticketGuid, string userGuid, TicketEnums.TicketCloseRequestStatus ticketCloseRequestStatus, string reason);
 
     }
 

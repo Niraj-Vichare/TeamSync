@@ -32,6 +32,7 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
         Task<bool> AssignTicketToUser(string ticketGuid, string userId);
         Task<bool> UpdateTicketStatus(string ticketGuid, TicketEnums.TicketStatus status);
         Task<bool> UpdateTicketPriority(string ticketGuid, TicketEnums.TicketPriority priority);
+        Task<bool> IsTicketManaged(string ticketGuid, string userGuid, TicketEnums.TicketCloseRequestStatus ticketCloseRequestStatus, string reason);
     }
 
 }

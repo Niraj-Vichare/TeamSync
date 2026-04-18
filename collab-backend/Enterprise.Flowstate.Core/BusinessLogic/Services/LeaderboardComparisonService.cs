@@ -1,101 +1,147 @@
-﻿using Enterprise.Flowstate.BAL.BusinessLogic.Services;
-using Enterprise.Flowstate.BAL.Interface.Service;
+﻿using Enterprise.Flowstate.BAL.Interface.Service;
 using Enterprise.Flowstate.DAL.Constants;
 using Enterprise.Flowstate.DAL.DTO;
 using Enterprise.Flowstate.DAL.DTOs;
 using Enterprise.Flowstate.DAL.Interfaces;
 using Enterprise.Flowstate.DAL.Models;
+using Microsoft.Extensions.Logging;
 using static Enterprise.Flowstate.DAL.Enums.AuthEnums;
 using System.Globalization;
+using Enterprise.Flowstate.BAL.BusinessLogic.Services;
+using Task = System.Threading.Tasks.Task;
 
 public class LeaderboardComparisonService : ILeaderboardComparisonService
 {
     private readonly ICache _cache;
     private readonly IOmniRepository _omniRepository;
+    private readonly ILogger<LeaderboardComparisonService> _logger;
 
-    public LeaderboardComparisonService(ICache cache, IOmniRepository omniRepository)
+    public LeaderboardComparisonService(
+        ICache cache,
+        IOmniRepository omniRepository,
+        ILogger<LeaderboardComparisonService> logger)
     {
         _cache = cache;
         _omniRepository = omniRepository;
+        _logger = logger;
     }
 
     public async Task<LeaderboardResponse> GetLeaderboardWithComparisonAsync(
         string workspaceId, int pageNumber, int pageSize = 10)
     {
+        if (string.IsNullOrWhiteSpace(workspaceId))
+            throw new ArgumentException("Workspace ID is required.", nameof(workspaceId));
+
+        if (pageNumber < 1)
+            throw new ArgumentOutOfRangeException(nameof(pageNumber), "Page number must be >= 1.");
+
+        if (pageSize < 1)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), "Page size must be >= 1.");
+
+        var (currentStart, currentEnd) = PeriodHelper.GetCurrentWeekPeriod();
+        var (prevStart, prevEnd) = PeriodHelper.GetPreviousWeekPeriod();
+
         try
         {
-            var (currentStart, currentEnd) = PeriodHelper.GetCurrentWeekPeriod();
-            var (prevStart, prevEnd) = PeriodHelper.GetPreviousWeekPeriod();
+            // Try to get the requested page from cache first.
+            var cachedPage = await _cache.GetWorkspaceRankingsAsync(workspaceId, pageNumber, pageSize);
 
-            // Try Redis first
-            var currentRankings = await _cache.GetWorkspaceRankingsAsync(workspaceId, pageNumber, pageSize);
-            bool fromRedis = currentRankings != null && currentRankings.Count > 0 && currentRankings.Count <= pageSize;
-            var pagedRankings = fromRedis
-                ? currentRankings
-                : currentRankings.Skip((pageNumber - 1) * pageSize).Take(pageSize)
-                    .ToDictionary(k => k.Key, v => v.Value);
-            // Cache miss — load from DB and warm the cache atomically
-            if (currentRankings == null || currentRankings.Count == 0)
+            Dictionary<string, RankingCacheModel> rankingsToUse;
+            bool cameFromDatabase = false;
+
+            if (cachedPage == null || cachedPage.Count == 0)
             {
-                currentRankings = await WarmCacheFromDatabaseAsync(workspaceId, currentStart, currentEnd);
+                rankingsToUse = await WarmCacheFromDatabaseAsync(workspaceId, currentStart, currentEnd);
+                cameFromDatabase = true;
+            }
+            else
+            {
+                rankingsToUse = cachedPage;
             }
 
-            if (currentRankings == null || currentRankings.Count == 0)
+            if (rankingsToUse == null || rankingsToUse.Count == 0)
             {
                 return BuildEmptyResponse(workspaceId, currentStart, currentEnd, prevStart, prevEnd);
             }
 
-            // Page the in-memory result (already paged if from Redis, apply manually if from DB)
-            
+            var pageRankings = cameFromDatabase
+                ? rankingsToUse
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToDictionary(k => k.Key, v => v.Value)
+                : rankingsToUse;
 
-            var userRankings = new List<UserRankingWithComparison>();
+            var comparisonTasks = pageRankings.Select(async entry =>
+            {
+                try
+                {
+                    return await GetUserRankingWithComparisonAsync(workspaceId, entry.Key, entry.Value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed building comparison for user {UserId} in workspace {WorkspaceId}",
+                        entry.Key, workspaceId);
+                    return null;
+                }
+            });
 
-            // Run comparisons in parallel — each user is independent
-            var tasks = pagedRankings.Select(entry =>
-                GetUserRankingWithComparisonAsync(workspaceId, entry.Key, entry.Value));
-
-            var results = await System.Threading.Tasks.Task.WhenAll(tasks);
-            userRankings.AddRange(results.Where(r => r != null));
+            var results = await Task.WhenAll(comparisonTasks);
 
             return new LeaderboardResponse
             {
                 WorkspaceId = workspaceId,
                 CurrentPeriod = new PeriodInfo { StartDate = currentStart, EndDate = currentEnd },
                 PreviousPeriod = new PeriodInfo { StartDate = prevStart, EndDate = prevEnd },
-                Rankings = userRankings.OrderBy(r => r.CurrentRank).ToList(),
-                TotalCount = currentRankings.Count,
+                Rankings = results.Where(x => x != null).OrderBy(x => x!.CurrentRank).ToList()!,
+                TotalCount = cameFromDatabase ? rankingsToUse.Count : await _cache.GetWorkspaceRankingCountAsync(workspaceId),
                 GeneratedAt = DateTime.UtcNow
             };
         }
         catch (Exception ex)
         {
-            // TODO: inject and use ILogger
-            return null;
+            _logger.LogError(ex, "Failed to build leaderboard for workspace {WorkspaceId}", workspaceId);
+            return BuildEmptyResponse(workspaceId, currentStart, currentEnd, prevStart, prevEnd);
         }
     }
 
-    // Pass currentMetric in so GetUserRankingWithComparisonAsync doesn't re-fetch from cache
-    public async Task<UserRankingWithComparison> GetUserRankingWithComparisonAsync(
-        string workspaceId, string userId, RankingCacheModel currentMetric = null)
+    public async Task<UserRankingWithComparison?> GetUserRankingWithComparisonAsync(
+    string workspaceId,
+    string userId,
+    RankingCacheModel? currentMetric = null)
     {
+        if (string.IsNullOrWhiteSpace(workspaceId))
+            throw new ArgumentException("Workspace ID is required.", nameof(workspaceId));
+
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("User ID is required.", nameof(userId));
+
         try
         {
-            // Use passed-in metric or fetch if called standalone
+            // --- CURRENT DATA ---
             currentMetric ??= await _cache.GetUserMetricAsync(workspaceId, userId);
-            var currentRank = await _cache.GetUserRankAsync(workspaceId, userId);
-            var currentScore = await _cache.GetUserScore(workspaceId, userId);
 
-            if (currentMetric == null) return null;
+            if (currentMetric == null)
+            {
+                _logger.LogWarning(
+                    "Current metric missing for user {UserId} in workspace {WorkspaceId}",
+                    userId, workspaceId);
+                return null;
+            }
 
-            // Try previous week from cache first
+            int currentRank = (await _cache.GetUserRankAsync(workspaceId, userId)) ?? 0;
+            double currentScore = await _cache.GetUserScore(workspaceId, userId);
+
+            // --- PREVIOUS DATA (CACHE FIRST) ---
             var prevMetric = await _cache.GetPreviousWeekMetricAsync(workspaceId, userId);
             var prevRank = await _cache.GetPreviousWeekRankAsync(workspaceId, userId);
             var prevScore = await _cache.GetPreviousWeekScoreAsync(workspaceId, userId);
 
-            // Previous week cache miss — hit DB once and write back
-            if (prevMetric == null)
+            // --- FALLBACK TO DB IF CACHE MISS ---
+            if (prevMetric == null && !prevRank.HasValue && !prevScore.HasValue)
             {
                 var (prevStart, prevEnd) = PeriodHelper.GetPreviousWeekPeriod();
+
                 var dbPrev = await _omniRepository.LeaderBoardRepository
                     .GetUserMetricAsync(workspaceId, userId, prevStart, prevEnd);
 
@@ -108,12 +154,15 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
                         ContributionPoint = dbPrev.ContributionPoints,
                         Score = dbPrev.Score,
                         Efficiency = dbPrev.Efficiency,
-                        Ranking = dbPrev.RankPosition
+                        Ranking = dbPrev.RankPosition,
+                        UserName = dbPrev.User?.DisplayName,
+                        UserProfilePic = dbPrev.User?.ProfileImageUrl
                     };
+
                     prevRank = dbPrev.RankPosition;
                     prevScore = dbPrev.Score;
 
-                    // Write back so next call is cache-only
+                    // Write-through cache
                     await _cache.SetAsync(
                         string.Format(FlowStateConstants.Cache.UserMetricPrevious, workspaceId, userId),
                         prevMetric,
@@ -121,26 +170,82 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
                 }
             }
 
-            var comparison = CalculateComparison(
-                currentRank ?? 0, currentScore, currentMetric,
-                prevRank, prevScore, prevMetric);
+            // --- NORMALIZATION (CRITICAL FIX) ---
+            int prevRankSafe = prevRank ?? 0;
+            double prevScoreSafe = prevScore ?? 0;
+            var prevMetricSafe = prevMetric ?? new RankingCacheModel();
 
+            bool hasPreviousData = prevMetric != null || prevRank.HasValue || prevScore.HasValue;
+
+            // --- COMPARISON ---
+            var comparison = new RankingComparison();
+
+            if (!hasPreviousData)
+            {
+                comparison.RankChangeType = RankChangeType.New;
+                comparison.RankChange = 0;
+                comparison.RankChangeDisplay = "NEW";
+                comparison.RankChangeColor = "blue";
+                comparison.ScoreChange = currentScore;
+                comparison.ScoreChangePercentage = currentScore > 0 ? 100 : 0;
+            }
+            else
+            {
+                comparison.RankChange = (prevRankSafe > 0 && currentRank > 0)
+                    ? prevRankSafe - currentRank
+                    : 0;
+
+                (comparison.RankChangeType, comparison.RankChangeDisplay, comparison.RankChangeColor) =
+                    comparison.RankChange switch
+                    {
+                        > 0 => (RankChangeType.Up, $"↑ {comparison.RankChange}", "green"),
+                        < 0 => (RankChangeType.Down, $"↓ {Math.Abs(comparison.RankChange)}", "red"),
+                        _ => (RankChangeType.Same, "−", "gray")
+                    };
+
+                comparison.ScoreChange = currentScore - prevScoreSafe;
+
+                comparison.ScoreChangePercentage =
+                    prevScoreSafe != 0
+                        ? (comparison.ScoreChange / prevScoreSafe) * 100
+                        : (currentScore > 0 ? 100 : 0);
+            }
+
+            // --- METRIC DELTAS ---
+            comparison.PointsChange =(float)(currentMetric.ContributionPoint - prevMetricSafe.ContributionPoint);
+
+            comparison.TicketsCompletedChange =
+                currentMetric.TotalTicketCompleted - prevMetricSafe.TotalTicketCompleted;
+
+            comparison.HoursChange =
+                currentMetric.TotalHours - prevMetricSafe.TotalHours;
+
+            comparison.EfficiencyChange =
+                currentMetric.Efficiency - prevMetricSafe.Efficiency;
+
+            // --- FINAL DTO ---
             return new UserRankingWithComparison
             {
                 UserId = userId,
                 UserName = currentMetric.UserName,
                 UserAvatar = currentMetric.UserProfilePic,
-                CurrentRank = currentRank ?? 0,
+
+                CurrentRank = currentRank,
                 CurrentScore = currentScore,
                 CurrentMetrics = MapToDto(currentMetric),
+
                 PreviousRank = prevRank,
                 PreviousScore = prevScore,
                 PreviousMetrics = prevMetric != null ? MapToDto(prevMetric) : null,
+
                 Comparison = comparison
             };
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex,
+                "Failed to build comparison for user {UserId} in workspace {WorkspaceId}",
+                userId, workspaceId);
             return null;
         }
     }
@@ -148,57 +253,69 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
     public async Task<List<RankingHistoryDto>> GetUserRankingHistory(
         string workspaceGuid, string userGuid)
     {
-        var rankings = await _omniRepository.LeaderBoardRepository
-            .GetUserRankingHistory(workspaceGuid, userGuid);
-
-        var now = DateTime.UtcNow;
-        var lastSixMonths = Enumerable.Range(0, 6)
-            .Select(i => new DateTime(now.Year, now.Month, 1).AddMonths(-i))
-            .OrderBy(d => d)
-            .ToList();
-
-        return lastSixMonths.Select(monthStart =>
+        try
         {
-            var monthRecords = rankings?
-                .Where(r => r.EndPeriod?.Year == monthStart.Year
-                         && r.EndPeriod?.Month == monthStart.Month)
-                .OrderBy(r => r.EndPeriod)
+            var rankings = await _omniRepository.LeaderBoardRepository
+                .GetUserRankingHistory(workspaceGuid, userGuid);
+
+            var now = DateTime.UtcNow;
+            var months = Enumerable.Range(0, 6)
+                .Select(i => new DateTime(now.Year, now.Month, 1).AddMonths(-i))
+                .OrderBy(d => d)
                 .ToList();
 
-            var monthName = CultureInfo.CurrentCulture.DateTimeFormat
-                .GetMonthName(monthStart.Month);
-
-            if (monthRecords != null && monthRecords.Any())
+            return months.Select(monthStart =>
             {
-                var last = monthRecords.Last();
+                var monthRecords = rankings?
+                    .Where(r => r.EndPeriod.HasValue &&
+                                r.EndPeriod.Value.Year == monthStart.Year &&
+                                r.EndPeriod.Value.Month == monthStart.Month)
+                    .OrderBy(r => r.EndPeriod)
+                    .ToList();
+
+                var monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(monthStart.Month);
+
+                if (monthRecords != null && monthRecords.Any())
+                {
+                    var last = monthRecords.Last();
+                    return new RankingHistoryDto
+                    {
+                        Month = monthName,
+                        Score = Math.Round((float)(last.Score), 2),
+                        Rank = last.RankPosition
+                    };
+                }
+
                 return new RankingHistoryDto
                 {
                     Month = monthName,
-                    Score = Math.Round((float)(last.Score ?? 0), 2),
-                    Rank = last.RankPosition
+                    Score = 0,
+                    Rank = 0
                 };
-            }
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to load ranking history for workspace {WorkspaceGuid}, user {UserGuid}",
+                workspaceGuid, userGuid);
 
-            return new RankingHistoryDto { Month = monthName, Score = 0, Rank = 0 };
-        }).ToList();
+            return new List<RankingHistoryDto>();
+        }
     }
 
-    public async Task<bool> IsWeeklyUserStatsPresent(DateTime startDate, DateTime endDate)
-        => await _omniRepository.LeaderBoardRepository
-            .IsWeeklyUserStatsPresent(startDate, endDate);
-
-    // --- Private helpers ---
+    public Task<bool> IsWeeklyUserStatsPresent(DateTime startDate, DateTime endDate)
+        => _omniRepository.LeaderBoardRepository.IsWeeklyUserStatsPresent(startDate, endDate);
 
     private async Task<Dictionary<string, RankingCacheModel>> WarmCacheFromDatabaseAsync(
         string workspaceId, DateTime currentStart, DateTime currentEnd)
-        {
+    {
         var dbRankings = await _omniRepository.LeaderBoardRepository
             .GetWorkspaceWeekRankings(workspaceId, currentStart, currentEnd);
 
         if (dbRankings == null || dbRankings.Count == 0)
             return new Dictionary<string, RankingCacheModel>();
 
-        // Write all users to cache atomically before returning
         var writeTasks = dbRankings.Select(async kvp =>
         {
             await _cache.UpsertUserMetricAsync(workspaceId, kvp.Key, kvp.Value);
@@ -206,18 +323,18 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
                 workspaceId, kvp.Key, (double)kvp.Value.Score);
         });
 
-        await System.Threading.Tasks.Task.WhenAll(writeTasks);
+        await Task.WhenAll(writeTasks);
 
         return dbRankings;
     }
 
-    private static WeeklyUserStatsDto MapToDto(RankingCacheModel m) => new()
+    private static WeeklyUserStatsDto MapToDto(RankingCacheModel model) => new()
     {
-        TotalHours = m.TotalHours,
-        TicketsCompleted = m.TotalTicketCompleted,
-        Score = m.Score,
-        ContributionPoint = m.ContributionPoint,
-        Efficiency = m.Efficiency
+        TotalHours = model.TotalHours,
+        TicketsCompleted = model.TotalTicketCompleted,
+        Score = model.Score,
+        ContributionPoint = model.ContributionPoint,
+        Efficiency = model.Efficiency
     };
 
     private static LeaderboardResponse BuildEmptyResponse(
@@ -234,23 +351,34 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
         };
 
     private static RankingComparison CalculateComparison(
-        int currentRank, double currentScore, RankingCacheModel currentMetric,
-        int? prevRank, double? prevScore, RankingCacheModel prevMetric)
+        int currentRank,
+        double currentScore,
+        RankingCacheModel currentMetric,
+        int? prevRank,
+        double? prevScore,
+        RankingCacheModel? prevMetric)
     {
+        if (currentMetric == null)
+            throw new ArgumentNullException(nameof(currentMetric));
+
         var comparison = new RankingComparison();
 
-        if (!prevRank.HasValue || prevMetric == null)
+        bool isNew = !prevRank.HasValue && prevMetric == null && !prevScore.HasValue;
+
+        if (isNew)
         {
             comparison.RankChangeType = RankChangeType.New;
             comparison.RankChange = 0;
             comparison.RankChangeDisplay = "NEW";
             comparison.RankChangeColor = "blue";
             comparison.ScoreChange = currentScore;
-            comparison.ScoreChangePercentage = 0;
+            comparison.ScoreChangePercentage = currentScore > 0 ? 100 : 0;
         }
         else
         {
-            comparison.RankChange = prevRank.Value - currentRank;
+            comparison.RankChange = (prevRank.HasValue && prevRank.Value > 0 && currentRank > 0)
+                ? prevRank.Value - currentRank
+                : 0;
 
             (comparison.RankChangeType, comparison.RankChangeDisplay, comparison.RankChangeColor) =
                 comparison.RankChange switch
@@ -261,25 +389,19 @@ public class LeaderboardComparisonService : ILeaderboardComparisonService
                 };
 
             comparison.ScoreChange = currentScore - (prevScore ?? 0);
-            comparison.ScoreChangePercentage = prevScore > 0
-                ? (comparison.ScoreChange / prevScore.Value) * 100
-                : 0;
+
+            comparison.ScoreChangePercentage =
+                prevScore.HasValue && prevScore.Value != 0
+                    ? (comparison.ScoreChange / prevScore.Value) * 100
+                    : (currentScore > 0 ? 100 : 0);
         }
 
-        if (prevMetric != null)
-        {
-            comparison.PointsChange = (float)(currentMetric.ContributionPoint - prevMetric.ContributionPoint);
-            comparison.TicketsCompletedChange = currentMetric.TotalTicketCompleted - prevMetric.TotalTicketCompleted;
-            comparison.HoursChange = currentMetric.TotalHours - prevMetric.TotalHours;
-            comparison.EfficiencyChange = currentMetric.Efficiency - prevMetric.Efficiency;
-        }
-        else
-        {
-            comparison.PointsChange = (float)currentMetric.ContributionPoint;
-            comparison.TicketsCompletedChange = currentMetric.TotalTicketCompleted;
-            comparison.HoursChange = currentMetric.TotalHours;
-            comparison.EfficiencyChange = currentMetric.Efficiency;
-        }
+        var prev = prevMetric ?? new RankingCacheModel();
+
+        comparison.PointsChange = (float)(currentMetric.ContributionPoint - prev.ContributionPoint);
+        comparison.TicketsCompletedChange = currentMetric.TotalTicketCompleted - prev.TotalTicketCompleted;
+        comparison.HoursChange = currentMetric.TotalHours - prev.TotalHours;
+        comparison.EfficiencyChange = currentMetric.Efficiency - prev.Efficiency;
 
         return comparison;
     }

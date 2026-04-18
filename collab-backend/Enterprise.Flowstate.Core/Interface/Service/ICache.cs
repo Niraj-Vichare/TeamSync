@@ -38,6 +38,7 @@ public interface ICache
     // ── Only NEW additions ──────────────────────────────────────────────
     WorkspaceCacheContext Workspace(string workspaceGuid,int workspaceId);
     GlobalUserCacheContext User(string userId);
+    Task<int> GetWorkspaceRankingCountAsync(string workspaceGuid);
 
 
 }

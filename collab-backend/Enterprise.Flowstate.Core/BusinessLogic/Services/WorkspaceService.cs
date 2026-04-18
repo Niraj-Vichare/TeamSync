@@ -89,22 +89,18 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
 
         }
 
-        public Task<bool> UpdateWorkspace(int workspaceId, string name, string description)
+        public Task<bool> UpdateWorkspace(WorkspaceDto workspaceDto)
         {
             // Logic to update a workspace
-            throw new NotImplementedException();
+            return _omniRepository.WorkspaceRepository.UpdateWorkspace(workspaceDto);
         }
 
-        public Task<bool> DeleteWorkspace(int workspaceId)
+        public Task<bool> DeleteWorkspace(string workspaceGuid)
         {
             // Logic to delete a workspace
-            throw new NotImplementedException();
+            return _omniRepository.WorkspaceRepository.DeleteWorkspace(workspaceGuid);
         }
 
-        public Task<List<WorkspaceDto>> GetAllWorkspaces(int workspaceId)
-        {
-            throw new NotImplementedException();
-        }
 
         public async Task<List<WorkspaceDto>> GetAllWorkspaces(string userClaimId)
         {

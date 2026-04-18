@@ -11,8 +11,8 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
     public interface IWorkspaceService
     {
         Task<string> CreateWorkspace(string userClaimsId, string name, string description);
-        Task<bool> UpdateWorkspace(int workspaceId, string name, string description);
-        Task<bool> DeleteWorkspace(int workspaceId);
+        Task<bool> UpdateWorkspace(WorkspaceDto workspaceDto);
+        Task<bool> DeleteWorkspace(string workspaceId);
         Task<List<WorkspaceDto>> GetAllWorkspaces(string userClaimId);
         Task<bool> HasWorkspace(string email);
         Task<List<int>> GetAllActiveWorkspaceIds();

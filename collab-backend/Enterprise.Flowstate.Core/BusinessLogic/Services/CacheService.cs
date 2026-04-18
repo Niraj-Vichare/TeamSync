@@ -156,6 +156,19 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         #endregion
 
         #region Ranking
+        public async Task<int> GetWorkspaceRankingCountAsync(string workspaceGuid)
+        {
+            try
+            {
+                var key = string.Format(FlowStateConstants.Cache.WorkspaceRanking, workspaceGuid);
+                return (int)await _db.SortedSetLengthAsync(key);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting workspace ranking count for {WorkspaceGuid}", workspaceGuid);
+                return 0;
+            }
+        }
         public async Task<(long rank, double score)> UpdateWorkspaceRankingAtomicAsync(
             string workspaceId, string userId, double score)
         {
