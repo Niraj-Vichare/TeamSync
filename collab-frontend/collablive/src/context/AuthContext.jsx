@@ -31,13 +31,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Load workspaces and projects when user is authenticated and has workspace
-  useEffect(() => {
-    if (isAuthenticated && workspaceId) {
-      getUserWorkspaces();
-      getUserProjects();
-      loadUserPermissions(); // NEW
-    }
-  }, [isAuthenticated, workspaceId]);
+ 
   useEffect(() => {
     if (isAuthenticated && workspaceId) {
       getUserWorkspaces();

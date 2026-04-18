@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowDown, ArrowUp, Filter, Minus, Users } from 'lucide-react'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect,useRef  } from 'react'
 import signalRService from '../services/rankingHub';
 import { useAuth } from '@/context/AuthContext'
 import leaderBoardService from '@/services/leaderboard'
@@ -12,14 +12,15 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 function Leaderboard() {
     const [rankingData, setRankingData] = useState([]);
     const [pageNumber, setPageNumber] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize] = useState(10);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const currentPageRef = useRef(1);
+
     const { getCurrentWorkspaceId } = useAuth();
-
-
     const workspaceId = getCurrentWorkspaceId();
 
+    // Fetch leaderboard
     const cardVariants = {
         hidden: { y: 20, opacity: 0 },
         visible: {
@@ -31,30 +32,23 @@ function Leaderboard() {
             }
         }
     };
+    const fetchLeaderboard = async (page = currentPageRef.current) => {
+        if (!workspaceId) return;
 
-    const getTrendIcon = (trend) => {
-        switch (trend) {
-            case 'up': return <ArrowUp className="h-3 w-3 text-green-500" />;
-            case 'down': return <ArrowDown className="h-3 w-3 text-red-500" />;
-            default: return <Minus className="h-3 w-3 text-muted-foreground" />;
-        }
-    };
-
-    // Fetch initial leaderboard
-    const fetchLeaderboard = async (page = pageNumber) => {
         try {
             setLoading(true);
+
             const result = await leaderBoardService.getTopPlayers({
                 workspaceId,
                 pageNumber: page,
                 pageSize
             });
-            console.log("Leaderboard data fetched:", result);   
+
+            console.log("Leaderboard data fetched:", result);
 
             if (!result || !result.rankings) {
                 setRankingData([]);
                 setTotalCount(0);
-                setLoading(false);
                 return;
             }
 
@@ -63,98 +57,88 @@ function Leaderboard() {
                 name: r.userName,
                 avatar: getInitials(r.userName),
                 score: Math.round(r.currentScore),
-                ticketsCompleted: r.currentMetrics.ticketsCompleted,  // was tasksCompleted
-                efficiency: Math.round(r.currentMetrics.efficiency * 100),
-                change: r.comparison.rankChange,
-                trend: getTrendType(r.comparison.rankChangeType),
+                ticketsCompleted: r.currentMetrics?.ticketsCompleted ?? 0,
+                efficiency: Math.round((r.currentMetrics?.efficiency ?? 0) * 100),
+                change: r.comparison?.rankChange ?? 0,
+                trend: getTrendType(r.comparison?.rankChangeType),
                 userId: r.userId
             }));
-            console.log("Transformed leaderboard data:", transformed);
 
             setRankingData(transformed);
-            setTotalCount(result.totalCount);
-            setLoading(false);
+            setTotalCount(result.totalCount ?? 0);
         } catch (error) {
             console.error("Failed to fetch leaderboard:", error);
             setRankingData([]);
+        } finally {
             setLoading(false);
         }
     };
+
+    // Pagination handler
     const handlePageChange = (page) => {
+        currentPageRef.current = page;
         setPageNumber(page);
         fetchLeaderboard(page);
     };
 
-    
-    // Setup SignalR connection
+    // Keep ref synced with state
+    useEffect(() => {
+        currentPageRef.current = pageNumber;
+    }, [pageNumber]);
+    const getTrendIcon = (trend) => {
+        switch (trend) {
+            case 'up': return <ArrowUp className="h-3 w-3 text-green-500" />;
+            case 'down': return <ArrowDown className="h-3 w-3 text-red-500" />;
+            default: return <Minus className="h-3 w-3 text-muted-foreground" />;
+        }
+    };
+
+    // SignalR + initial load
     useEffect(() => {
         if (!workspaceId) return;
 
-        // Connect to SignalR
-        signalRService.connect(workspaceId);
+        let active = true;
 
-        // Listen for full leaderboard updates (every 30 seconds from backend)
-        signalRService.onLeaderboardUpdate((leaderboard) => {
-            console.log('📊 Full leaderboard update received');
+        const handleLeaderboardUpdate = () => {
+            if (!active) return;
+            console.log("📊 Leaderboard changed → refreshing current page");
+            fetchLeaderboard(currentPageRef.current);
+        };
 
-            if (!leaderboard || !leaderboard.rankings) return;
-            const transformed = leaderboard.rankings.map(r => ({
-                rank: r.currentRank,
-                name: r.userName,
-                avatar: getInitials(r.userName),
-                score: Math.round(r.currentScore),
-                ticketsCompleted: r.currentMetrics.ticketsCompleted,  // was ticketCompleted
-                efficiency: Math.round(r.currentMetrics.efficiency *     100),
-                change: r.comparison.rankChange,
-                trend: getTrendType(r.comparison.rankChangeType),
-                userId: r.userId
-            }));
+        const handleRankChange = (data) => {
+            if (!active) return;
+            console.log("📈 Rank change received:", data);
 
-            setRankingData(transformed);
-        });
+            // safest → always refetch current page
+            fetchLeaderboard(currentPageRef.current);
+        };
 
-        // Listen for individual rank changes (real-time)
-        signalRService.onRankChange((data) => {
-            console.log('📈 Rank change received:', data);
+        const init = async () => {
+            try {
+                await signalRService.connect(workspaceId);
 
-            setRankingData(prevData => {
-                const userIndex = prevData.findIndex(u => u.userId === data.userId);
+                signalRService.onLeaderboardUpdate(handleLeaderboardUpdate);
+                signalRService.onRankChange(handleRankChange);
 
-                if (userIndex === -1) {
-                    // User not in list, refresh entire leaderboard
-                    fetchLeaderboard();
-                    return prevData;
-                }
+                currentPageRef.current = 1;
+                setPageNumber(1);
 
-                // Update the specific user
-                const newData = [...prevData];
-                const user = { ...newData[userIndex] };
+                await fetchLeaderboard(1);
+            } catch (error) {
+                console.error("Leaderboard init failed:", error);
+            }
+        };
 
-                const oldRank = user.rank;
-                user.rank = data.newRank;
-                user.score = Math.round(data.score);
-                user.change = oldRank - data.newRank;
-                user.trend = user.change > 0 ? 'up' : user.change < 0 ? 'down' : 'same';
+        init();
 
-                newData[userIndex] = user;
-
-                // Re-sort by rank
-                newData.sort((a, b) => a.rank - b.rank);
-
-                return newData;
-            });
-        });
-
-        // Fetch initial data
-        fetchLeaderboard();
-
-        // Cleanup
         return () => {
-            // Don't disconnect if other components are using it
+            active = false;
+            signalRService.offLeaderboardUpdate();
+            signalRService.offRankChange();
         };
     }, [workspaceId]);
 
-    // Helper functions
+    // Helpers
     const getInitials = (name) => {
         if (!name) return '??';
         return name.split(' ')
@@ -232,10 +216,10 @@ function Leaderboard() {
                             </CardTitle>
                             <CardDescription>Team member performance rankings</CardDescription>
                         </div>
-                        <Button variant="outline" size="sm">
+                        {/* <Button variant="outline" size="sm">
                             <Filter className="h-4 w-4 mr-2" />
                             Filter
-                        </Button>
+                        </Button> */}
                     </div>
                 </CardHeader>
                 <CardContent>

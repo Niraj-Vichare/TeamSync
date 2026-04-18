@@ -44,7 +44,7 @@ class TicketService {
   //   Open = 1 | InProgress = 2 | Closed = 3
   async updateTicketStatus(workspaceGuid, ticketGuid, statusValue) {
     try {
-      const response = await axiosInstance.patch(`/tickets/${ticketGuid}`, {
+      const response = await axiosInstance.patch(`/tickets/${ticketGuid}/status`, {
         workspaceGuid,
         status: statusValue,
       });
@@ -60,7 +60,7 @@ class TicketService {
   //   High = 1 | Medium = 2 | Low = 3
   async updateTicketPriority(workspaceGuid, ticketGuid, priorityValue) {
     try {
-      const response = await axiosInstance.patch(`/tickets/${ticketGuid}`, {
+      const response = await axiosInstance.patch(`/tickets/${ticketGuid}/priority`, {
         workspaceGuid,
         priority: priorityValue,
       });
