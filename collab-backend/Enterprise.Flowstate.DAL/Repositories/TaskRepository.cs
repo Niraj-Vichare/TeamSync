@@ -301,5 +301,15 @@ namespace Enterprise.Flowstate.DAL.Repositories
 
             return tasks;
         }
+
+        public async Task<List<Task>> GetTaskByProjectIdAsync(int projectId)
+        {
+            var taskResponse = await _supabaseClient.From<Task>().Where(t => t.ProjectId == projectId).Get();
+            if (!taskResponse.Models.Any())
+            {
+                return null;
+            }
+            return taskResponse.Models.ToList();
+        }
     }
 }

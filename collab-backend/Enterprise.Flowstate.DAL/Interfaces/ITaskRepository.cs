@@ -20,5 +20,6 @@ namespace Enterprise.Flowstate.DAL.Interfaces
         Task<bool> UpdateTask(string taskGuid,string userGuid,Task task);
         Task<List<Task>> GetOngoingUserTask(string userGuid, string workspaceGuid);
         Task<List<TaskDto>> GetTaskDueOn(DateOnly date);
+        Task<List<Task>> GetTaskByProjectIdAsync(int projectId);
     }
 }

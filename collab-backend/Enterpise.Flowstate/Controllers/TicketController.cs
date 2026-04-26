@@ -196,7 +196,6 @@ namespace Enterprise.Flowstate.Controllers
 
         [HttpDelete]
         [RequireAuthorization(AuthEnums.RoleEnum.Owner, AuthEnums.RoleEnum.Admin, AuthEnums.RoleEnum.Manager)]
-
         public async Task<ApiResponseModel<object>> DeleteTicket(string ticketGuid)
         {
             try
@@ -272,7 +271,6 @@ namespace Enterprise.Flowstate.Controllers
 
         [HttpPatch]
         [RequireAuthorization(AuthEnums.RoleEnum.Owner, AuthEnums.RoleEnum.Admin, AuthEnums.RoleEnum.Manager)]
-
         public async Task<ApiResponseModel<object>> AddTicketInSprint(string ticketGuid, string sprint)
         {
             try
@@ -409,7 +407,7 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        [HttpGet("/{ticketGuid}/tasks")]
+        [HttpGet("{ticketGuid}/tasks")]
         public async Task<ApiResponseModel<object>> GetTicketTasks(string ticketGuid)
         {
             try
@@ -700,7 +698,8 @@ namespace Enterprise.Flowstate.Controllers
             }
         }
 
-        public async Task<ApiResponseModel<object>> ReviewCloseRequest(string ticketGuid, TicketEnums.TicketCloseRequestStatus approved, string note)
+        [HttpPatch("{ticketGuid}/close-request/review")]
+        public async Task<ApiResponseModel<object>> ReviewCloseRequest([FromQuery]string ticketGuid, TicketEnums.TicketCloseRequestStatus approved, string note)
         {
             try
             {
@@ -829,7 +828,7 @@ namespace Enterprise.Flowstate.Controllers
 
         [HttpPatch("{ticketGuid}/status")]
         [EnableRateLimiting(RateLimitingConfiguration.Write)]
-        public async Task<ApiResponseModel<object>> UpdateTicketStatus([FromRoute] string ticketGuid, UpdatePriorityModel priorityModel)
+        public async Task<ApiResponseModel<object>> UpdateTicketStatus([FromRoute] string ticketGuid, UpdateStatusModel statusModel)
         {
             try
             {
@@ -855,7 +854,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                if (string.IsNullOrEmpty(priorityModel.WorkspaceGuid))
+                if (string.IsNullOrEmpty(statusModel.WorkspaceGuid))
                 {
                     return new ApiResponseModel<object>
                     {
@@ -865,7 +864,7 @@ namespace Enterprise.Flowstate.Controllers
                     };
                 }
 
-                bool statusChanges = await _omniService.TicketService.UpdateTicketPriority(ticketGuid, (TicketEnums.TicketPriority)priorityModel.Priority);
+                bool statusChanges = await _omniService.TicketService.UpdateTicketStatus(ticketGuid, (TicketEnums.TicketStatus)statusModel.Status);
                 if (!statusChanges)
                 {
                     return new ApiResponseModel<object>

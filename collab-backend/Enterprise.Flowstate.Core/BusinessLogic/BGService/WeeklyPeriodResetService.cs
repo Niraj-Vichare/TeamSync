@@ -228,7 +228,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.BGService
                     {
                         var previousMetricKey = string.Format(
                             FlowStateConstants.Cache.UserMetricPrevious,
-                            workspaceId,
+                            workspaceGuid,
                             userId);
                         await cache.SetAsync(previousMetricKey, metric, TimeSpan.FromDays(8));
                     }

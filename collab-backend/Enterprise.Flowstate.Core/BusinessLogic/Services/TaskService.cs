@@ -298,18 +298,22 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     CreatedAt = DateTime.UtcNow,
                 };
 
+                await _omniRepository.ProfileRepository.AddEventLog(eventDto);
                 #region Event Publishing    
-
-                EventsLogDto eventLogDto = new EventsLogDto
+                if (statusEnum == TaskEnums.TaskStatus.Complete)
                 {
-                    EventTypeId = (int)GeneralEnums.EventType.CheckIn,
-                    CreatedAt = DateTime.UtcNow,
-                    EventDescription = "User Clock in",
-                    UserGuid = userGuid,
-                    WorkspaceGuid = workspaceGuid,
-                    EventGuid = Guid.NewGuid().ToString(),
-                };
-                await _eventPublisher.PublishAsync(eventLogDto, 0);
+                    EventsLogDto eventLogDto = new EventsLogDto
+                    {
+                        EventTypeId = (int)GeneralEnums.EventType.TaskClosed,
+                        CreatedAt = DateTime.UtcNow,
+                        EventDescription = "Task status updated",
+                        UserGuid = userGuid,
+                        WorkspaceGuid = workspaceGuid,
+                        EventGuid = Guid.NewGuid().ToString(),
+                
+                    };
+                    await _eventPublisher.PublishAsync(eventLogDto, 0);
+                }
                 #endregion
             }
             return isUpdated;
@@ -380,6 +384,24 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
         public async Task<List<TaskDto>> GetTasksDueOn(DateOnly dueDate)
         {
             var result = await _omniRepository.TaskRepository.GetTaskDueOn(dueDate);
+            return result;
+        }
+
+        public async Task<List<TaskDto>> GetTaskByProjectIdAsync(int projectId)
+        {
+            var tasks = await _omniRepository.TaskRepository.GetTaskByProjectIdAsync(projectId);
+
+            var result = tasks.Select(task => new TaskDto
+            {
+                Id = task.TaskId,
+                Title = task.Title,
+                Priority = (TaskEnums.TaskPriority)task.Priority,
+                Status = (TaskEnums.TaskStatus)task.Status,
+                AssignedBy = task.AssignedBy,
+                Description = task.Description,
+                // map other properties as needed
+            }).ToList();
+
             return result;
         }
     }

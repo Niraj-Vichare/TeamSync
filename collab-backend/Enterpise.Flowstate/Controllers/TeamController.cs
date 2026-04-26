@@ -132,7 +132,7 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpPost("member/{memberId}/delete")]
+        [HttpDelete("member/{memberId}/delete")]
         public async Task<ApiResponseModel<object>> DeleteMember([FromQuery] string workspaceGuid,int profileId)
         {
             try

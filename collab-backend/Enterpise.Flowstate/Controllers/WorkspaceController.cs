@@ -173,6 +173,7 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
+        // NOT IMPLEMENTED YET - placeholder for future implementation
         [HttpPost]
         [Route("join-workspace/{workspaceId}")]
         [EnableRateLimiting(RateLimitingConfiguration.Write)]

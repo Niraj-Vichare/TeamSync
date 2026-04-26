@@ -80,30 +80,6 @@ namespace Enterpise.Flowstate.Controllers
             }
         }
 
-        [HttpGet]
-        public async Task<ApiResponseModel<object>> GetTaskBySprints(string projectId, string sprintId)
-        {
-            try
-            {
-                return new ApiResponseModel<object>
-                {
-                    StatusCode = StatusCodes.Status200OK,
-                    Success = true,
-                    Message = "Get all sprints tasks",
-                    Data = null
-                };
-
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponseModel<object>
-                {
-                    StatusCode = StatusCodes.Status500InternalServerError,
-                    Success = false,
-                    Message = ex.Message
-                };
-            }
-        }
 
         [HttpGet("assigned")]
         public async Task<ApiResponseModel<object>> GetAllTaskAssignedToUser([FromQuery] string workspaceGuid,
@@ -160,18 +136,48 @@ namespace Enterpise.Flowstate.Controllers
 
         [HttpGet]
         [Route("{projectId}/tasks")]
-        public async Task<ApiResponseModel<object>> GetTasks(string projectId)
+        public async Task<ApiResponseModel<object>> GetTasks([FromRoute]int projectId)
         {
             try
             {
-                //var tasks = await _taskService.GetTasksByProjectIdAsync(projectId);
+                var identity = HttpContext.User.Identity as ClaimsIdentity;
+                var userIdClaim = identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        Success = false,
+                        Message = "Authentication fails",
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                    };
+                }
+                if (projectId <= 0)
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status400BadRequest,
+                        Message = "Invalid project id",
+                        Success = false
+                    };
+                }
+
+                var tasks = await _omniService.TaskService.GetTaskByProjectIdAsync(projectId);
+                if(tasks == null || !tasks.Any())
+                {
+                    return new ApiResponseModel<object>
+                    {
+                        StatusCode = StatusCodes.Status204NoContent,
+                        Success = false,
+                        Message = "No content found"
+                    };
+                }
 
                 return new ApiResponseModel<object>
                 {
                     StatusCode = StatusCodes.Status200OK,
                     Success = true,
                     Message = "Get all project tasks",
-                    Data = null
+                    Data = tasks
                 };
             }
             catch (Exception ex)

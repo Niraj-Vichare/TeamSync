@@ -15,5 +15,6 @@ namespace Enterprise.Flowstate.BAL.Interface.Service
 
         Task<List<TaskDto>> GetOngoingUserTask(string userGuid, string workspaceGuid);
         Task<List<TaskDto>> GetTasksDueOn(DateOnly dueDate);
+        Task<List<TaskDto>> GetTaskByProjectIdAsync(int projectId);
     }
 }

@@ -175,6 +175,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
             ClockActionResult result = await _omniRepository.DashboardRepository.ClockIn(workspaceGuid, userGuid);
             if (result == ClockActionResult.Success)
             {
+                var eventGuid = Guid.NewGuid().ToString();
 
                 EventsLog eventLog = new EventsLog
                 {
@@ -183,7 +184,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     EventDescription = "User Clock in",
                     UserGuid = userGuid,
                     WorkspaceGuid = workspaceGuid,
-                    EventGuid = Guid.NewGuid().ToString(),
+                    EventGuid = eventGuid,
                 };
 
                 
@@ -197,7 +198,7 @@ namespace Enterprise.Flowstate.BAL.BusinessLogic.Services
                     EventDescription = "User Clock in",
                     UserGuid = userGuid,
                     WorkspaceGuid = workspaceGuid,
-                    EventGuid = Guid.NewGuid().ToString(),
+                    EventGuid = eventGuid,
                 };
                 string json = System.Text.Json.JsonSerializer.Serialize(eventLogDto);
                 byte[] body = Encoding.UTF8.GetBytes(json);

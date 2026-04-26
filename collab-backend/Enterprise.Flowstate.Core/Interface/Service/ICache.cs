@@ -4,7 +4,7 @@ using Enterprise.Flowstate.DAL.Models;
 
 public interface ICache
 {
-    // ── All existing methods stay exactly as they are ──────────────────
+    // All existing methods stay exactly as they are 
 
     Task<RankingCacheModel?> GetUserMetricAsync(string userId, string workspaceId);
     Task<bool> DeleteUserMetricAsync(string userId, string workspaceId);
@@ -35,7 +35,7 @@ public interface ICache
     System.Threading.Tasks.Task InvalidateUserRoleAsync(string userId, string workspaceId);
     System.Threading.Tasks.Task<int> GetUserId(string workspaceGuid, string userGuid);
 
-    // ── Only NEW additions ──────────────────────────────────────────────
+    // Only NEW additions
     WorkspaceCacheContext Workspace(string workspaceGuid,int workspaceId);
     GlobalUserCacheContext User(string userId);
     Task<int> GetWorkspaceRankingCountAsync(string workspaceGuid);
