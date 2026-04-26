@@ -24,7 +24,7 @@ import leaderBoardService from "@/services/leaderboard";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRole } from "@/hooks/useRole";
+import { useRole } from "@/services/useRole";
 
 const actions = [
   { key: "team",    label: "Teams",    icon: UsersRound },

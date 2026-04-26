@@ -25,7 +25,7 @@ import { globalSprint, projectWithName, teamWithName } from '@/data/general';
 import { toast } from 'sonner';
 import TicketDialog from '@/components/sprintComponents/TicketDialog';
 import { useAuth } from '@/context/AuthContext';
-import { useRole } from '@/hooks/useRole';
+import { useRole } from '@/services/useRole';
 import { Skeleton } from '@/components/ui/skeleton';
 import ticketService from '@/services/ticket';
 import { AnimatePresence,motion } from 'framer-motion';

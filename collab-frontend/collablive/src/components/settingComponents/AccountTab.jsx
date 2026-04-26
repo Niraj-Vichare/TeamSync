@@ -23,6 +23,8 @@ function AccountTab({ profile }) {
 
   const [workspaces, setWorkspaces] = useState([]);
   const [currentWorkspace, setCurrentWorkspace] = useState('');
+  const { getCurrentWorkspaceId, currentUser } = useAuth();
+  const workspaceGuid = getCurrentWorkspaceId();
 
   const [loading, setLoading] = useState(false);
   const firstName = formData.displayName.split(' ')[0] || '';
@@ -102,7 +104,7 @@ function AccountTab({ profile }) {
   const handleSave = async () => {
     try {
       setLoading(true);
-      const response = await profileService.updateUserProfile(formData);
+      const response = await profileService.updateUserProfile(workspaceGuid, formData);
       console.log('Updated successfully:', response.data);
       alert('Profile updated successfully!');
     } catch (error) {

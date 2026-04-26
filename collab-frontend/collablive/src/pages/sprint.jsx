@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import sprintService from '@/services/sprint'
 import { useAuth } from '@/context/AuthContext'
-import { useRole } from '@/hooks/useRole'
+import { useRole } from '@/services/useRole'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const STATUS_COLORS = {

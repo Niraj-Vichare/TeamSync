@@ -14,7 +14,7 @@ class ProfileService{
         }
     }
 
-    async updateUserProfile(profile){
+    async updateUserProfile(workspaceGuid, profile){
         try{
             const response = await axiosInstance.put(`/profile?workspaceGuid=${workspaceGuid}`,profile);
             return response;

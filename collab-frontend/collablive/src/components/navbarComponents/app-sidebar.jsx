@@ -22,8 +22,7 @@ import { WorkspaceSwitcher } from "./workspace-switcher"
 import { AudioWaveform, Command, Frame, GalleryVerticalEnd, Map, MedalIcon, PieChart } from "lucide-react"
 import { NavProjects } from "./nav-projects"
 import { useAuth } from "@/context/AuthContext"
-import { Skeleton } from "@/components/ui/skeleton" // ✅ ShadCN Skeleton
-import { useRole } from "@/hooks/useRole"
+import { useRole } from "@/services/useRole"
 
 const staticData = {
   navMain: [

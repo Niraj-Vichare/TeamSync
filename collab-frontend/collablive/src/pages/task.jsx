@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { useAuth } from "@/context/AuthContext";
-import { useRole } from "@/hooks/useRole";          // FIX: import role hook
+import { useRole } from "@/services/useRole";          // FIX: import role hook
 import workspaceService from "@/services/workspace";
 import projectService from "@/services/project";
 import sprintService from "@/services/sprint";
